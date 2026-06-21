@@ -903,15 +903,76 @@
     { icon:'🏆', name:'Predictions',     sub:'Pick games · Leaderboard',       cat:'allscores'},
   ];
 
-  var TRENDING = [
-    { tag:'NBA 🏀', title:'Wembanyama drops 47 pts & 12 blocks — the most dominant game this season', meta:'2.1M views · 3h ago' },
-    { tag:'NFL 🏈', title:'Breaking: Star QB demands trade, sources say deal is coming this week',      meta:'1.8M views · 1h ago' },
-    { tag:'Rugby 🏉',title:'All Blacks pull off the comeback of the decade in the final minute',       meta:'890K views · 2h ago' },
-    { tag:'UFC 🥊',  title:'Unexpected KO in round 1 — everyone saw it coming except the champ',      meta:'1.2M views · 4h ago' },
-    { tag:'EPL ⚽',  title:'Hat trick in 8 minutes — Premier League fans are losing their minds',     meta:'760K views · 5h ago' },
-    { tag:'F1 🏎️',  title:'Max cruises to yet another win while drama erupts behind him',             meta:'540K views · 3h ago' },
-    { tag:'MLB ⚾',  title:'Perfect game through 8 innings — the whole world is watching right now',   meta:'430K views · 45m ago'},
+  var TRENDING = [];
+
+  var RSS_FEEDS = [
+    { url:'https://www.espn.com/espn/rss/nfl/news',        tag:'NFL 🏈'    },
+    { url:'https://www.espn.com/espn/rss/nba/news',        tag:'NBA 🏀'    },
+    { url:'https://www.espn.com/espn/rss/mlb/news',        tag:'MLB ⚾'    },
+    { url:'https://www.espn.com/espn/rss/nhl/news',        tag:'NHL 🏒'    },
+    { url:'https://www.espn.com/espn/rss/soccer/news',     tag:'Soccer ⚽'  },
+    { url:'https://www.espn.com/espn/rss/rpm/news',        tag:'F1 🏎️'    },
+    { url:'https://www.espn.com/espn/rss/golf/news',       tag:'Golf ⛳'   },
+    { url:'https://www.espn.com/espn/rss/mma/news',        tag:'UFC 🥊'    },
   ];
+
+  var RSS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+  function timeAgo(dateStr) {
+    var diff = Math.max(0, Math.round((Date.now() - new Date(dateStr)) / 60000));
+    if (diff < 60)   return diff + 'm ago';
+    if (diff < 1440) return Math.round(diff/60) + 'h ago';
+    return Math.round(diff/1440) + 'd ago';
+  }
+
+  function fetchRSS(feed, callback) {
+    var url = RSS_PROXY + encodeURIComponent(feed.url) + '&count=4';
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var items = (d.items || []).slice(0,4);
+        callback(items.map(function(item){
+          return {
+            tag: feed.tag,
+            title: item.title,
+            meta: 'ESPN · ' + timeAgo(item.pubDate),
+            url: item.link
+          };
+        }));
+      })
+      .catch(function(){ callback([]); });
+  }
+
+  function loadAllNews() {
+    var results = [];
+    var done = 0;
+    RSS_FEEDS.forEach(function(feed) {
+      fetchRSS(feed, function(articles) {
+        articles.forEach(function(a){ results.push(a); });
+        done++;
+        if (done === RSS_FEEDS.length) {
+          TRENDING = results;
+          renderTrending();
+        }
+      });
+    });
+  }
+
+  function renderTrending() {
+    function matchTag(pattern) {
+      return TRENDING.filter(function(t){ return t.tag.match(pattern); });
+    }
+    setHTML('home-trending',  TRENDING.slice(0,8).map(trendHtml).join('') || '<span class="empty">Loading headlines…</span>');
+    setHTML('trend-american', (matchTag(/NFL|NBA|MLB|NHL|WNBA/).slice(0,8)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+    setHTML('trend-soccer',   (matchTag(/Soccer|EPL|Liga/).slice(0,6)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+    setHTML('trend-rugby',    (matchTag(/Rugby/).slice(0,6)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+    setHTML('trend-combat',   (matchTag(/UFC|Boxing|MMA/).slice(0,6)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+    setHTML('trend-racing',   (matchTag(/F1|NASCAR|Racing/).slice(0,4)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+    setHTML('trend-other',    (matchTag(/Golf|Tennis|Cricket/).slice(0,4)).map(trendHtml).join('') || '<span class="empty">Loading…</span>');
+  }
+
+  loadAllNews();
+  setInterval(loadAllNews, 300000);
 
   var TAKES = [
     { user:'@bigballer_88',    team:'Lakers fan 🟣',      quote:'"LeBron is still the GOAT and it\'s not even close. Period."',             fires:'8.4K', cbs:'312'  },
@@ -1010,22 +1071,23 @@
   };
 
   function trendHtml(t, i) {
-    return '<div class="trend-card">' +
+    var click = t.url ? 'onclick="window.open(\'' + esc(t.url) + '\',\'_blank\')"' : '';
+    return '<div class="trend-card" ' + click + ' style="' + (t.url?'cursor:pointer':'') + '">' +
       '<div class="trend-num">0' + (i+1) + '</div>' +
       '<div>' +
         '<div class="trend-tag">' + t.tag + '</div>' +
         '<div class="trend-title">' + esc(t.title) + '</div>' +
-        '<div class="trend-meta">' + esc(t.meta) + '</div>' +
+        '<div class="trend-meta">' + esc(t.meta) + (t.url ? ' · <span style="color:var(--red)">Read →</span>' : '') + '</div>' +
       '</div></div>';
   }
 
-  setHTML('home-trending',  TRENDING.slice(0,4).map(trendHtml).join(''));
-  setHTML('trend-american', TRENDING.filter(function(t){ return t.tag.match(/NBA|NFL|MLB|NHL|WNBA/); }).slice(0,4).map(trendHtml).join(''));
-  setHTML('trend-soccer',   TRENDING.filter(function(t){ return t.tag.match(/EPL|Soccer|Liga/); }).slice(0,3).map(trendHtml).join('') || TRENDING.slice(4,7).map(trendHtml).join(''));
-  setHTML('trend-rugby',    TRENDING.filter(function(t){ return t.tag.match(/Rugby/); }).slice(0,3).map(trendHtml).join('') || TRENDING.slice(2,5).map(trendHtml).join(''));
-  setHTML('trend-combat',   TRENDING.filter(function(t){ return t.tag.match(/UFC|Boxing|MMA/); }).slice(0,3).map(trendHtml).join('') || TRENDING.slice(3,6).map(trendHtml).join(''));
-  setHTML('trend-racing',   TRENDING.filter(function(t){ return t.tag.match(/F1|NASCAR|Racing/); }).slice(0,3).map(trendHtml).join('') || TRENDING.slice(5,7).map(trendHtml).join(''));
-  setHTML('trend-other',    TRENDING.slice(0,3).map(trendHtml).join(''));
+  setHTML('home-trending',  '<span class="empty">Loading real headlines…</span>');
+  setHTML('trend-american', '<span class="empty">Loading…</span>');
+  setHTML('trend-soccer',   '<span class="empty">Loading…</span>');
+  setHTML('trend-rugby',    '<span class="empty">Loading…</span>');
+  setHTML('trend-combat',   '<span class="empty">Loading…</span>');
+  setHTML('trend-racing',   '<span class="empty">Loading…</span>');
+  setHTML('trend-other',    '<span class="empty">Loading…</span>');
 
   setHTML('fan-takes-list', TAKES.map(function(t) {
     return '<div class="take-card">' +
