@@ -520,6 +520,12 @@
     padding: 2px 5px;
     border-radius: 3px;
   }
+  .vid-thumb img { width:100%;height:100%;object-fit:cover;display:block; }
+  .vid-thumb-overlay { position:absolute;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;transition:background 0.15s; }
+  .vid-card:hover .vid-thumb-overlay { background:rgba(0,0,0,0.1); }
+  .vid-card:hover { border-color:var(--red);transform:translateY(-2px); }
+  .vid-play-btn { width:44px;height:44px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center; }
+  .vid-play-tri { width:0;height:0;border-style:solid;border-width:8px 0 8px 14px;border-color:transparent transparent transparent #fff;margin-left:4px; }
   .vid-info { padding: 8px 10px 10px; }
   .vid-tag {
     font-family: 'Space Mono', monospace;
@@ -842,10 +848,35 @@
 
     <!-- VIDEOS -->
     <div class="tab-content" id="cat-videos">
-      <div class="sec-head"><div class="sec-title">▶ Trending Videos</div></div>
+      <div class="sec-head"><div class="sec-title">▶ Latest from Official Channels</div><button class="sec-more" onclick="loadAllVideos()">↺ Refresh</button></div>
+      <div style="display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:8px;margin-bottom:12px;" id="vid-filter-bar">
+        <span class="lpill active" onclick="filterVideos('all',this)">All 🎬</span>
+        <span class="lpill" onclick="filterVideos('NFL 🏈',this)">NFL 🏈</span>
+        <span class="lpill" onclick="filterVideos('NBA 🏀',this)">NBA 🏀</span>
+        <span class="lpill" onclick="filterVideos('MLB ⚾',this)">MLB ⚾</span>
+        <span class="lpill" onclick="filterVideos('NHL 🏒',this)">NHL 🏒</span>
+        <span class="lpill" onclick="filterVideos('EPL ⚽',this)">EPL ⚽</span>
+        <span class="lpill" onclick="filterVideos('Rugby 🏉',this)">Rugby 🏉</span>
+        <span class="lpill" onclick="filterVideos('UFC 🥊',this)">UFC 🥊</span>
+        <span class="lpill" onclick="filterVideos('F1 🏎️',this)">F1 🏎️</span>
+        <span class="lpill" onclick="filterVideos('MLS ⚽',this)">MLS ⚽</span>
+      </div>
       <div class="video-grid" id="video-grid"></div>
-      <div class="sec-head" style="margin-top:8px"><div class="sec-title">▶ More Videos</div></div>
       <div class="video-grid" id="video-grid-2"></div>
+    </div>
+
+    <!-- VIDEO MODAL -->
+    <div id="video-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:20px;">
+      <div style="width:100%;max-width:800px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div id="modal-title" style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;flex:1;margin-right:12px;line-height:1.3;"></div>
+          <button onclick="closeVideo()" style="background:#FF3D3D;border:none;color:#fff;font-family:Oswald,sans-serif;font-size:13px;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;flex-shrink:0;">✕ Close</button>
+        </div>
+        <div style="position:relative;padding-bottom:56.25%;height:0;background:#000;border-radius:12px;overflow:hidden;">
+          <iframe id="video-frame" style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+        </div>
+        <div style="text-align:center;margin-top:10px;font-family:Space Mono,monospace;font-size:10px;color:#9CA3AF;">Tap outside or press Close to exit · Video from official YouTube channel</div>
+      </div>
     </div>
 
     <!-- ALL SCORES -->
@@ -986,16 +1017,129 @@
     { user:'@f1purist',        team:'F1 fan 🏎️',           quote:'"Bring back refueling. The current F1 is boring at the front."',            fires:'4.4K', cbs:'788'  },
   ];
 
-  var VIDEOS = [
-    { tag:'NBA 🏀', title:"Wemby's ridiculous chase-down block everyone is losing it over",     views:'3.4M views', dur:'0:42' },
-    { tag:'NFL 🏈', title:"WR mic'd up — this is the trash talk of the year honestly",          views:'2.1M views', dur:'1:18' },
-    { tag:'MLB ⚾', title:"Pitcher hits 103 mph — the radar gun literally can't keep up",        views:'980K views',  dur:'0:28' },
-    { tag:'VIRAL 🔥',title:'Fan catches home run one-handed while holding a baby',              views:'4.7M views', dur:'0:15' },
-    { tag:'Rugby 🏉',title:'40-metre sprint try that left the whole stadium speechless',         views:'2.2M views', dur:'0:33' },
-    { tag:'F1 🏎️',  title:'On-board footage of the fastest lap ever recorded at Monza',         views:'1.9M views', dur:'0:55' },
-    { tag:'NBA 🏀', title:'Half-court buzzer beater wins the game — bench completely loses it',  views:'6.2M views', dur:'0:31' },
-    { tag:'UFC 🥊', title:'Post-fight interview goes viral — most honest athlete ever?',         views:'3.8M views', dur:'2:12' },
+  /* ─── YOUTUBE VIDEO API ─── */
+  var YT_KEY = 'AIzaSyDCgE4vKAXBb-T-k0PE9pYrGaAnZh8PRig';
+
+  var YT_CHANNELS = [
+    { id:'UCDVYQ4Zhbm3S2dlz7P1GBDg', tag:'NFL 🏈',    name:'NFL'            },
+    { id:'UCEjOSbbaOfgnfRODEEMYlCw', tag:'NBA 🏀',    name:'NBA'            },
+    { id:'UCoLrcjPV5PbUrUyXq5mjc_A', tag:'MLB ⚾',    name:'MLB'            },
+    { id:'UCB-3oiAkRKvMQbVQkjD_f5A', tag:'NHL 🏒',    name:'NHL'            },
+    { id:'UCqZQlzSHbVJrwrn5XvzrzcA', tag:'EPL ⚽',    name:'Premier League' },
+    { id:'UCznv__14nznPLH1T2YMDbhA', tag:'Rugby 🏉',  name:'World Rugby'    },
+    { id:'UCvgfXK4nTYKudb0rFR6noSQ', tag:'UFC 🥊',    name:'UFC'            },
+    { id:'UCB_qr75-ydFVKSF9Dmo6izg', tag:'F1 🏎️',   name:'Formula 1'      },
+    { id:'UCW-QMcKMSMBHlTj0SVFdNrQ', tag:'MLS ⚽',    name:'MLS'            },
   ];
+
+  var allVideos = [];
+  var activeVideoFilter = 'all';
+  var currentVideoId = null;
+
+  function fmtViews(n) {
+    if (!n) return '';
+    n = parseInt(n);
+    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M views';
+    if (n >= 1000)    return Math.round(n/1000) + 'K views';
+    return n + ' views';
+  }
+
+  function fetchChannelVideos(ch, callback) {
+    var url = 'https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=' +
+      ch.id + '&maxResults=4&order=date&type=video&key=' + YT_KEY;
+    fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var items = (d.items || []).filter(function(i){ return i.id && i.id.videoId; });
+        callback(items.map(function(item){
+          return {
+            id:        item.id.videoId,
+            tag:       ch.tag,
+            title:     item.snippet.title,
+            thumb:     item.snippet.thumbnails.medium.url,
+            channel:   item.snippet.channelTitle,
+            published: item.snippet.publishedAt
+          };
+        }));
+      })
+      .catch(function(){ callback([]); });
+  }
+
+  function loadAllVideos() {
+    setHTML('video-grid',   '<span class="empty" style="grid-column:1/-1">Loading videos from official channels…</span>');
+    setHTML('video-grid-2', '');
+    var done = 0;
+    allVideos = [];
+    YT_CHANNELS.forEach(function(ch){
+      fetchChannelVideos(ch, function(vids){
+        vids.forEach(function(v){ allVideos.push(v); });
+        done++;
+        if (done === YT_CHANNELS.length) renderVideos();
+      });
+    });
+  }
+
+  function renderVideos() {
+    var filtered = activeVideoFilter === 'all'
+      ? allVideos
+      : allVideos.filter(function(v){ return v.tag === activeVideoFilter; });
+
+    if (!filtered.length) {
+      setHTML('video-grid', '<span class="empty" style="grid-column:1/-1">No videos found</span>');
+      setHTML('video-grid-2', '');
+      return;
+    }
+
+    setHTML('video-grid',   filtered.slice(0,6).map(ytVidHtml).join(''));
+    setHTML('video-grid-2', filtered.slice(6,12).map(ytVidHtml).join(''));
+  }
+
+  function ytVidHtml(v) {
+    var thumb = v.thumb || ('https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg');
+    return '<div class="vid-card" onclick="playVideo('' + v.id + '','' + esc(v.title.replace(/'/g,'')) + '')">' +
+      '<div class="vid-thumb">' +
+        '<img src="' + esc(thumb) + '" alt="" loading="lazy" onerror="this.src='https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg'">' +
+        '<div class="vid-thumb-overlay"><div class="vid-play-btn"><div class="vid-play-tri"></div></div></div>' +
+      '</div>' +
+      '<div class="vid-info">' +
+        '<div class="vid-tag">' + v.tag + '</div>' +
+        '<div class="vid-title">' + esc(v.title) + '</div>' +
+        '<div class="vid-views">' + esc(v.channel) + '</div>' +
+      '</div></div>';
+  }
+
+  window.playVideo = function(videoId, title) {
+    currentVideoId = videoId;
+    var modal = document.getElementById('video-modal');
+    var frame = document.getElementById('video-frame');
+    var modalTitle = document.getElementById('modal-title');
+    frame.src = 'https://www.youtube.com/embed/' + videoId + '?autoplay=1&rel=0';
+    if (modalTitle) modalTitle.textContent = title;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeVideo = function() {
+    var modal = document.getElementById('video-modal');
+    var frame = document.getElementById('video-frame');
+    frame.src = '';
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+    currentVideoId = null;
+  };
+
+  loadAllVideos();
+
+  window.filterVideos = function(filter, el) {
+    activeVideoFilter = filter;
+    document.querySelectorAll('#vid-filter-bar .lpill').forEach(function(p){ p.classList.remove('active'); });
+    el.classList.add('active');
+    renderVideos();
+  };
+
+  document.getElementById('video-modal').addEventListener('click', function(e){
+    if (e.target === this) closeVideo();
+  });
 
   var HOT = [
     { label:'Hot Take 🌶️', title:'"Load management is KILLING the NBA"',                   stat:'44K comments'     },
@@ -1106,20 +1250,7 @@
       '</div></div>';
   }).join(''));
 
-  function vidHtml(v) {
-    return '<div class="vid-card">' +
-      '<div class="vid-thumb">' +
-        '<div class="vid-play-btn"><div class="vid-play-tri"></div></div>' +
-        '<span class="vid-dur">' + esc(v.dur) + '</span>' +
-      '</div>' +
-      '<div class="vid-info">' +
-        '<div class="vid-tag">' + v.tag + '</div>' +
-        '<div class="vid-title">' + esc(v.title) + '</div>' +
-        '<div class="vid-views">' + esc(v.views) + '</div>' +
-      '</div></div>';
-  }
-  setHTML('video-grid',   VIDEOS.slice(0,4).map(vidHtml).join(''));
-  setHTML('video-grid-2', VIDEOS.slice(4,8).map(vidHtml).join(''));
+  /* vidHtml is now handled by ytVidHtml via loadAllVideos() above */
 
   setHTML('sb-hot', HOT.map(function(h) {
     return '<div class="hot-card">' +
