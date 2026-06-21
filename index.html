@@ -1267,32 +1267,136 @@
     '</div>';
   }).join(''));
 
-  /* ─── LIVE SCORES ─── */
+  /* ─── LIVE SCORES — MULTI API REDUNDANT SYSTEM ─── */
+  // API 1: TheSportsDB (free, no key, no CORS)
+  // API 2: Football-Data.org (free key, soccer specialist)
+  // API 3: balldontlie (free, no key, NBA specialist)
+  // API 4: ESPN via corsproxy (fallback)
+
   var allGames = [];
   var lastUpdated = null;
+  var FDKEY = '8d809c6e985841e9a93ff18db6da8029';
 
-  var LEAGUES = [
-    { sport:'football',   league:'nfl',                            label:'NFL',         cat:'american' },
-    { sport:'basketball', league:'nba',                            label:'NBA',         cat:'american' },
-    { sport:'baseball',   league:'mlb',                            label:'MLB',         cat:'american' },
-    { sport:'hockey',     league:'nhl',                            label:'NHL',         cat:'american' },
-    { sport:'basketball', league:'wnba',                           label:'WNBA',        cat:'american' },
-    { sport:'football',   league:'college-football',               label:'NCAAF',       cat:'american' },
-    { sport:'basketball', league:'mens-college-basketball',        label:'NCAAB',       cat:'american' },
-    { sport:'soccer',     league:'usa.1',                          label:'MLS',         cat:'soccer'   },
-    { sport:'soccer',     league:'eng.1',                          label:'EPL',         cat:'soccer'   },
-    { sport:'soccer',     league:'esp.1',                          label:'La Liga',     cat:'soccer'   },
-    { sport:'soccer',     league:'ita.1',                          label:'Serie A',     cat:'soccer'   },
-    { sport:'soccer',     league:'ger.1',                          label:'Bundesliga',  cat:'soccer'   },
-    { sport:'soccer',     league:'fra.1',                          label:'Ligue 1',     cat:'soccer'   },
-    { sport:'soccer',     league:'uefa.champions',                 label:'UCL',         cat:'soccer'   },
-    { sport:'rugby',      league:'uru',                            label:'Rugby Union', cat:'rugby'    },
-    { sport:'rugby-league', league:'nrl',                          label:'Rugby League',cat:'rugby'    },
-    { sport:'golf',       league:'pga',                            label:'PGA Tour',    cat:'other'    },
-    { sport:'tennis',     league:'atp',                            label:'ATP Tennis',  cat:'other'    },
+  /* ── NORMALIZER: converts any source into standard game object ── */
+  function makeGame(label, cat, state, detail, date, homeName, homeLogo, homeScore, homeWin, awayName, awayLogo, awayScore, awayWin) {
+    return {
+      label: label, cat: cat, state: state, detail: detail, date: date,
+      home: { name: homeName, logo: homeLogo || '', score: homeScore, winner: homeWin },
+      away: { name: awayName, logo: awayLogo || '', score: awayScore, winner: awayWin }
+    };
+  }
+
+  /* ── API 1: TheSportsDB ── */
+  var TSDB_LEAGUES = [
+    { id:'4391', label:'NFL',        cat:'american' },
+    { id:'4387', label:'NBA',        cat:'american' },
+    { id:'4424', label:'MLB',        cat:'american' },
+    { id:'4380', label:'NHL',        cat:'american' },
+    { id:'4442', label:'MLS',        cat:'soccer'   },
+    { id:'4346', label:'Rugby Union',cat:'rugby'    },
+    { id:'4304', label:'Rugby League',cat:'rugby'   },
   ];
 
-  function fetchLeague(lg) {
+  function fetchTheSportsDB(lg) {
+    var today = new Date().toISOString().split('T')[0];
+    var url = 'https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=' + today + '&l=' + lg.id;
+    return fetch(url)
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var events = d.events || [];
+        return events.map(function(e){
+          var homeScore = e.intHomeScore != null ? String(e.intHomeScore) : '–';
+          var awayScore = e.intAwayScore != null ? String(e.intAwayScore) : '–';
+          var finished  = e.strStatus === 'Match Finished' || e.strStatus === 'FT' || e.strStatus === 'AOT';
+          var live      = e.strStatus === 'Live' || e.strProgress;
+          var state     = finished ? 'post' : live ? 'in' : 'pre';
+          var detail    = e.strProgress || e.strStatus || '';
+          var homeWin   = finished && parseInt(homeScore) > parseInt(awayScore);
+          var awayWin   = finished && parseInt(awayScore) > parseInt(homeScore);
+          return makeGame(
+            lg.label, lg.cat, state, detail, e.dateEvent + 'T' + (e.strTime||'00:00:00') + 'Z',
+            e.strHomeTeam, e.strHomeTeamBadge, homeScore, homeWin,
+            e.strAwayTeam, e.strAwayTeamBadge, awayScore, awayWin
+          );
+        });
+      })
+      .catch(function(){ return []; });
+  }
+
+  /* ── API 2: Football-Data.org (soccer) ── */
+  var FD_COMPETITIONS = [
+    { code:'PL',  label:'EPL',       cat:'soccer' },
+    { code:'PD',  label:'La Liga',   cat:'soccer' },
+    { code:'SA',  label:'Serie A',   cat:'soccer' },
+    { code:'BL1', label:'Bundesliga',cat:'soccer' },
+    { code:'FL1', label:'Ligue 1',   cat:'soccer' },
+    { code:'CL',  label:'UCL',       cat:'soccer' },
+    { code:'MLS', label:'MLS',       cat:'soccer' },
+  ];
+
+  function fetchFootballData(comp) {
+    var today = new Date().toISOString().split('T')[0];
+    var url = 'https://api.football-data.org/v4/competitions/' + comp.code + '/matches?dateFrom=' + today + '&dateTo=' + today;
+    return fetch(url, { headers: { 'X-Auth-Token': FDKEY } })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var matches = d.matches || [];
+        return matches.map(function(m){
+          var s = m.status;
+          var state = (s === 'FINISHED') ? 'post' : (s === 'IN_PLAY' || s === 'PAUSED') ? 'in' : 'pre';
+          var homeScore = m.score && m.score.fullTime ? (m.score.fullTime.home != null ? String(m.score.fullTime.home) : '–') : '–';
+          var awayScore = m.score && m.score.fullTime ? (m.score.fullTime.away != null ? String(m.score.fullTime.away) : '–') : '–';
+          var homeWin = state === 'post' && m.score && m.score.winner === 'HOME_TEAM';
+          var awayWin = state === 'post' && m.score && m.score.winner === 'AWAY_TEAM';
+          var detail = s === 'IN_PLAY' ? 'Live' : s === 'PAUSED' ? 'HT' : '';
+          var homeLogo = m.homeTeam && m.homeTeam.crest ? m.homeTeam.crest : '';
+          var awayLogo = m.awayTeam && m.awayTeam.crest ? m.awayTeam.crest : '';
+          return makeGame(
+            comp.label, comp.cat, state, detail, m.utcDate,
+            m.homeTeam ? m.homeTeam.shortName || m.homeTeam.name : 'TBD', homeLogo, homeScore, homeWin,
+            m.awayTeam ? m.awayTeam.shortName || m.awayTeam.name : 'TBD', awayLogo, awayScore, awayWin
+          );
+        });
+      })
+      .catch(function(){ return []; });
+  }
+
+  /* ── API 3: balldontlie (NBA) ── */
+  function fetchBallDontLie() {
+    var today = new Date().toISOString().split('T')[0];
+    var url = 'https://api.balldontlie.io/v1/games?dates[]=' + today + '&per_page=15';
+    return fetch(url, { headers: { 'Authorization': '1e4b3b47-e56b-48ee-9dcc-7e02b6e1e582' } })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var games = (d.data || []);
+        return games.map(function(g){
+          var s = g.status;
+          var state = s === 'Final' ? 'post' : (s && s.includes('Qtr') || s && s.includes('Half') || s === 'Halftime') ? 'in' : 'pre';
+          var homeScore = g.home_team_score != null ? String(g.home_team_score) : '–';
+          var awayScore = g.visitor_team_score != null ? String(g.visitor_team_score) : '–';
+          var homeWin = state === 'post' && parseInt(homeScore) > parseInt(awayScore);
+          var awayWin = state === 'post' && parseInt(awayScore) > parseInt(homeScore);
+          return makeGame(
+            'NBA', 'american', state, s === 'Final' ? '' : (s || ''), g.date,
+            g.home_team ? g.home_team.full_name : 'TBD', '', homeScore, homeWin,
+            g.visitor_team ? g.visitor_team.full_name : 'TBD', '', awayScore, awayWin
+          );
+        });
+      })
+      .catch(function(){ return []; });
+  }
+
+  /* ── API 4: ESPN fallback via proxy ── */
+  var ESPN_LEAGUES = [
+    { sport:'football',   league:'nfl',   label:'NFL',  cat:'american' },
+    { sport:'baseball',   league:'mlb',   label:'MLB',  cat:'american' },
+    { sport:'hockey',     league:'nhl',   label:'NHL',  cat:'american' },
+    { sport:'basketball', league:'wnba',  label:'WNBA', cat:'american' },
+    { sport:'rugby',      league:'uru',   label:'Rugby Union', cat:'rugby' },
+    { sport:'golf',       league:'pga',   label:'PGA Tour',    cat:'other' },
+  ];
+
+  function fetchESPN(lg) {
     var espnUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + lg.sport + '/' + lg.league + '/scoreboard';
     var url = 'https://corsproxy.io/?url=' + encodeURIComponent(espnUrl);
     return fetch(url)
@@ -1304,25 +1408,13 @@
           var home = comps.filter(function(c){ return c.homeAway==='home'; })[0] || comps[0] || {};
           var away = comps.filter(function(c){ return c.homeAway==='away'; })[0] || comps[1] || {};
           var st = (ev.status && ev.status.type) || {};
-          return {
-            label: lg.label,
-            cat: lg.cat,
-            state: st.state || 'pre',
-            detail: st.shortDetail || st.detail || '',
-            date: ev.date,
-            home: {
-              name: (home.team && (home.team.shortDisplayName || home.team.displayName)) || 'TBD',
-              logo: home.team && home.team.logo,
-              score: home.score != null ? home.score : '–',
-              winner: !!home.winner
-            },
-            away: {
-              name: (away.team && (away.team.shortDisplayName || away.team.displayName)) || 'TBD',
-              logo: away.team && away.team.logo,
-              score: away.score != null ? away.score : '–',
-              winner: !!away.winner
-            }
-          };
+          return makeGame(
+            lg.label, lg.cat, st.state || 'pre', st.shortDetail || '', ev.date,
+            (home.team && (home.team.shortDisplayName || home.team.displayName)) || 'TBD',
+            home.team && home.team.logo, home.score != null ? home.score : '–', !!home.winner,
+            (away.team && (away.team.shortDisplayName || away.team.displayName)) || 'TBD',
+            away.team && away.team.logo, away.score != null ? away.score : '–', !!away.winner
+          );
         });
       })
       .catch(function(){ return []; });
@@ -1419,16 +1511,33 @@
     }
   }
 
+  function dedupeGames(games) {
+    var seen = {};
+    return games.filter(function(g) {
+      var key = g.label + '|' + g.home.name + '|' + g.away.name + '|' + (g.date||'').split('T')[0];
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+  }
+
   function loadAll() {
-    return Promise.all(LEAGUES.map(fetchLeague)).then(function(results) {
-      allGames = [];
-      results.forEach(function(r){ r.forEach(function(g){ allGames.push(g); }); });
+    var fetches = [];
+    TSDB_LEAGUES.forEach(function(lg){ fetches.push(fetchTheSportsDB(lg)); });
+    FD_COMPETITIONS.forEach(function(c){ fetches.push(fetchFootballData(c)); });
+    fetches.push(fetchBallDontLie());
+    ESPN_LEAGUES.forEach(function(lg){ fetches.push(fetchESPN(lg)); });
+
+    return Promise.all(fetches).then(function(results) {
+      var combined = [];
+      results.forEach(function(r){ r.forEach(function(g){ combined.push(g); }); });
+      allGames = dedupeGames(combined);
       lastUpdated = Date.now();
       render();
     });
   }
 
-  render(); // Show mock data instantly while API loads
+  render(); // Show mock data instantly while APIs load
   loadAll();
   setInterval(loadAll, 30000);
 
