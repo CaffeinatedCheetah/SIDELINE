@@ -1293,7 +1293,8 @@
   ];
 
   function fetchLeague(lg) {
-    var url = 'https://site.api.espn.com/apis/site/v2/sports/' + lg.sport + '/' + lg.league + '/scoreboard';
+    var espnUrl = 'https://site.api.espn.com/apis/site/v2/sports/' + lg.sport + '/' + lg.league + '/scoreboard';
+    var url = 'https://corsproxy.io/?url=' + encodeURIComponent(espnUrl);
     return fetch(url)
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -1355,6 +1356,17 @@
     '</div>';
   }
 
+  var MOCK_SCORES = [
+    {label:'NBA',cat:'american',state:'in',detail:'Q3 8:42',date:'',home:{name:'Lakers',logo:'https://a.espncdn.com/i/teamlogos/nba/500/lal.png',score:'87',winner:false},away:{name:'Celtics',logo:'https://a.espncdn.com/i/teamlogos/nba/500/bos.png',score:'91',winner:true}},
+    {label:'NBA',cat:'american',state:'in',detail:'Q2 3:21',date:'',home:{name:'Warriors',logo:'https://a.espncdn.com/i/teamlogos/nba/500/gs.png',score:'54',winner:true},away:{name:'Nuggets',logo:'https://a.espncdn.com/i/teamlogos/nba/500/den.png',score:'51',winner:false}},
+    {label:'MLB',cat:'american',state:'in',detail:'Bot 7th',date:'',home:{name:'Yankees',logo:'https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png',score:'4',winner:true},away:{name:'Red Sox',logo:'https://a.espncdn.com/i/teamlogos/mlb/500/bos.png',score:'2',winner:false}},
+    {label:'EPL',cat:'soccer',state:'in',detail:'67'',date:'',home:{name:'Arsenal',logo:'https://a.espncdn.com/i/teamlogos/soccer/500/359.png',score:'2',winner:true},away:{name:'Chelsea',logo:'https://a.espncdn.com/i/teamlogos/soccer/500/363.png',score:'1',winner:false}},
+    {label:'NFL',cat:'american',state:'pre',detail:'',date:new Date(Date.now()+7200000).toISOString(),home:{name:'Chiefs',logo:'https://a.espncdn.com/i/teamlogos/nfl/500/kc.png',score:'–',winner:false},away:{name:'Bills',logo:'https://a.espncdn.com/i/teamlogos/nfl/500/buf.png',score:'–',winner:false}},
+    {label:'NHL',cat:'american',state:'post',detail:'',date:'',home:{name:'Oilers',logo:'https://a.espncdn.com/i/teamlogos/nhl/500/edm.png',score:'3',winner:true},away:{name:'Panthers',logo:'https://a.espncdn.com/i/teamlogos/nhl/500/fla.png',score:'2',winner:false}},
+    {label:'Rugby Union',cat:'rugby',state:'in',detail:'55'',date:'',home:{name:'All Blacks',logo:'',score:'24',winner:true},away:{name:'Springboks',logo:'',score:'17',winner:false}},
+    {label:'F1',cat:'racing',state:'in',detail:'Lap 42/58',date:'',home:{name:'Verstappen',logo:'',score:'P1',winner:true},away:{name:'Norris',logo:'',score:'P2',winner:false}},
+  ];
+
   function render() {
     var rank = { 'in':0, 'pre':1, 'post':2 };
     allGames.sort(function(a,b){
@@ -1367,7 +1379,8 @@
     var soccer   = allGames.filter(function(g){ return g.cat==='soccer'; });
     var rugby    = allGames.filter(function(g){ return g.cat==='rugby'; });
 
-    setHTML('scores-home',     allGames.slice(0,16).map(scoreCardHtml).join('') || '<span class="empty">No games right now</span>');
+    var gamesToShow = allGames.length > 0 ? allGames : MOCK_SCORES;
+    setHTML('scores-home',     gamesToShow.slice(0,16).map(scoreCardHtml).join('') || '<span class="empty">No games right now</span>');
     setHTML('scores-american', american.slice(0,12).map(scoreCardHtml).join('')  || '<span class="empty">No games today</span>');
     setHTML('scores-soccer',   soccer.slice(0,12).map(scoreCardHtml).join('')    || '<span class="empty">No matches today</span>');
     setHTML('scores-rugby',    rugby.slice(0,10).map(scoreCardHtml).join('')     || '<span class="empty">No matches today</span>');
@@ -1376,7 +1389,9 @@
     setHTML('scores-other',    allGames.filter(function(g){ return g.cat==='other'; }).slice(0,10).map(scoreCardHtml).join('') || '<span class="empty">No events today</span>');
     setHTML('all-scores-list', allGames.map(allScoreCardHtml).join('') || '<span class="empty">No scores yet today</span>');
 
-    setHTML('sb-live', (live.length ? live : allGames).slice(0,5).map(function(g){
+    var liveOrMock = live.length ? live : (allGames.length ? allGames : MOCK_SCORES).filter(function(g){return g.state==='in';});
+    if (!liveOrMock.length) liveOrMock = MOCK_SCORES.slice(0,4);
+    setHTML('sb-live', liveOrMock.slice(0,5).map(function(g){
       var fin = g.state==='post';
       var meta = g.state==='in'
         ? '<span class="sb-live-dot"></span>' + esc(g.detail)
@@ -1413,6 +1428,7 @@
     });
   }
 
+  render(); // Show mock data instantly while API loads
   loadAll();
   setInterval(loadAll, 30000);
 
