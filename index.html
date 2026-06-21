@@ -916,8 +916,6 @@
     { url:'https://www.espn.com/espn/rss/mma/news',        tag:'UFC 🥊'    },
   ];
 
-  var RSS_PROXY = 'https://api.rss2json.com/v1/api.json?rss_url=';
-
   function timeAgo(dateStr) {
     var diff = Math.max(0, Math.round((Date.now() - new Date(dateStr)) / 60000));
     if (diff < 60)   return diff + 'm ago';
@@ -926,19 +924,24 @@
   }
 
   function fetchRSS(feed, callback) {
-    var url = RSS_PROXY + encodeURIComponent(feed.url) + '&count=4';
-    fetch(url)
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var items = (d.items || []).slice(0,4);
+    var proxyUrl = 'https://corsproxy.io/?url=' + encodeURIComponent(feed.url);
+    fetch(proxyUrl)
+      .then(function(r){ return r.text(); })
+      .then(function(str){
+        var parser = new window.DOMParser();
+        var xml = parser.parseFromString(str, 'text/xml');
+        var items = Array.prototype.slice.call(xml.querySelectorAll('item'), 0, 4);
         callback(items.map(function(item){
+          var title = item.querySelector('title');
+          var link  = item.querySelector('link');
+          var pub   = item.querySelector('pubDate');
           return {
-            tag: feed.tag,
-            title: item.title,
-            meta: 'ESPN · ' + timeAgo(item.pubDate),
-            url: item.link
+            tag:   feed.tag,
+            title: title ? title.textContent : '',
+            meta:  'ESPN · ' + (pub ? timeAgo(pub.textContent) : 'recent'),
+            url:   link ? (link.textContent || '') : ''
           };
-        }));
+        }).filter(function(a){ return a.title; }));
       })
       .catch(function(){ callback([]); });
   }
