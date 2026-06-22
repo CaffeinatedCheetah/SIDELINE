@@ -632,11 +632,12 @@ function newsCardHtml(article, featured) {
   var source = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
+  var imgTag = '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy">';
 
   if(featured) {
     return '<div class="content-card featured" onclick="window.open(''+esc(url)+'','_blank')" style="cursor:pointer">'+
       '<div style="aspect-ratio:21/9;overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-        '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=''+SPORT_IMAGES['default']+''">'+
+        imgTag+
         '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
         '<div style="position:absolute;bottom:0;left:0;right:0;padding:20px">'+
           '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(source)+'</div>'+
@@ -647,7 +648,7 @@ function newsCardHtml(article, featured) {
   }
   return '<div class="content-card" onclick="window.open(''+esc(url)+'','_blank')" style="cursor:pointer">'+
     '<div style="aspect-ratio:16/9;overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.src=''+SPORT_IMAGES['default']+''">'+
+      imgTag+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.88) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:10px">'+
         '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:600;color:#fff;line-height:1.3">'+esc(title)+'</div>'+
@@ -657,29 +658,18 @@ function newsCardHtml(article, featured) {
   '</div>';
 }
 
-/* ── VIDEOS -- YOUR SERVER ONLY ── */
-function fetchVideos(sport, callback) {
-  if(videoCache[sport]) { callback(videoCache[sport]); return; }
-  fetch('/api/videos?sport='+sport)
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var videos = d.videos || [];
-      videoCache[sport] = videos;
-      callback(videos);
-    })
-    .catch(function(){ callback([]); });
-}
-
 function vidCardHtml(v) {
+  var thumb = v.thumb || ('https://img.youtube.com/vi/'+v.id+'/mqdefault.jpg');
   return '<div class="vid-card" onclick="playVid(''+esc(v.id)+'',''+esc((v.title||'').replace(/['"]/g,''))+'')">'+
-    '<div class="vid-thumb"><img src="'+esc(v.thumb)+'" alt="" loading="lazy" onerror="this.src='https://img.youtube.com/vi/'+esc(v.id)+'/mqdefault.jpg'">'+
+    '<div class="vid-thumb"><img src="'+esc(thumb)+'" alt="" loading="lazy">'+
     '<div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div></div>'+
     '<div class="vid-info"><div class="vid-tag '+tagClass(v.tag)+'">'+esc(v.tag)+'</div>'+
     '<div class="vid-title">'+esc(v.title)+'</div>'+
     '<div class="vid-ch">'+esc(v.channel)+'</div></div></div>';
 }
 
-/* ── TAB CONTENT LOADER ── */
+
+/* -- TAB CONTENT -- */
 function loadTabContent(tab) {
   if(tab==='home') { loadHomeContent(); return; }
   if(tab==='videos') { loadVideoTab('all'); return; }
@@ -709,7 +699,7 @@ function loadSportTab(tab) {
   if(newsEl) {
     newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div>';
     fetchNews(tab, function(articles) {
-      if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">No stories found right now</div>'; return; }
+      if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">No stories right now</div>'; return; }
       newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
     });
   }
@@ -729,20 +719,18 @@ function loadVideoTab(filter) {
   if(el2) el2.innerHTML = '';
   fetchVideos('all', function(vids){
     var filtered = filter==='all' ? vids : vids.filter(function(v){return v.tag===filter;});
-    if(el) el.innerHTML = filtered.slice(0,6).map(vidCardHtml).join('')||'<span class="empty">No videos found</span>';
+    if(el) el.innerHTML = filtered.slice(0,6).map(vidCardHtml).join('') || '<span class="empty">No videos found</span>';
     if(el2) el2.innerHTML = filtered.slice(6,12).map(vidCardHtml).join('');
   });
 }
 
 window.filterVids = function(f, btn) {
-  vidFilter = f;
   document.querySelectorAll('.vf').forEach(function(b){b.classList.remove('active');});
   btn.classList.add('active');
   loadVideoTab(f);
 };
 window.loadVideos = function(){ loadVideoTab('all'); };
 
-/* ── VIDEO MODAL ── */
 window.playVid = function(id, title) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('vid-frame').src = 'https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0';
@@ -755,15 +743,34 @@ window.closeVid = function() {
   document.body.style.overflow = '';
 };
 
-/* ── RENDER STATIC CONTENT ── */
+/* -- STATIC CONTENT -- */
+var HOT = [
+  {label:'Hot Take', color:'#FF3D3D', title:'"Load management is destroying the NBA product"', stat:'44K comments'},
+  {label:'Debate', color:'#D29922', title:'Greatest clutch performer: MJ, Kobe, or LeBron?', stat:'91K votes'},
+  {label:'Insider', color:'#58A6FF', title:'Super Bowl contender quietly exploring blockbuster trade', stat:'2.2M impressions'},
+  {label:'Opinion', color:'#3FB950', title:'F1 needs more competition - getting boring at the front', stat:'19K comments'},
+];
+var SPORTS_TODAY = [
+  {icon:'🏈', name:'NFL', status:'Offseason', cls:'status-off'},
+  {icon:'⚾', name:'MLB', status:'Season active', cls:'status-live'},
+  {icon:'⚽', name:'EPL', status:'Matchday', cls:'status-live'},
+  {icon:'🏒', name:'NHL', status:'Playoffs', cls:'status-live'},
+  {icon:'🏉', name:'Rugby', status:'Test matches', cls:'status-active'},
+  {icon:'🏎', name:'F1', status:'Race weekend', cls:'status-active'},
+];
+var TAKES = [
+  {user:'@bigballer_88', team:'Lakers fan', quote:'"LeBron is still the GOAT and it is not even close. Period."', fires:'8.4K', cbs:'312'},
+  {user:'@packerfan4life', team:'Green Bay fan', quote:'"Jordan Love is a top 5 QB right now. I said what I said."', fires:'5.1K', cbs:'891'},
+  {user:'@rugbymad_nz', team:'All Blacks fan', quote:'"NZ rugby is back. Nobody is touching us this year."', fires:'3.2K', cbs:'144'},
+  {user:'@messi_or_bust', team:'Inter Miami fan', quote:'"Messi at 37 is still better than 99 percent of players alive."', fires:'12.1K', cbs:'2.3K'},
+];
+
 setHTML('sb-hot', HOT.map(function(h){
   return '<div class="hot-card"><div class="hot-label" style="color:'+h.color+'">'+esc(h.label)+'</div><div class="hot-title">'+esc(h.title)+'</div><div class="hot-stat">'+esc(h.stat)+'</div></div>';
 }).join(''));
-
 setHTML('sb-sports', SPORTS_TODAY.map(function(s){
   return '<div class="sport-row"><div class="sport-row-left"><span>'+s.icon+'</span>'+esc(s.name)+'</div><span class="sport-row-status '+s.cls+'">'+esc(s.status)+'</span></div>';
 }).join(''));
-
 var takesHTML = TAKES.map(function(t){
   var initials = t.user.replace('@','').slice(0,2).toUpperCase();
   return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
@@ -774,15 +781,15 @@ setHTML('home-takes', TAKES.slice(0,2).map(function(t){
   return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
 }).join(''));
 
-/* ── KICK OFF ── */
+/* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
 setHTML('sb-live','<span class="empty">Loading live games...</span>');
-
 loadScores();
 loadHomeContent();
 setInterval(loadScores, 30000);
 
 })();
+
 </script>
 </body>
 </html>
