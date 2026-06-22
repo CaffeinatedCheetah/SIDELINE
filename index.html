@@ -557,8 +557,8 @@ function scoreCard(g) {
   var fin=g.state==='post', isLive=g.state==='in';
   var status=isLive?('● '+(g.detail||'Live')):fin?'Final':fmtTime(g.date);
   var stCls=isLive?'live-st':fin?'final-st':'pre-st';
-  var hLogo=g.home.logo?'<img src="'+esc(g.home.logo)+'" onerror="this.style.display='none'" style="width:16px;height:16px;object-fit:contain">':'';
-  var aLogo=g.away.logo?'<img src="'+esc(g.away.logo)+'" onerror="this.style.display='none'" style="width:16px;height:16px;object-fit:contain">':'';
+  var hLogo=g.home.logo?'<img src="'+esc(g.home.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
+  var aLogo=g.away.logo?'<img src="'+esc(g.away.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
   return '<div class="score-card'+(isLive?' live':'')+'">'+
     '<div class="sc-lg">'+esc(g.label)+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
     '<div class="sc-row"><div class="sc-team">'+aLogo+esc(g.away.name)+'</div><span class="sc-score'+(fin&&!g.away.winner?' dim':'')+'">'+esc(String(g.away.score))+'</span></div>'+
