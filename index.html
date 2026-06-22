@@ -629,45 +629,32 @@ function fetchNews(sport, callback) {
 function newsCardHtml(article, featured) {
   var img = article.urlToImage || SPORT_IMAGES['default'];
   var title = article.title || '';
-  var source = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
+  var src = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
-  var imgTag = '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy">';
-
-  if(featured) {
-    return '<div class="content-card featured" onclick="window.open(''+esc(url)+'','_blank')" style="cursor:pointer">'+
-      '<div style="aspect-ratio:21/9;overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-        imgTag+
-        '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
-        '<div style="position:absolute;bottom:0;left:0;right:0;padding:20px">'+
-          '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(source)+'</div>'+
-          '<div style="font-family:Oswald,sans-serif;font-size:22px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:4px">'+esc(title)+'</div>'+
-          '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.5)">'+esc(time)+'</div>'+
-        '</div>'+
-      '</div></div>';
-  }
-  return '<div class="content-card" onclick="window.open(''+esc(url)+'','_blank')" style="cursor:pointer">'+
-    '<div style="aspect-ratio:16/9;overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      imgTag+
-      '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,0.88) 100%)"></div>'+
-      '<div style="position:absolute;bottom:0;left:0;right:0;padding:10px">'+
-        '<div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:600;color:#fff;line-height:1.3">'+esc(title)+'</div>'+
+  
+  var card = document.createElement('div');
+  card.className = 'content-card' + (featured ? ' featured' : '');
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', function(){ window.open(url, '_blank'); });
+  
+  var ratio = featured ? '21/9' : '16/9';
+  var titleSize = featured ? '22px' : '14px';
+  
+  card.innerHTML = 
+    '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
+      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy">'+
+      '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
+      '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
+        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(src)+'</div>' : '')+
+        '<div style="font-family:Oswald,sans-serif;font-size:'+titleSize+';font-weight:'+(featured?'700':'600')+';color:#fff;line-height:1.25;margin-bottom:4px">'+esc(title)+'</div>'+
+        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.5)">'+esc(time)+'</div>' : '')+
       '</div>'+
     '</div>'+
-    '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(source)+' · '+esc(time)+'</div></div>'+
-  '</div>';
+    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+'</div></div>' : '');
+  
+  return card.outerHTML;
 }
-
-function vidCardHtml(v) {
-  var thumb = v.thumb || ('https://img.youtube.com/vi/'+v.id+'/mqdefault.jpg');
-  return '<div class="vid-card" onclick="playVid(''+esc(v.id)+'',''+esc((v.title||'').replace(/['"]/g,''))+'')">'+
-    '<div class="vid-thumb"><img src="'+esc(thumb)+'" alt="" loading="lazy">'+
-    '<div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div></div>'+
-    '<div class="vid-info"><div class="vid-tag '+tagClass(v.tag)+'">'+esc(v.tag)+'</div>'+
-    '<div class="vid-title">'+esc(v.title)+'</div>'+
-    '<div class="vid-ch">'+esc(v.channel)+'</div></div></div>';
-}
-
 
 /* -- TAB CONTENT -- */
 function loadTabContent(tab) {
