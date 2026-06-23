@@ -657,6 +657,21 @@ function newsCardHtml(article, featured) {
   return card.outerHTML;
 }
 
+/* -- VIDEOS FETCHER -- */
+var videoCache = {};
+
+function fetchVideos(sport, callback) {
+  if(videoCache[sport]) { callback(videoCache[sport]); return; }
+  fetch('/api/videos?sport=' + sport)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var videos = d.videos || [];
+      videoCache[sport] = videos;
+      callback(videos);
+    })
+    .catch(function(){ callback([]); });
+}
+
 /* -- TAB CONTENT -- */
 function loadTabContent(tab) {
   if(tab==='home') { loadHomeContent(); return; }
