@@ -672,6 +672,23 @@ function fetchVideos(sport, callback) {
     .catch(function(){ callback([]); });
 }
 
+/* -- VIDEO CARD HTML -- */
+function vidCardHtml(v) {
+  var thumb = v.thumb || ('https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg');
+  var safeTitle = (v.title || '').replace(/'/g, '').replace(/"/g, '');
+  var tc = tagClass(v.tag);
+  return '<div class="vid-card" onclick="playVid('' + esc(v.id) + '','' + esc(safeTitle) + '')">' +
+    '<div class="vid-thumb">' +
+      '<img src="' + esc(thumb) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">' +
+      '<div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div>' +
+    '</div>' +
+    '<div class="vid-info">' +
+      '<div class="vid-tag ' + tc + '">' + esc(v.tag) + '</div>' +
+      '<div class="vid-title">' + esc(v.title) + '</div>' +
+      '<div class="vid-ch">' + esc(v.channel) + '</div>' +
+    '</div></div>';
+}
+
 /* -- TAB CONTENT -- */
 function loadTabContent(tab) {
   if(tab==='home') { loadHomeContent(); return; }
