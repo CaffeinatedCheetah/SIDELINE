@@ -170,23 +170,53 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 .vf.active,.vf:hover{background:var(--red);color:#fff;border-color:var(--red);}
 
 /* FAN TAKES */
-.takes-hero{background:linear-gradient(135deg,#1a0000,#0d1117);border:1px solid rgba(255,61,61,0.3);border-radius:16px;padding:24px;text-align:center;margin-bottom:16px;}
-.takes-hero h2{font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:8px;}
-.takes-hero p{font-family:'Inter',sans-serif;font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;}
-.takes-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:300px;margin:0 auto;}
-.takes-btn{background:rgba(255,61,61,0.15);border:1px solid rgba(255,61,61,0.4);border-radius:10px;padding:12px;font-family:'Space Mono',monospace;font-size:10px;color:#fff;cursor:pointer;transition:all 0.15s;}
-.takes-btn:hover{background:var(--red);border-color:var(--red);}
-.take-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;transition:border-color 0.15s;}
-.take-card:hover{border-color:var(--red);}
-.take-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
-.take-avatar{width:36px;height:36px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;margin-right:10px;}
-.take-user{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:#fff;}
+.takes-hero{background:linear-gradient(135deg,#1a0000 0%,#0d1117 60%,#1a0008 100%);border:1px solid rgba(255,61,61,0.5);border-radius:20px;padding:32px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden;}
+.takes-hero::before{content:'🔥';position:absolute;font-size:180px;opacity:0.05;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;}
+.takes-hero h2{font-family:'Oswald',sans-serif;font-size:36px;font-weight:700;color:#fff;margin-bottom:8px;letter-spacing:-0.01em;}
+.takes-hero p{font-family:'Inter',sans-serif;font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:24px;}
+.takes-btns{display:flex;gap:10px;max-width:380px;margin:0 auto;justify-content:center;}
+.takes-btn{flex:1;background:rgba(255,61,61,0.12);border:1px solid rgba(255,61,61,0.4);border-radius:12px;padding:14px 18px;font-family:'Space Mono',monospace;font-size:10px;color:#fff;cursor:pointer;transition:all 0.15s;}
+.takes-btn:hover,.takes-btn.primary{background:var(--red);border-color:var(--red);}
+
+.take-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px;transition:all 0.2s;position:relative;overflow:hidden;}
+.take-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--red),#ff8c00);transform:scaleX(0);transform-origin:left;transition:transform 0.25s;}
+.take-card:hover::after{transform:scaleX(1);}
+.take-card:hover{border-color:rgba(255,61,61,0.5);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.5);}
+.take-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.take-avatar{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--red),#ff6b00);display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;margin-right:10px;}
+.take-user{font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:#fff;}
 .take-team{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
-.take-badge{background:rgba(255,61,61,0.15);border:1px solid rgba(255,61,61,0.3);border-radius:20px;padding:3px 10px;font-family:'Space Mono',monospace;font-size:8px;color:var(--red);flex-shrink:0;}
-.take-quote{font-family:'Oswald',sans-serif;font-size:16px;font-weight:500;line-height:1.4;color:#fff;margin-bottom:10px;}
-.take-actions{display:flex;gap:14px;border-top:1px solid var(--border);padding-top:10px;}
-.take-act{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:4px;}
-.take-act:hover{color:var(--red);}
+.take-badge{font-family:'Space Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.06em;padding:3px 10px;border-radius:20px;flex-shrink:0;}
+.take-quote{font-family:'Oswald',sans-serif;font-size:20px;font-weight:600;line-height:1.35;color:#fff;margin-bottom:14px;}
+
+.vote-bar-wrap{margin:0 0 14px;}
+.vote-bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-bottom:6px;}
+.vote-bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),#ff8c00);transition:width 0.4s ease;}
+.vote-pcts{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:9px;}
+.vote-fire-pct{color:var(--red);}
+.vote-ice-pct{color:#58A6FF;}
+
+.take-actions-new{display:flex;gap:6px;flex-wrap:wrap;}
+.t-btn{flex:1;min-width:60px;padding:9px 8px;border-radius:10px;border:1px solid;font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;text-align:center;transition:all 0.15s;background:none;white-space:nowrap;}
+.t-btn-fire{border-color:rgba(255,61,61,0.3);color:var(--red);}
+.t-btn-fire:hover,.t-btn-fire.voted{background:var(--red);color:#fff;border-color:var(--red);}
+.t-btn-ice{border-color:rgba(88,166,255,0.3);color:#58A6FF;}
+.t-btn-ice:hover,.t-btn-ice.voted{background:#58A6FF;color:#fff;border-color:#58A6FF;}
+.t-btn-clap{border-color:rgba(210,153,34,0.3);color:var(--amber);}
+.t-btn-clap:hover{background:var(--amber);color:#fff;border-color:var(--amber);}
+.t-btn-share{border-color:rgba(63,185,80,0.3);color:var(--green);}
+.t-btn-share:hover{background:var(--green);color:#fff;border-color:var(--green);}
+
+.share-menu{position:fixed;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:6px;z-index:9500;box-shadow:0 8px 40px rgba(0,0,0,0.9);min-width:190px;}
+.share-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:9px 12px;cursor:pointer;border-radius:6px;transition:background 0.1s;text-decoration:none;}
+.share-menu-item:hover{background:var(--surface3);}
+
+.take-form-modal{background:var(--surface);border:1px solid rgba(255,61,61,0.5);border-radius:20px;padding:28px;width:100%;max-width:520px;}
+.sport-pick{font-family:'Space Mono',monospace;font-size:9px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.sport-pick:hover{border-color:var(--red);color:#fff;}
+.sport-pick.active{background:var(--red);color:#fff;border-color:var(--red);}
+.take-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;color:#fff;font-family:'Oswald',sans-serif;font-size:17px;resize:none;height:120px;outline:none;transition:border-color 0.15s;line-height:1.4;}
+.take-input:focus{border-color:var(--red);}
 
 /* ALL SCORES */
 .all-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:8px;transition:border-color 0.15s;}
@@ -258,7 +288,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   </div>
   <div class="nav-right">
     <input class="search" type="text" placeholder="Search players, teams..."/>
-    <button class="nav-cta">Post Take</button>
+    <button class="nav-cta" onclick="openTakeModal()">Post Take</button>
   </div>
 </nav>
 
@@ -313,7 +343,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Trending Videos</div><button class="sec-more" onclick="showTab('videos',document.querySelectorAll('.tab')[7])">See all</button></div>
       <div class="vid-grid" id="home-vids"></div>
 
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🎙 Top Fan Takes</div><button class="sec-more">All takes</button></div>
+      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Top Fan Takes</div><button class="sec-more" onclick="showTab('takes',document.querySelectorAll('.tab')[6])">All takes →</button></div>
       <div id="home-takes"></div>
     </div>
 
@@ -380,14 +410,18 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <!-- FAN TAKES -->
     <div class="page" id="page-takes">
       <div class="takes-hero">
-        <h2>Got a hot take? 🔥</h2>
-        <p>Record 30-60 seconds. Any sport. Any opinion.<br>The crowd decides if you are right. Go viral. Win badges.</p>
+        <div style="font-size:52px;margin-bottom:10px">🔥</div>
+        <h2>Fan Takes</h2>
+        <p>Drop your hottest sports opinions.<br>The crowd votes fire or ice. Clap back. Go viral.</p>
         <div class="takes-btns">
-          <button class="takes-btn">🎙 Record Take</button>
-          <button class="takes-btn">⚔ Clap Back</button>
+          <button class="takes-btn primary" onclick="openTakeModal()">🔥 Drop Your Take</button>
+          <button class="takes-btn" onclick="openTakeModal('⚔ Clapping back: ')">⚔ Clap Back</button>
         </div>
       </div>
-      <div class="sec"><div class="sec-title">🔥 Top Takes This Week</div></div>
+      <div class="sec">
+        <div class="sec-title">🔥 Top Takes This Week</div>
+        <button class="sec-more" onclick="openTakeModal()">+ Post Take</button>
+      </div>
       <div id="takes-list"></div>
     </div>
 
@@ -454,6 +488,38 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   </div>
 </div>
 
+<!-- POST TAKE MODAL -->
+<div class="modal" id="take-modal" onclick="if(event.target===this)closeTakeModal()">
+  <div class="take-form-modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+      <div>
+        <div style="font-family:Oswald,sans-serif;font-size:30px;font-weight:700;color:#fff;line-height:1">Drop Your Take 🔥</div>
+        <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-top:4px">Any sport. Any opinion. Let the crowd decide.</div>
+      </div>
+      <button onclick="closeTakeModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:Oswald,sans-serif;font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div style="margin-bottom:18px">
+      <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">Pick your sport</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <button class="sport-pick active" onclick="pickSport('NBA',this)">🏀 NBA</button>
+        <button class="sport-pick" onclick="pickSport('NFL',this)">🏈 NFL</button>
+        <button class="sport-pick" onclick="pickSport('Soccer',this)">⚽ Soccer</button>
+        <button class="sport-pick" onclick="pickSport('MLB',this)">⚾ MLB</button>
+        <button class="sport-pick" onclick="pickSport('NHL',this)">🏒 NHL</button>
+        <button class="sport-pick" onclick="pickSport('UFC',this)">🥊 UFC</button>
+        <button class="sport-pick" onclick="pickSport('F1',this)">🏎 F1</button>
+        <button class="sport-pick" onclick="pickSport('Rugby',this)">🏉 Rugby</button>
+        <button class="sport-pick" onclick="pickSport('WNBA',this)">🏀 WNBA</button>
+      </div>
+    </div>
+    <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="updateTakeCount(this)" maxlength="280"></textarea>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+      <span id="take-char-count" style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">0 / 280</span>
+      <button onclick="submitTake()" style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:12px 32px;border-radius:10px;cursor:pointer">Drop It 🔥</button>
+    </div>
+  </div>
+</div>
+
 <footer>SIDELINE &mdash; All sports, all fans, all the time &middot; Data via ESPN, MLB, NHL, Football-Data.org &middot; Refreshes every 30s</footer>
 
 <script>
@@ -492,14 +558,28 @@ var SPORTS_TODAY = [
   {icon:'🏎', name:'F1', status:'Race weekend', cls:'status-active'},
 ];
 
-var TAKES = [
-  {user:'@bigballer_88', team:'Lakers fan', quote:'"LeBron is still the GOAT and it is not even close. Period."', fires:'8.4K', cbs:'312'},
-  {user:'@packerfan4life', team:'Green Bay fan', quote:'"Jordan Love is a top 5 QB right now. I said what I said."', fires:'5.1K', cbs:'891'},
-  {user:'@rugbymad_nz', team:'All Blacks fan', quote:'"NZ rugby is back. Nobody is touching us this year."', fires:'3.2K', cbs:'144'},
-  {user:'@messi_or_bust', team:'Inter Miami fan', quote:'"Messi at 37 is still better than 99% of players alive."', fires:'12.1K', cbs:'2.3K'},
-  {user:'@billsmafia716', team:'Bills fan', quote:'"This is finally our year. Super Bowl. Book it."', fires:'6.7K', cbs:'1.1K'},
-  {user:'@f1purist99', team:'F1 fan', quote:'"Bring back refueling. F1 is boring at the front right now."', fires:'4.4K', cbs:'788'},
+var DEFAULT_TAKES = [
+  {id:1, user:'@bigballer_88', team:'Lakers fan', sport:'NBA', quote:'"LeBron is still the GOAT and it is not even close. Period."', fires:8400, ices:1200, cbs:312, ts:Date.now()-3600000, comments:[]},
+  {id:2, user:'@packerfan4life', team:'Green Bay fan', sport:'NFL', quote:'"Jordan Love is a top 5 QB right now. I said what I said."', fires:5100, ices:3200, cbs:891, ts:Date.now()-7200000, comments:[]},
+  {id:3, user:'@messi_or_bust', team:'Inter Miami fan', sport:'Soccer', quote:'"Messi at 37 is still better than 99% of players alive."', fires:12100, ices:2900, cbs:2300, ts:Date.now()-14400000, comments:[]},
+  {id:4, user:'@billsmafia716', team:'Bills fan', sport:'NFL', quote:'"This is finally our year. Super Bowl. Book it."', fires:6700, ices:4100, cbs:1100, ts:Date.now()-18000000, comments:[]},
+  {id:5, user:'@rugbymad_nz', team:'All Blacks fan', sport:'Rugby', quote:'"NZ rugby is back. Nobody is touching us this year."', fires:3200, ices:800, cbs:144, ts:Date.now()-21600000, comments:[]},
+  {id:6, user:'@f1purist99', team:'F1 fan', sport:'F1', quote:'"Bring back refueling. F1 is boring at the front right now."', fires:4400, ices:2200, cbs:788, ts:Date.now()-25200000, comments:[]},
+  {id:7, user:'@hockeyhead_mn', team:'Wild fan', sport:'NHL', quote:'"Connor McDavid is the most dominant player in NHL history. Not close."', fires:7200, ices:2100, cbs:543, ts:Date.now()-28800000, comments:[]},
+  {id:8, user:'@kingofkings_ufc', team:'UFC fan', sport:'UFC', quote:'"Jon Jones will retire as the greatest fighter of all time. Every division."', fires:9800, ices:3400, cbs:1234, ts:Date.now()-32400000, comments:[]},
 ];
+
+var TAKES = (function(){
+  try {
+    var saved = localStorage.getItem('sl_takes');
+    if(saved){ var p=JSON.parse(saved); if(Array.isArray(p)&&p.length) return p; }
+  } catch(e){}
+  return DEFAULT_TAKES.map(function(t){return Object.assign({},t,{comments:[]});});
+})();
+
+var takeVotes = (function(){
+  try { var s=localStorage.getItem('sl_tv'); return s?JSON.parse(s):{};} catch(e){return {};}
+})();
 
 /* ── STATE ── */
 var allGames = [];
@@ -682,6 +762,116 @@ function vidCardHtml(v) {
 }
 
 /* -- TAB CONTENT -- */
+/* ── FAN TAKES INTERACTIONS ── */
+function refreshTakesUI() {
+  setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
+  var sorted = TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  setHTML('home-takes', sorted.slice(0,3).map(renderTakeCard).join(''));
+  saveTakes();
+}
+
+window.voteTake = function(id, type) {
+  var take = TAKES.find(function(t){return t.id===id;});
+  if(!take) return;
+  var prev = takeVotes[id];
+  if(prev==='fire') take.fires = Math.max(0,take.fires-1);
+  if(prev==='ice')  take.ices  = Math.max(0,take.ices-1);
+  if(prev===type) { delete takeVotes[id]; }
+  else { if(type==='fire') take.fires++; else take.ices++; takeVotes[id]=type; }
+  saveTakeVotes(); saveTakes();
+  document.querySelectorAll('[data-take-id="'+id+'"]').forEach(function(card) {
+    var tot=take.fires+take.ices, fp=tot?Math.round(take.fires/tot*100):50, ip=100-fp;
+    var fill=card.querySelector('.vote-bar-fill'); if(fill) fill.style.width=fp+'%';
+    var fpe=card.querySelector('.vote-fire-pct'); if(fpe) fpe.textContent='🔥 '+fp+'% Fire';
+    var ipe=card.querySelector('.vote-ice-pct');  if(ipe) ipe.textContent=ip+'% Ice ❄️';
+    var vpts=card.querySelectorAll('.vote-pcts span'); if(vpts[1]) vpts[1].textContent=fmtNum(tot)+' votes';
+    var fb=card.querySelector('.t-btn-fire'); if(fb){fb.textContent='🔥 '+fmtNum(take.fires);fb.classList.toggle('voted',takeVotes[id]==='fire');}
+    var ib=card.querySelector('.t-btn-ice');  if(ib){ib.textContent='❄️ '+fmtNum(take.ices); ib.classList.toggle('voted',takeVotes[id]==='ice');}
+  });
+  var sorted=TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  setHTML('home-takes', sorted.slice(0,3).map(renderTakeCard).join(''));
+};
+
+window.toggleComments = function(id) {
+  var s=document.getElementById('comments-'+id); if(!s) return;
+  var open=s.style.display!=='none'; s.style.display=open?'none':'block';
+  if(!open){ var inp=document.getElementById('ci-'+id); if(inp) inp.focus(); }
+};
+
+window.submitComment = function(id) {
+  var inp=document.getElementById('ci-'+id); if(!inp||!inp.value.trim()) return;
+  var take=TAKES.find(function(t){return t.id===id;}); if(!take) return;
+  if(!take.comments) take.comments=[];
+  take.comments.push({user:'@you', text:inp.value.trim()});
+  saveTakes();
+  var s=document.getElementById('comments-'+id);
+  if(s) s.innerHTML=take.comments.map(makeCommentHtml).join('')+makeCommentInput(id);
+  document.querySelectorAll('[data-take-id="'+id+'"] .t-btn:not(.t-btn-fire):not(.t-btn-ice):not(.t-btn-clap):not(.t-btn-share)').forEach(function(b){b.textContent='💬 '+take.comments.length;});
+};
+
+window.clapBack = function(id) {
+  var take=TAKES.find(function(t){return t.id===id;});
+  openTakeModal(take?'⚔ Clapping back at '+take.user+': ':'');
+};
+
+window.shareTake = function(id, evt) {
+  document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});
+  var take=TAKES.find(function(t){return t.id===id;});
+  var link='https://sideline.app/take/'+id;
+  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via @Sideline':'Hot sports take on Sideline!';
+  var tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt)+'&url='+encodeURIComponent(link);
+  var menu=document.createElement('div'); menu.className='share-menu';
+  var copy="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Copied!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},900);";
+  var copyIG="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Link copied for IG!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1200);";
+  var copyTT="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Link copied for TikTok!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1200);";
+  menu.innerHTML=
+    '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);padding:6px 12px 4px;text-transform:uppercase;letter-spacing:0.06em">Share via</div>'+
+    '<button class="share-menu-item" onclick="'+copy+'">🔗 Copy Link</button>'+
+    '<a class="share-menu-item" href="'+tw+'" target="_blank" rel="noopener">𝕏 Post on X</a>'+
+    '<button class="share-menu-item" onclick="'+copyIG+'">📸 Instagram (copy link)</button>'+
+    '<button class="share-menu-item" onclick="'+copyTT+'">🎵 TikTok (copy link)</button>';
+  var btn=evt.currentTarget, rect=btn.getBoundingClientRect();
+  menu.style.cssText='bottom:'+(window.innerHeight-rect.top+6)+'px;left:'+Math.max(8,rect.left-60)+'px;';
+  document.body.appendChild(menu);
+  setTimeout(function(){
+    function cl(e){if(!menu.contains(e.target)){menu.remove();document.removeEventListener('click',cl);}}
+    document.addEventListener('click',cl);
+  },50);
+};
+
+var activeSport='NBA';
+window.openTakeModal=function(prefill){
+  var inp=document.getElementById('take-input'); if(inp) inp.value=prefill||'';
+  var cc=document.getElementById('take-char-count'); if(cc) cc.textContent=(prefill||'').length+' / 280';
+  document.getElementById('take-modal').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(function(){inp&&inp.focus();},80);
+};
+window.closeTakeModal=function(){
+  document.getElementById('take-modal').classList.remove('open');
+  document.body.style.overflow='';
+};
+window.updateTakeCount=function(el){
+  var l=el.value.length; if(l>280){el.value=el.value.slice(0,280);l=280;}
+  var cc=document.getElementById('take-char-count');
+  if(cc){cc.textContent=l+' / 280';cc.style.color=l>250?'var(--red)':'var(--muted)';}
+};
+window.pickSport=function(sport,el){
+  activeSport=sport;
+  document.querySelectorAll('.sport-pick').forEach(function(b){b.classList.remove('active');});
+  el.classList.add('active');
+};
+window.submitTake=function(){
+  var inp=document.getElementById('take-input'); var text=inp?inp.value.trim():'';
+  if(!text){if(inp)inp.style.borderColor='var(--red)';return;}
+  var newTake={id:Date.now(),user:'@you',team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[]};
+  takeVotes[newTake.id]='fire';
+  TAKES.unshift(newTake);
+  closeTakeModal();
+  refreshTakesUI();
+  showTab('takes',document.querySelectorAll('.tab')[6]);
+};
+
 function loadTabContent(tab) {
   if(tab==='home') { loadHomeContent(); return; }
   if(tab==='videos') { loadVideoTab('all'); return; }
@@ -689,9 +879,77 @@ function loadTabContent(tab) {
   loadSportTab(tab);
 }
 
+function fmtNum(n){n=parseInt(n)||0;if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,'')+'K';return String(n);}
+function saveTakes(){try{localStorage.setItem('sl_takes',JSON.stringify(TAKES));}catch(e){}}
+function saveTakeVotes(){try{localStorage.setItem('sl_tv',JSON.stringify(takeVotes));}catch(e){}}
+
+var SPORT_BADGE_STYLES={
+  'NBA':'background:rgba(198,83,52,0.2);color:#C65334;',
+  'NFL':'background:rgba(79,134,166,0.2);color:#4F86A6;',
+  'Soccer':'background:rgba(63,185,80,0.2);color:#3FB950;',
+  'Rugby':'background:rgba(138,180,248,0.2);color:#8AB4F8;',
+  'UFC':'background:rgba(255,61,61,0.2);color:#FF3D3D;',
+  'F1':'background:rgba(210,153,34,0.2);color:#D29922;',
+  'MLB':'background:rgba(63,185,80,0.2);color:#3FB950;',
+  'NHL':'background:rgba(88,166,255,0.2);color:#58A6FF;',
+  'WNBA':'background:rgba(255,140,0,0.2);color:#FF8C00;',
+};
+
+function makeCommentHtml(c){
+  return '<div style="padding:8px 0;border-top:1px solid var(--border)">'+
+    '<span style="font-family:Oswald,sans-serif;font-size:12px;color:var(--red);margin-right:6px">'+esc(c.user)+'</span>'+
+    '<span style="font-family:Inter,sans-serif;font-size:12px;color:var(--text)">'+esc(c.text)+'</span>'+
+  '</div>';
+}
+
+function makeCommentInput(id){
+  return '<div style="display:flex;gap:8px;margin-top:10px">'+
+    '<input id="ci-'+id+'" placeholder="Add a comment..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:#fff;font-family:Inter,sans-serif;font-size:12px;outline:none" onkeydown="if(event.key===\'Enter\')submitComment('+id+')">'+
+    '<button onclick="submitComment('+id+')" style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;padding:8px 14px;border-radius:8px;cursor:pointer">Post</button>'+
+  '</div>';
+}
+
 function renderTakeCard(t) {
   var initials = t.user.replace('@','').slice(0,2).toUpperCase();
-  return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
+  var fires = t.fires||0, ices=t.ices||0, cbs=t.cbs||0;
+  var total = fires+ices;
+  var fp = total ? Math.round(fires/total*100) : 50;
+  var ip = 100-fp;
+  var bs = SPORT_BADGE_STYLES[t.sport]||'background:rgba(255,61,61,0.15);color:var(--red);';
+  var voted = takeVotes[t.id];
+  var comments = t.comments||[];
+  return '<div class="take-card" data-take-id="'+t.id+'">'+
+    '<div class="take-head">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<div class="take-avatar">'+initials+'</div>'+
+        '<div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        (t.sport?'<span class="take-badge" style="'+bs+'">'+esc(t.sport)+'</span>':'')+
+        '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--faint)">'+esc(t.ts?timeAgo(t.ts):'now')+'</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="take-quote">'+esc(t.quote)+'</div>'+
+    '<div class="vote-bar-wrap">'+
+      '<div class="vote-bar"><div class="vote-bar-fill" style="width:'+fp+'%"></div></div>'+
+      '<div class="vote-pcts">'+
+        '<span class="vote-fire-pct">🔥 '+fp+'% Fire</span>'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--faint)">'+fmtNum(total)+' votes</span>'+
+        '<span class="vote-ice-pct">'+ip+'% Ice ❄️</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="take-actions-new">'+
+      '<button class="t-btn t-btn-fire'+(voted==='fire'?' voted':'')+'" onclick="voteTake('+t.id+',\'fire\')">🔥 '+fmtNum(fires)+'</button>'+
+      '<button class="t-btn t-btn-ice'+(voted==='ice'?' voted':'')+'" onclick="voteTake('+t.id+',\'ice\')">❄️ '+fmtNum(ices)+'</button>'+
+      '<button class="t-btn t-btn-clap" onclick="clapBack('+t.id+')">⚔ '+fmtNum(cbs)+'</button>'+
+      '<button class="t-btn" style="border-color:rgba(255,255,255,0.15);color:var(--muted)" onclick="toggleComments('+t.id+')">💬 '+comments.length+'</button>'+
+      '<button class="t-btn t-btn-share" onclick="shareTake('+t.id+',event)">↗ Share</button>'+
+    '</div>'+
+    '<div id="comments-'+t.id+'" style="display:none;margin-top:12px">'+
+      comments.map(makeCommentHtml).join('')+
+      makeCommentInput(t.id)+
+    '</div>'+
+  '</div>';
 }
 
 function loadHomeContent() {
@@ -781,8 +1039,7 @@ setHTML('sb-hot', HOT.map(function(h){
 setHTML('sb-sports', SPORTS_TODAY.map(function(s){
   return '<div class="sport-row"><div class="sport-row-left"><span>'+s.icon+'</span>'+esc(s.name)+'</div><span class="sport-row-status '+s.cls+'">'+esc(s.status)+'</span></div>';
 }).join(''));
-setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
-setHTML('home-takes', TAKES.slice(0,2).map(renderTakeCard).join(''));
+refreshTakesUI();
 
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
