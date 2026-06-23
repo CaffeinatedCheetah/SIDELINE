@@ -16,10 +16,12 @@ export default async function handler(req, res) {
     { sport: 'soccer',     league: 'uefa.champions',  label: 'UCL',        cat: 'soccer'   },
   ];
 
+  const dateParam = req.query.date ? `?dates=${req.query.date}` : '';
+
   try {
     const results = await Promise.all(LEAGUES.map(async ({ sport, league, label, cat }) => {
       try {
-        const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard`;
+        const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/${league}/scoreboard${dateParam}`;
         const r = await fetch(url);
         const d = await r.json();
         return (d.events || []).map(ev => {
@@ -29,12 +31,16 @@ export default async function handler(req, res) {
           const away = comp.competitors?.find(c => c.homeAway === 'away');
           if (!home || !away) return null;
           const status = comp.status?.type;
+          const gameUrl = (ev.links || []).find(l => (l.rel || []).includes('gamecast'))?.href
+                       || (ev.links || [])[0]?.href
+                       || '';
           return {
             state:  status?.state || 'pre',
             detail: status?.detail || '',
             cat,
             label,
             date: comp.date || ev.date || '',
+            url:  gameUrl,
             home: {
               name:   home.team?.abbreviation || home.team?.name || '',
               score:  home.score ?? 0,

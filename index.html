@@ -92,7 +92,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 .score-card:hover{border-color:var(--red);transform:translateY(-2px);}
 .score-card.live{border-color:var(--red);background:#1a0808;}
 .sc-lg{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
-.sc-live-badge{background:var(--red);color:#fff;font-size:7px;padding:1px 5px;border-radius:3px;letter-spacing:0.05em;}
+.sc-live-badge{background:var(--red);color:#fff;font-size:7px;padding:1px 5px;border-radius:3px;letter-spacing:0.05em;animation:pulse 1.4s ease-in-out infinite;}
 .sc-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;}
 .sc-team{display:flex;align-items:center;gap:5px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;color:#fff;}
 .sc-team img{width:16px;height:16px;object-fit:contain;}
@@ -445,7 +445,13 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
     <!-- ALL SCORES -->
     <div class="page" id="page-allscores">
-      <div class="sec"><div class="sec-title">📊 All Scores Today</div></div>
+      <div class="sec"><div class="sec-title">📊 All Scores</div></div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="score-date-btns">
+        <button class="vf active" onclick="pickScoreDate(0,this)">Today</button>
+        <button class="vf" onclick="pickScoreDate(1,this)">Yesterday</button>
+        <button class="vf" onclick="pickScoreDate(2,this)">2 Days Ago</button>
+        <button class="vf" onclick="pickScoreDate(3,this)">3 Days Ago</button>
+      </div>
       <div id="all-scores"></div>
     </div>
 
@@ -484,7 +490,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <div class="vid-frame-wrap">
       <iframe id="vid-frame" allowfullscreen allow="autoplay;encrypted-media"></iframe>
     </div>
-    <div class="modal-foot">Official content from YouTube · Tap outside to close</div>
+    <div class="modal-foot" id="modal-foot">Official content from YouTube · Tap outside to close</div>
   </div>
 </div>
 
@@ -639,7 +645,8 @@ function scoreCard(g) {
   var stCls=isLive?'live-st':fin?'final-st':'pre-st';
   var hLogo=g.home.logo?'<img src="'+esc(g.home.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
   var aLogo=g.away.logo?'<img src="'+esc(g.away.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
-  return '<div class="score-card'+(isLive?' live':'')+'">'+
+  var onclick=g.url?' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(g.url)+'"':'';
+  return '<div class="score-card'+(isLive?' live':'')+'" style="cursor:'+(g.url?'pointer':'default')+'"'+onclick+'>'+
     '<div class="sc-lg">'+esc(g.label)+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
     '<div class="sc-row"><div class="sc-team">'+aLogo+esc(g.away.name)+'</div><span class="sc-score'+(fin&&!g.away.winner?' dim':'')+'">'+esc(String(g.away.score))+'</span></div>'+
     '<div class="sc-row"><div class="sc-team">'+hLogo+esc(g.home.name)+'</div><span class="sc-score'+(fin&&!g.home.winner?' dim':'')+'">'+esc(String(g.home.score))+'</span></div>'+
@@ -649,7 +656,8 @@ function scoreCard(g) {
 function allScoreCard(g) {
   var fin=g.state==='post', isLive=g.state==='in';
   var stHTML=isLive?'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">● LIVE '+esc(g.detail||'')+'</span>':fin?'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Final</span>':'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(fmtTime(g.date))+'</span>';
-  return '<div class="all-card">'+
+  var onclick=g.url?' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(g.url)+'"':'';
+  return '<div class="all-card" style="cursor:'+(g.url?'pointer':'default')+'"'+onclick+'>'+
     '<div class="all-head"><span class="all-lg">'+esc(g.label)+'</span>'+stHTML+'</div>'+
     '<div class="all-row"><span class="all-name'+(fin&&!g.away.winner?' dim':'')+'">'+esc(g.away.name)+'</span><span class="all-score'+(fin&&!g.away.winner?' dim':'')+'">'+esc(String(g.away.score))+'</span></div>'+
     '<div class="all-row"><span class="all-name'+(fin&&!g.home.winner?' dim':'')+'">'+esc(g.home.name)+'</span><span class="all-score'+(fin&&!g.home.winner?' dim':'')+'">'+esc(String(g.home.score))+'</span></div></div>';
@@ -713,16 +721,10 @@ function newsCardHtml(article, featured) {
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
   
-  var card = document.createElement('div');
-  card.className = 'content-card' + (featured ? ' featured' : '');
-  card.style.cursor = 'pointer';
-  var _url = url;
-  card.addEventListener('click', function(){ if(_url && _url !== '#') window.open(_url, '_blank'); });
-  
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
-  
-  card.innerHTML = 
+  var onclick = url && url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
+  return '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
     '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
       '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy">'+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
@@ -732,9 +734,8 @@ function newsCardHtml(article, featured) {
         (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.5)">'+esc(time)+'</div>' : '')+
       '</div>'+
     '</div>'+
-    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+'</div></div>' : '');
-  
-  return card.outerHTML;
+    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+'</div></div>' : '')+
+  '</div>';
 }
 
 /* -- VIDEOS FETCHER -- */
@@ -752,16 +753,38 @@ function fetchVideos(sport, callback) {
 
 /* -- VIDEO CARD HTML -- */
 function vidCardHtml(v) {
-  var thumb = v.thumb || ("https://img.youtube.com/vi/" + v.id + "/mqdefault.jpg");
-  var el = document.createElement("div");
-  el.className = "vid-card";
-  var vid = v;
-  el.addEventListener("click", function(){ playVid(vid.id, vid.title || ""); });
-  el.innerHTML = '<div class="vid-thumb"><img src="' + esc(thumb) + '" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block"><div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div></div><div class="vid-info"><div class="vid-tag ' + tagClass(v.tag) + '">' + esc(v.tag) + '</div><div class="vid-title">' + esc(v.title) + '</div><div class="vid-ch">' + esc(v.channel) + '</div></div>';
-  return el.outerHTML;
+  var thumb = v.thumb || ('https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg');
+  return '<div class="vid-card" style="cursor:pointer" data-vid="'+esc(v.id)+'" data-title="'+esc(v.title||'')+'" onclick="playVid(this.dataset.vid,this.dataset.title)">'+
+    '<div class="vid-thumb">'+
+      '<img src="'+esc(thumb)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">'+
+      '<div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div>'+
+    '</div>'+
+    '<div class="vid-info">'+
+      '<div class="vid-tag '+tagClass(v.tag)+'">'+esc(v.tag)+'</div>'+
+      '<div class="vid-title">'+esc(v.title)+'</div>'+
+      '<div class="vid-ch">'+esc(v.channel)+'</div>'+
+    '</div>'+
+  '</div>';
 }
 
 /* -- TAB CONTENT -- */
+/* ── SCORE DATE PICKER ── */
+window.pickScoreDate = function(daysAgo, btn) {
+  document.querySelectorAll('#score-date-btns .vf').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  setHTML('all-scores','<span class="empty">Loading...</span>');
+  var d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  var m = d.getMonth()+1, dy = d.getDate();
+  var ds = d.getFullYear().toString() + (m<10?'0':'')+m + (dy<10?'0':'')+dy;
+  fetch('/api/scores?date='+ds)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      setHTML('all-scores', data.games&&data.games.length ? data.games.map(allScoreCard).join('') : '<span class="empty">No games found for that date</span>');
+    })
+    .catch(function(){ setHTML('all-scores','<span class="empty">Error loading scores</span>'); });
+};
+
 /* ── FAN TAKES INTERACTIONS ── */
 function refreshTakesUI() {
   setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
@@ -1024,6 +1047,8 @@ window.loadVideos = function(){ loadVideoTab('all'); };
 window.playVid = function(id, title) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('vid-frame').src = 'https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0';
+  var foot = document.getElementById('modal-foot');
+  if(foot) foot.innerHTML = 'Official content from YouTube &middot; <a href="https://www.youtube.com/watch?v='+esc(id)+'" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none">Open on YouTube ↗</a> &middot; Tap outside to close';
   document.getElementById('vid-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
