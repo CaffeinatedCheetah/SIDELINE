@@ -43,7 +43,7 @@ export default async function handler(req, res) {
             id: item.id.videoId,
             tag: TAGS[id] || 'Sports',
             title: item.snippet.title,
-            thumb: item.snippet.thumbnails.medium.url,
+            thumb: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
             channel: item.snippet.channelTitle,
             published: item.snippet.publishedAt,
           }));
