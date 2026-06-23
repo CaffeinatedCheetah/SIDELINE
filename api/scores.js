@@ -11,6 +11,8 @@ export default async function handler(req, res) {
     { sport: 'soccer',     league: 'usa.1',           label: 'MLS',        cat: 'soccer'   },
     { sport: 'soccer',     league: 'esp.1',           label: 'La Liga',    cat: 'soccer'   },
     { sport: 'soccer',     league: 'ger.1',           label: 'Bundesliga', cat: 'soccer'   },
+    { sport: 'soccer',     league: 'ita.1',           label: 'Serie A',    cat: 'soccer'   },
+    { sport: 'soccer',     league: 'fra.1',           label: 'Ligue 1',    cat: 'soccer'   },
     { sport: 'soccer',     league: 'uefa.champions',  label: 'UCL',        cat: 'soccer'   },
   ];
 

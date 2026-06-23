@@ -6,9 +6,9 @@ export default async function handler(req, res) {
   const sport = req.query.sport || 'all';
 
   const CHANNELS = {
-    all:      ['UCDVYQ4Zhbm3S2dlz7P1GBDg','UCEjOSbbaOfgnfRODEEMYlCw','UCoLrcjPV5PbUrUyXq5mjc_A','UCqZQlzSHbVJrwrn5XvzrzcA','UCznv__14nznPLH1T2YMDbhA','UCvgfXK4nTYKudb0rFR6noSQ','UCB_qr75-ydFVKSF9Dmo6izg','UCB-3oiAkRKvMQbVQkjD_f5A'],
+    all:      ['UCDVYQ4Zhbm3S2dlz7P1GBDg','UCEjOSbbaOfgnfRODEEMYlCw','UCoLrcjPV5PbUrUyXq5mjc_A','UCqZQlzSHbVJrwrn5XvzrzcA','UCznv__14nznPLH1T2YMDbhA','UCvgfXK4nTYKudb0rFR6noSQ','UCB_qr75-ydFVKSF9Dmo6izg','UCB-3oiAkRKvMQbVQkjD_f5A','UCW-QMcKMSMBHlTj0SVFdNrQ','UCpcTrCXblq78Gn28FGMocqQ'],
     american: ['UCDVYQ4Zhbm3S2dlz7P1GBDg','UCEjOSbbaOfgnfRODEEMYlCw','UCoLrcjPV5PbUrUyXq5mjc_A','UCB-3oiAkRKvMQbVQkjD_f5A'],
-    soccer:   ['UCqZQlzSHbVJrwrn5XvzrzcA','UCW-QMcKMSMBHlTj0SVFdNrQ'],
+    soccer:   ['UCqZQlzSHbVJrwrn5XvzrzcA','UCW-QMcKMSMBHlTj0SVFdNrQ','UCpcTrCXblq78Gn28FGMocqQ','UCsb5wjy_TfzfUMDFECDaADQ','UC8ZpZgeEVHCMn9PfnOyEhAA'],
     rugby:    ['UCznv__14nznPLH1T2YMDbhA'],
     combat:   ['UCvgfXK4nTYKudb0rFR6noSQ'],
     racing:   ['UCB_qr75-ydFVKSF9Dmo6izg'],
@@ -18,12 +18,15 @@ export default async function handler(req, res) {
     'UCDVYQ4Zhbm3S2dlz7P1GBDg': 'NFL',
     'UCEjOSbbaOfgnfRODEEMYlCw': 'NBA',
     'UCoLrcjPV5PbUrUyXq5mjc_A': 'MLB',
-    'UCqZQlzSHbVJrwrn5XvzrzcA': 'Soccer',
+    'UCqZQlzSHbVJrwrn5XvzrzcA': 'EPL',
     'UCznv__14nznPLH1T2YMDbhA': 'Rugby',
     'UCvgfXK4nTYKudb0rFR6noSQ': 'UFC',
     'UCB_qr75-ydFVKSF9Dmo6izg': 'F1',
     'UCB-3oiAkRKvMQbVQkjD_f5A': 'NHL',
     'UCW-QMcKMSMBHlTj0SVFdNrQ': 'MLS',
+    'UCpcTrCXblq78Gn28FGMocqQ': 'UCL',
+    'UCsb5wjy_TfzfUMDFECDaADQ': 'La Liga',
+    'UC8ZpZgeEVHCMn9PfnOyEhAA': 'Soccer',
   };
 
   if (!YT_KEY) {
@@ -40,11 +43,11 @@ export default async function handler(req, res) {
         return (d.items || [])
           .filter(item => item.id?.videoId)
           .map(item => ({
-            id: item.id.videoId,
-            tag: TAGS[id] || 'Sports',
-            title: item.snippet.title,
-            thumb: item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
-            channel: item.snippet.channelTitle,
+            id:        item.id.videoId,
+            tag:       TAGS[id] || 'Sports',
+            title:     item.snippet.title,
+            thumb:     item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+            channel:   item.snippet.channelTitle,
             published: item.snippet.publishedAt,
           }));
       } catch { return []; }

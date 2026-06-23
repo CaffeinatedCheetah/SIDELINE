@@ -689,13 +689,23 @@ function loadTabContent(tab) {
   loadSportTab(tab);
 }
 
+function renderTakeCard(t) {
+  var initials = t.user.replace('@','').slice(0,2).toUpperCase();
+  return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
+}
+
 function loadHomeContent() {
   var newsEl = document.getElementById('home-news');
+  var trendEl = document.getElementById('trending-cards');
   if(newsEl) {
     newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top stories...</div>';
+    if(trendEl) trendEl.innerHTML = '';
     fetchNews('home', function(articles) {
       if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">Stories loading...</div>'; return; }
       newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+      if(trendEl && articles.length > 5) {
+        trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
+      }
     });
   }
   var vidEl = document.getElementById('home-vids');
@@ -706,21 +716,31 @@ function loadHomeContent() {
   }
 }
 
+var SPORT_TAKES_IDX = { american:[0,1,4], soccer:[3], rugby:[2], racing:[5], combat:[] };
+
 function loadSportTab(tab) {
   var newsEl = document.getElementById('news-'+tab);
   if(newsEl) {
     newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div>';
     fetchNews(tab, function(articles) {
       if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">No stories right now</div>'; return; }
-      newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+      newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
     });
   }
   var vidEl = document.getElementById('vids-'+tab);
   if(vidEl) {
     vidEl.innerHTML = '<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div>';
     fetchVideos(tab, function(vids){
-      vidEl.innerHTML = vids.length ? '<div class="vid-grid">'+vids.slice(0,4).map(vidCardHtml).join('')+'</div>' : '<span class="empty">No videos found</span>';
+      vidEl.innerHTML = vids.length
+        ? '<div class="vid-grid">'+vids.slice(0,6).map(vidCardHtml).join('')+'</div>'
+        : '<span class="empty">No videos found — check YouTube API key</span>';
     });
+  }
+  var takesEl = document.getElementById('takes-'+tab);
+  if(takesEl) {
+    var idxs = SPORT_TAKES_IDX[tab] || [];
+    var filtered = idxs.map(function(i){return TAKES[i];}).filter(Boolean);
+    if(filtered.length) takesEl.innerHTML = filtered.map(renderTakeCard).join('');
   }
 }
 
@@ -761,15 +781,8 @@ setHTML('sb-hot', HOT.map(function(h){
 setHTML('sb-sports', SPORTS_TODAY.map(function(s){
   return '<div class="sport-row"><div class="sport-row-left"><span>'+s.icon+'</span>'+esc(s.name)+'</div><span class="sport-row-status '+s.cls+'">'+esc(s.status)+'</span></div>';
 }).join(''));
-var takesHTML = TAKES.map(function(t){
-  var initials = t.user.replace('@','').slice(0,2).toUpperCase();
-  return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
-}).join('');
-setHTML('takes-list', takesHTML);
-setHTML('home-takes', TAKES.slice(0,2).map(function(t){
-  var initials = t.user.replace('@','').slice(0,2).toUpperCase();
-  return '<div class="take-card"><div class="take-head"><div style="display:flex;align-items:center;gap:10px"><div class="take-avatar">'+initials+'</div><div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div></div><span class="take-badge">30s take</span></div><div class="take-quote">'+esc(t.quote)+'</div><div class="take-actions"><span class="take-act">🔥 '+esc(t.fires)+' fires</span><span class="take-act">⚔ '+esc(t.cbs)+' clap backs</span><span class="take-act">↗ Share</span></div></div>';
-}).join(''));
+setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
+setHTML('home-takes', TAKES.slice(0,2).map(renderTakeCard).join(''));
 
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
