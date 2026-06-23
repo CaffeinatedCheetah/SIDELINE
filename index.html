@@ -636,7 +636,8 @@ function newsCardHtml(article, featured) {
   var card = document.createElement('div');
   card.className = 'content-card' + (featured ? ' featured' : '');
   card.style.cursor = 'pointer';
-  card.addEventListener('click', function(){ window.open(url, '_blank'); });
+  var _url = url;
+  card.addEventListener('click', function(){ if(_url && _url !== '#') window.open(_url, '_blank'); });
   
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
