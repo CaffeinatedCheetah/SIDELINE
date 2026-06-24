@@ -211,7 +211,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 .share-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:9px 12px;cursor:pointer;border-radius:6px;transition:background 0.1s;text-decoration:none;}
 .share-menu-item:hover{background:var(--surface3);}
 
-.take-form-modal{background:var(--surface);border:1px solid rgba(255,61,61,0.5);border-radius:20px;padding:28px;width:100%;max-width:520px;}
+.take-form-modal{background:var(--surface);border:1px solid rgba(255,61,61,0.5);border-radius:20px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;}
 .sport-pick{font-family:'Space Mono',monospace;font-size:9px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;}
 .sport-pick:hover{border-color:var(--red);color:#fff;}
 .sport-pick.active{background:var(--red);color:#fff;border-color:var(--red);}
@@ -279,7 +279,10 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 <body>
 
 <nav class="nav">
-  <div class="logo">Side<span>line</span></div>
+  <div class="logo" style="display:flex;flex-direction:column;line-height:1;gap:3px">
+    <div>Side<span>line</span></div>
+    <div style="font-family:'Space Mono',monospace;font-size:9px;font-weight:400;color:rgba(255,255,255,0.45);text-transform:lowercase;letter-spacing:0.04em">fantakes.app</div>
+  </div>
   <div class="nav-links">
     <button class="nav-link">Scores</button>
     <button class="nav-link">Videos</button>
@@ -464,7 +467,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div style="text-align:center;padding:28px 0 16px;border-bottom:1px solid var(--border);margin-bottom:22px">
         <div style="font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:8px">Live · Right Now · On Fire</div>
         <div style="font-family:Oswald,sans-serif;font-size:36px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:1px">WHAT'S HOT<br>ON SIDELINE</div>
-        <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-top:8px">Every fan is Stephen A. Smith here. Act accordingly.</div>
+        <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-top:8px">Every fan is Stephen A. Smith here. Act accordingly. &mdash; <span style="color:var(--red)">fantakes.app</span></div>
       </div>
 
       <div class="sec">
@@ -504,8 +507,8 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <div class="sec" style="margin-top:16px"><div class="sec-title">📱 Get the App</div></div>
     <div style="background:linear-gradient(135deg,#1a0000,#0d1117);border:1px solid rgba(255,61,61,0.3);border-radius:12px;padding:16px;text-align:center;">
       <div style="font-size:32px;margin-bottom:8px;">📲</div>
-      <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">Sideline Mobile</div>
-      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px;">Coming soon to iOS &amp; Android</div>
+      <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">fantakes.app</div>
+      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px;">Sideline &mdash; Coming soon to iOS &amp; Android</div>
       <button style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;width:100%;">Notify Me</button>
     </div>
   </div>
@@ -566,6 +569,10 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <button class="sport-pick" onclick="pickSport('WNBA',this)">🏀 WNBA</button>
       </div>
     </div>
+    <div style="margin-bottom:16px">
+      <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">Your handle (optional)</div>
+      <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
+    </div>
     <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="updateTakeCount(this)" maxlength="280"></textarea>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
       <span id="take-char-count" style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">0 / 280</span>
@@ -574,7 +581,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   </div>
 </div>
 
-<footer>SIDELINE &mdash; All sports, all fans, all the time &middot; Data via ESPN, MLB, NHL, Football-Data.org &middot; Refreshes every 30s</footer>
+<footer>SIDELINE &mdash; <strong style="color:var(--red)">fantakes.app</strong> &middot; All sports, all fans, all the time &middot; Data via ESPN &middot; Refreshes every 30s</footer>
 
 <script>
 (function() {
@@ -892,11 +899,11 @@ window.clapBack = function(id) {
 window.shareTake = function(id, evt) {
   document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});
   var take=TAKES.find(function(t){return t.id===id;});
-  var link='https://sideline-wheat.vercel.app/take/'+id;
-  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via Sideline':'Hot sports take on Sideline!';
-  var igTxt=rawTxt+'\n\n'+link+'\n\n(via Sideline — sideline-wheat.vercel.app)';
-  var ttTxt=rawTxt+'\n\n'+link+'\n\n#sports #sideline #hottake';
-  var tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt)+'&url='+encodeURIComponent(link);
+  var link='https://fantakes.app';
+  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via Sideline on fantakes.app':'Hot sports take on Sideline! fantakes.app';
+  var igTxt=rawTxt+'\n\n'+link+'\n\n#FanTakes #sports #sideline';
+  var ttTxt=rawTxt+'\n\n'+link+'\n\n#FanTakes #sports #hottake #sideline';
+  var tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt+'\n\n'+link);
   var menu=document.createElement('div'); menu.className='share-menu';
   var copy="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Copied!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},900);";
   var copyIG="navigator.clipboard&&navigator.clipboard.writeText("+JSON.stringify(igTxt)+");this.textContent='✓ Copied! Paste in Instagram caption';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1400);";
@@ -919,9 +926,10 @@ window.shareTake = function(id, evt) {
 var activeSport='NBA';
 window.openTakeModal=function(prefill){
   var inp=document.getElementById('take-input'); if(inp) inp.value=prefill||'';
-  var cc=document.getElementById('take-char-count'); if(cc) cc.textContent=(prefill||'').length+' / 280';
-  document.getElementById('take-modal').classList.add('open');
-  document.body.style.overflow='hidden';
+  var cc=document.getElementById('take-char-count'); if(cc) cc.textContent=(prefill?prefill.length:0)+' / 280';
+  var un=document.getElementById('take-username'); if(un) un.value='';
+  var modal=document.getElementById('take-modal');
+  if(modal){modal.classList.add('open');document.body.style.overflow='hidden';}
   setTimeout(function(){inp&&inp.focus();},80);
 };
 window.closeTakeModal=function(){
@@ -940,8 +948,11 @@ window.pickSport=function(sport,el){
 };
 window.submitTake=function(){
   var inp=document.getElementById('take-input'); var text=inp?inp.value.trim():'';
-  if(!text){if(inp)inp.style.borderColor='var(--red)';return;}
-  var newTake={id:Date.now(),user:'@you',team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[],clapBackOf:clapBackTargetId||null};
+  if(!text){if(inp){inp.style.borderColor='var(--red)';inp.focus();}return;}
+  var unEl=document.getElementById('take-username');
+  var uname=(unEl&&unEl.value.trim())||'@you';
+  if(uname&&uname[0]!=='@') uname='@'+uname;
+  var newTake={id:Date.now(),user:uname,team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[],clapBackOf:clapBackTargetId||null};
   takeVotes[newTake.id]='fire';
   if(clapBackTargetId) {
     var orig=TAKES.find(function(t){return t.id===clapBackTargetId;});
