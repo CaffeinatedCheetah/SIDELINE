@@ -418,8 +418,10 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
           <button class="takes-btn" onclick="openTakeModal('⚔ Clapping back: ')">⚔ Clap Back</button>
         </div>
       </div>
+      <div class="sec"><div class="sec-title">🏆 Hall of Flame</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Most fired takes this week</span></div>
+      <div id="hall-of-flame" style="margin-bottom:8px"></div>
       <div class="sec">
-        <div class="sec-title">🔥 Top Takes This Week</div>
+        <div class="sec-title">🔥 All Takes</div>
         <button class="sec-more" onclick="openTakeModal()">+ Post Take</button>
       </div>
       <div id="takes-list"></div>
@@ -491,6 +493,23 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <iframe id="vid-frame" allowfullscreen allow="autoplay;encrypted-media"></iframe>
     </div>
     <div class="modal-foot" id="modal-foot">Official content from YouTube · Tap outside to close</div>
+  </div>
+</div>
+
+<!-- GAME POPUP -->
+<div class="modal" id="game-popup" onclick="if(event.target===this)closeGamePopup()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:360px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div id="gp-label" style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em"></div>
+      <button onclick="closeGamePopup()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">✕</button>
+    </div>
+    <div id="gp-status" style="text-align:center;margin-bottom:16px"></div>
+    <div style="background:var(--surface2);border-radius:12px;overflow:hidden">
+      <div id="gp-away" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"></div>
+      <div style="height:1px;background:var(--border)"></div>
+      <div id="gp-home" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"></div>
+    </div>
+    <div id="gp-footer" style="text-align:center;margin-top:14px"></div>
   </div>
 </div>
 
@@ -645,8 +664,8 @@ function scoreCard(g) {
   var stCls=isLive?'live-st':fin?'final-st':'pre-st';
   var hLogo=g.home.logo?'<img src="'+esc(g.home.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
   var aLogo=g.away.logo?'<img src="'+esc(g.away.logo)+'" style="width:16px;height:16px;object-fit:contain" onerror="this.remove()">':'';
-  var onclick=g.url?' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(g.url)+'"':'';
-  return '<div class="score-card'+(isLive?' live':'')+'" style="cursor:'+(g.url?'pointer':'default')+'"'+onclick+'>'+
+  var gd=esc(JSON.stringify({state:g.state,detail:g.detail||'',label:g.label,date:g.date,url:g.url||'',away:{name:g.away.name,score:g.away.score,winner:g.away.winner},home:{name:g.home.name,score:g.home.score,winner:g.home.winner}}));
+  return '<div class="score-card'+(isLive?' live':'')+'" style="cursor:pointer" onclick="showGamePopup(this.dataset.g)" data-g="'+gd+'">'+
     '<div class="sc-lg">'+esc(g.label)+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
     '<div class="sc-row"><div class="sc-team">'+aLogo+esc(g.away.name)+'</div><span class="sc-score'+(fin&&!g.away.winner?' dim':'')+'">'+esc(String(g.away.score))+'</span></div>'+
     '<div class="sc-row"><div class="sc-team">'+hLogo+esc(g.home.name)+'</div><span class="sc-score'+(fin&&!g.home.winner?' dim':'')+'">'+esc(String(g.home.score))+'</span></div>'+
@@ -656,8 +675,8 @@ function scoreCard(g) {
 function allScoreCard(g) {
   var fin=g.state==='post', isLive=g.state==='in';
   var stHTML=isLive?'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">● LIVE '+esc(g.detail||'')+'</span>':fin?'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Final</span>':'<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(fmtTime(g.date))+'</span>';
-  var onclick=g.url?' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(g.url)+'"':'';
-  return '<div class="all-card" style="cursor:'+(g.url?'pointer':'default')+'"'+onclick+'>'+
+  var gd=esc(JSON.stringify({state:g.state,detail:g.detail||'',label:g.label,date:g.date,url:g.url||'',away:{name:g.away.name,score:g.away.score,winner:g.away.winner},home:{name:g.home.name,score:g.home.score,winner:g.home.winner}}));
+  return '<div class="all-card" style="cursor:pointer" onclick="showGamePopup(this.dataset.g)" data-g="'+gd+'">'+
     '<div class="all-head"><span class="all-lg">'+esc(g.label)+'</span>'+stHTML+'</div>'+
     '<div class="all-row"><span class="all-name'+(fin&&!g.away.winner?' dim':'')+'">'+esc(g.away.name)+'</span><span class="all-score'+(fin&&!g.away.winner?' dim':'')+'">'+esc(String(g.away.score))+'</span></div>'+
     '<div class="all-row"><span class="all-name'+(fin&&!g.home.winner?' dim':'')+'">'+esc(g.home.name)+'</span><span class="all-score'+(fin&&!g.home.winner?' dim':'')+'">'+esc(String(g.home.score))+'</span></div></div>';
@@ -790,6 +809,8 @@ function refreshTakesUI() {
   setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
   var sorted = TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
   setHTML('home-takes', sorted.slice(0,3).map(renderTakeCard).join(''));
+  var hofEl=document.getElementById('hall-of-flame');
+  if(hofEl) hofEl.innerHTML=sorted.slice(0,3).map(function(t,i){return renderHallCard(t,i+1);}).join('');
   saveTakes();
 }
 
@@ -832,7 +853,9 @@ window.submitComment = function(id) {
   document.querySelectorAll('[data-take-id="'+id+'"] .t-btn:not(.t-btn-fire):not(.t-btn-ice):not(.t-btn-clap):not(.t-btn-share)').forEach(function(b){b.textContent='💬 '+take.comments.length;});
 };
 
+var clapBackTargetId = null;
 window.clapBack = function(id) {
+  clapBackTargetId = id;
   var take=TAKES.find(function(t){return t.id===id;});
   openTakeModal(take?'⚔ Clapping back at '+take.user+': ':'');
 };
@@ -840,19 +863,21 @@ window.clapBack = function(id) {
 window.shareTake = function(id, evt) {
   document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});
   var take=TAKES.find(function(t){return t.id===id;});
-  var link='https://sideline.app/take/'+id;
-  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via @Sideline':'Hot sports take on Sideline!';
+  var link='https://sideline-wheat.vercel.app/take/'+id;
+  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via Sideline':'Hot sports take on Sideline!';
+  var igTxt=rawTxt+'\n\n'+link+'\n\n(via Sideline — sideline-wheat.vercel.app)';
+  var ttTxt=rawTxt+'\n\n'+link+'\n\n#sports #sideline #hottake';
   var tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt)+'&url='+encodeURIComponent(link);
   var menu=document.createElement('div'); menu.className='share-menu';
   var copy="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Copied!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},900);";
-  var copyIG="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Link copied for IG!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1200);";
-  var copyTT="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Link copied for TikTok!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1200);";
+  var copyIG="navigator.clipboard&&navigator.clipboard.writeText("+JSON.stringify(igTxt)+");this.textContent='✓ Copied! Paste in Instagram caption';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1400);";
+  var copyTT="navigator.clipboard&&navigator.clipboard.writeText("+JSON.stringify(ttTxt)+");this.textContent='✓ Copied! Paste in TikTok caption';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1400);";
   menu.innerHTML=
     '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);padding:6px 12px 4px;text-transform:uppercase;letter-spacing:0.06em">Share via</div>'+
     '<button class="share-menu-item" onclick="'+copy+'">🔗 Copy Link</button>'+
     '<a class="share-menu-item" href="'+tw+'" target="_blank" rel="noopener">𝕏 Post on X</a>'+
-    '<button class="share-menu-item" onclick="'+copyIG+'">📸 Instagram (copy link)</button>'+
-    '<button class="share-menu-item" onclick="'+copyTT+'">🎵 TikTok (copy link)</button>';
+    '<button class="share-menu-item" onclick="'+copyIG+'">📸 Instagram (copy + link)</button>'+
+    '<button class="share-menu-item" onclick="'+copyTT+'">🎵 TikTok (copy + link)</button>';
   var btn=evt.currentTarget, rect=btn.getBoundingClientRect();
   menu.style.cssText='bottom:'+(window.innerHeight-rect.top+6)+'px;left:'+Math.max(8,rect.left-60)+'px;';
   document.body.appendChild(menu);
@@ -887,8 +912,13 @@ window.pickSport=function(sport,el){
 window.submitTake=function(){
   var inp=document.getElementById('take-input'); var text=inp?inp.value.trim():'';
   if(!text){if(inp)inp.style.borderColor='var(--red)';return;}
-  var newTake={id:Date.now(),user:'@you',team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[]};
+  var newTake={id:Date.now(),user:'@you',team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[],clapBackOf:clapBackTargetId||null};
   takeVotes[newTake.id]='fire';
+  if(clapBackTargetId) {
+    var orig=TAKES.find(function(t){return t.id===clapBackTargetId;});
+    if(orig) orig.cbs=(orig.cbs||0)+1;
+  }
+  clapBackTargetId=null;
   TAKES.unshift(newTake);
   closeTakeModal();
   refreshTakesUI();
@@ -932,6 +962,47 @@ function makeCommentInput(id){
   '</div>';
 }
 
+/* ── GAME POPUP ── */
+window.showGamePopup = function(dataStr) {
+  var g; try { g=JSON.parse(dataStr); } catch(e){return;}
+  var fin=g.state==='post', isLive=g.state==='in';
+  document.getElementById('gp-label').textContent = g.label;
+  var statusEl=document.getElementById('gp-status');
+  if(isLive) statusEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--red);display:flex;align-items:center;justify-content:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.4s infinite;display:inline-block"></span>LIVE · '+esc(g.detail||'In progress')+'</div>';
+  else if(fin) statusEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--muted)">Final</div>';
+  else statusEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:11px;color:var(--muted)">'+esc(fmtTime(g.date))+'</div>';
+  var tSt='font-family:Oswald,sans-serif;font-size:20px;font-weight:600;color:#fff';
+  var sSt='font-family:Space Mono,monospace;font-size:26px;font-weight:700;color:#fff';
+  var sDim='font-family:Space Mono,monospace;font-size:26px;font-weight:700;color:var(--faint)';
+  document.getElementById('gp-away').innerHTML='<span style="'+tSt+'">'+esc(g.away.name)+'</span><span style="'+(fin&&!g.away.winner?sDim:sSt)+'">'+esc(String(g.away.score))+'</span>';
+  document.getElementById('gp-home').innerHTML='<span style="'+tSt+'">'+esc(g.home.name)+'</span><span style="'+(fin&&!g.home.winner?sDim:sSt)+'">'+esc(String(g.home.score))+'</span>';
+  var foot=document.getElementById('gp-footer');
+  foot.innerHTML=g.url?'<a href="'+esc(g.url)+'" target="_blank" rel="noopener" style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);text-decoration:none">Full recap on ESPN ↗</a>':'';
+  document.getElementById('game-popup').classList.add('open');
+  document.body.style.overflow='hidden';
+};
+window.closeGamePopup=function(){
+  document.getElementById('game-popup').classList.remove('open');
+  document.body.style.overflow='';
+};
+
+/* ── HALL OF FLAME CARD ── */
+function renderHallCard(t, rank) {
+  var fires=t.fires||0, ices=t.ices||0, total=fires+ices;
+  var fp=total?Math.round(fires/total*100):50;
+  return '<div class="take-card" style="display:flex;gap:14px;align-items:center">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:42px;font-weight:700;color:var(--border);min-width:44px;text-align:center;line-height:1">'+rank+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:6px">'+esc(t.quote)+'</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">🔥 '+fmtNum(fires)+' fires</span>'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(t.user)+'</span>'+
+        (t.sport?'<span style="font-family:Space Mono,monospace;font-size:8px;padding:2px 8px;border-radius:20px;background:rgba(255,61,61,0.15);color:var(--red)">'+esc(t.sport)+'</span>':'')+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
 function renderTakeCard(t) {
   var initials = t.user.replace('@','').slice(0,2).toUpperCase();
   var fires = t.fires||0, ices=t.ices||0, cbs=t.cbs||0;
@@ -952,6 +1023,7 @@ function renderTakeCard(t) {
         '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--faint)">'+esc(t.ts?timeAgo(t.ts):'now')+'</span>'+
       '</div>'+
     '</div>'+
+    (t.clapBackOf?(function(){var orig=TAKES.find(function(x){return x.id===t.clapBackOf;});return orig?'<div style="border-left:3px solid var(--red);margin:0 0 10px;padding:6px 10px;background:rgba(255,61,61,0.07);border-radius:0 6px 6px 0"><div style="font-family:Space Mono,monospace;font-size:8px;color:var(--red);margin-bottom:4px">⚔ Clapping back at '+esc(orig.user)+'</div><div style="font-family:Oswald,sans-serif;font-size:13px;color:var(--muted);font-style:italic">'+esc(orig.quote)+'</div></div>':'';}()):'')  +
     '<div class="take-quote">'+esc(t.quote)+'</div>'+
     '<div class="vote-bar-wrap">'+
       '<div class="vote-bar"><div class="vote-bar-fill" style="width:'+fp+'%"></div></div>'+
