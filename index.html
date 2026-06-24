@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Sideline"/>
 <meta name="theme-color" content="#FF3D3D"/>
-<title>Sideline - Live Sports, Scores & Fan Takes</title>
+<title>Sideline — fantakes.app | Live Sports, Scores & Fan Takes</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -569,6 +569,10 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <button class="sport-pick" onclick="pickSport('WNBA',this)">🏀 WNBA</button>
       </div>
     </div>
+    <div id="clapback-context" style="display:none;border-left:3px solid var(--red);padding:10px 14px;margin-bottom:18px;background:rgba(255,61,61,0.07);border-radius:0 8px 8px 0">
+      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--red);margin-bottom:4px">⚔ Clapping back at:</div>
+      <div id="clapback-quote" style="font-family:Oswald,sans-serif;font-size:14px;color:var(--muted);font-style:italic;line-height:1.3"></div>
+    </div>
     <div style="margin-bottom:16px">
       <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">Your handle (optional)</div>
       <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
@@ -893,7 +897,7 @@ var clapBackTargetId = null;
 window.clapBack = function(id) {
   clapBackTargetId = id;
   var take=TAKES.find(function(t){return t.id===id;});
-  openTakeModal(take?'⚔ Clapping back at '+take.user+': ':'');
+  openTakeModal('', take||null);
 };
 
 window.shareTake = function(id, evt) {
@@ -924,10 +928,16 @@ window.shareTake = function(id, evt) {
 };
 
 var activeSport='NBA';
-window.openTakeModal=function(prefill){
+window.openTakeModal=function(prefill, origTake){
   var inp=document.getElementById('take-input'); if(inp) inp.value=prefill||'';
   var cc=document.getElementById('take-char-count'); if(cc) cc.textContent=(prefill?prefill.length:0)+' / 280';
   var un=document.getElementById('take-username'); if(un) un.value='';
+  var ctx=document.getElementById('clapback-context');
+  var cq=document.getElementById('clapback-quote');
+  if(ctx&&cq){
+    if(origTake){ctx.style.display='block';cq.textContent=origTake.quote||'';}
+    else{ctx.style.display='none';cq.textContent='';}
+  }
   var modal=document.getElementById('take-modal');
   if(modal){modal.classList.add('open');document.body.style.overflow='hidden';}
   setTimeout(function(){inp&&inp.focus();},80);
@@ -935,6 +945,8 @@ window.openTakeModal=function(prefill){
 window.closeTakeModal=function(){
   document.getElementById('take-modal').classList.remove('open');
   document.body.style.overflow='';
+  var ctx=document.getElementById('clapback-context'); if(ctx) ctx.style.display='none';
+  clapBackTargetId=null;
 };
 window.updateTakeCount=function(el){
   var l=el.value.length; if(l>280){el.value=el.value.slice(0,280);l=280;}
