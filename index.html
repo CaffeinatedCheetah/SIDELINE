@@ -311,6 +311,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   <button class="tab" onclick="showTab('takes',this)">🎙 Fan Takes</button>
   <button class="tab" onclick="showTab('videos',this)">▶ Videos</button>
   <button class="tab" onclick="showTab('allscores',this)">📊 All Scores</button>
+  <button class="tab" onclick="showTab('trending',this)">🔥 Trending</button>
 </div>
 
 <div class="layout">
@@ -335,6 +336,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <div class="sport-tile" onclick="showTab('takes',document.querySelectorAll('.tab')[6])"><span class="sport-tile-icon">🎙</span><div class="sport-tile-name">Fan Takes</div><div class="sport-tile-sub">Record · Clap Back · Go viral</div></div>
         <div class="sport-tile" onclick="showTab('videos',document.querySelectorAll('.tab')[7])"><span class="sport-tile-icon">▶</span><div class="sport-tile-name">Videos</div><div class="sport-tile-sub">Highlights · Viral clips</div></div>
         <div class="sport-tile" onclick="showTab('allscores',document.querySelectorAll('.tab')[8])"><span class="sport-tile-icon">📊</span><div class="sport-tile-name">All Scores</div><div class="sport-tile-sub">Every game · Every league</div></div>
+        <div class="sport-tile" onclick="showTab('trending',document.querySelectorAll('.tab')[9])" style="border-color:rgba(255,61,61,0.4);background:linear-gradient(135deg,rgba(255,61,61,0.08),transparent)"><span class="sport-tile-icon">🔥</span><div class="sport-tile-name" style="color:var(--red)">Trending</div><div class="sport-tile-sub">Hot takes · Breaking · Highlights</div></div>
       </div>
 
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more">More news</button></div>
@@ -455,6 +457,33 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <button class="vf" onclick="pickScoreDate(3,this)">3 Days Ago</button>
       </div>
       <div id="all-scores"></div>
+    </div>
+
+    <!-- TRENDING -->
+    <div class="page" id="page-trending">
+      <div style="text-align:center;padding:28px 0 16px;border-bottom:1px solid var(--border);margin-bottom:22px">
+        <div style="font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:8px">Live · Right Now · On Fire</div>
+        <div style="font-family:Oswald,sans-serif;font-size:36px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:1px">WHAT'S HOT<br>ON SIDELINE</div>
+        <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-top:8px">Every fan is Stephen A. Smith here. Act accordingly.</div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-title">🔥 Hottest Takes Right Now</div>
+        <button class="sec-more" onclick="showTab('takes',document.querySelectorAll('.tab')[6])">All Takes →</button>
+      </div>
+      <div id="trending-takes" style="margin-bottom:28px"></div>
+
+      <div class="sec">
+        <div class="sec-title">⚡ Breaking News</div>
+        <button class="sec-more" onclick="showTab('american',document.querySelectorAll('.tab')[1])">More →</button>
+      </div>
+      <div class="news-grid" id="trending-news" style="margin-bottom:28px"></div>
+
+      <div class="sec">
+        <div class="sec-title">▶ Must-Watch Highlights</div>
+        <button class="sec-more" onclick="showTab('videos',document.querySelectorAll('.tab')[7])">All Videos →</button>
+      </div>
+      <div class="vid-grid" id="trending-vids"></div>
     </div>
 
   </div>
@@ -928,8 +957,61 @@ window.submitTake=function(){
 function loadTabContent(tab) {
   if(tab==='home') { loadHomeContent(); return; }
   if(tab==='videos') { loadVideoTab('all'); return; }
+  if(tab==='trending') { loadTrendingTab(); return; }
   if(tab==='allscores'||tab==='takes') return;
   loadSportTab(tab);
+}
+
+/* ── TRENDING TAB ── */
+function trendingTakeRow(t, rank) {
+  var fires=t.fires||0, ices=t.ices||0, total=fires+ices;
+  var fp=total?Math.round(fires/total*100):50;
+  var voted=takeVotes[t.id];
+  var rankColor = rank===1?'var(--red)':rank===2?'#FF8C00':rank===3?'#D29922':'var(--border)';
+  return '<div class="take-card" style="display:flex;gap:14px;align-items:flex-start;cursor:pointer" onclick="showTab(\'takes\',document.querySelectorAll(\'.tab\')[6])">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:44px;font-weight:700;color:'+rankColor+';min-width:48px;text-align:center;line-height:1;padding-top:2px">#'+rank+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">'+esc(t.user)+' · '+esc(t.sport||'Sports')+(t.ts?' · '+timeAgo(t.ts):'')+'</div>'+
+      '<div style="font-family:Oswald,sans-serif;font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:10px">'+esc(t.quote)+'</div>'+
+      '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:6px;overflow:hidden">'+
+        '<div style="height:100%;width:'+fp+'%;background:linear-gradient(90deg,var(--red),#ff7043);border-radius:2px"></div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">🔥 '+fmtNum(fires)+' fires</span>'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:#58A6FF">❄️ '+fmtNum(ices)+' ices</span>'+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+fp+'% on fire · '+fmtNum(total)+' votes</span>'+
+        '<button class="t-btn t-btn-fire'+(voted==='fire'?' voted':'')+'" onclick="event.stopPropagation();voteTake('+t.id+',\'fire\')" style="padding:4px 10px;font-size:9px">🔥 Fire</button>'+
+        '<button class="t-btn t-btn-ice'+(voted==='ice'?' voted':'')+'" onclick="event.stopPropagation();voteTake('+t.id+',\'ice\')" style="padding:4px 10px;font-size:9px">❄️ Ice</button>'+
+        '<button class="t-btn t-btn-clap" onclick="event.stopPropagation();clapBack('+t.id+')" style="padding:4px 10px;font-size:9px">⚔ '+(t.cbs||0)+' CBs</button>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function loadTrendingTab() {
+  /* Takes: top 5 by fires */
+  var sorted=TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  setHTML('trending-takes', sorted.slice(0,5).map(function(t,i){return trendingTakeRow(t,i+1);}).join('') ||
+    '<div class="empty" style="padding:20px 0">No takes yet — be the first to drop a hot take 🔥</div>');
+
+  /* News: fresh fetch */
+  var nEl=document.getElementById('trending-news');
+  if(nEl) {
+    nEl.innerHTML='<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Pulling breaking stories...</div>';
+    fetchNews('home', function(articles) {
+      if(!articles.length){nEl.innerHTML='<div class="empty" style="grid-column:1/-1">Stories loading...</div>';return;}
+      nEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+    });
+  }
+
+  /* Videos: reuse cache or fetch */
+  var vEl=document.getElementById('trending-vids');
+  if(vEl) {
+    vEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top highlights...</div>';
+    fetchVideos('all', function(vids){
+      vEl.innerHTML = vids.slice(0,8).map(vidCardHtml).join('') || '<span class="empty">Loading...</span>';
+    });
+  }
 }
 
 function fmtNum(n){n=parseInt(n)||0;if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,'')+'K';return String(n);}
