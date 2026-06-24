@@ -274,6 +274,178 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 .empty{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);padding:10px 0;display:block;}
 
 footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-size:9px;color:var(--faint);border-top:1px solid var(--border);letter-spacing:0.05em;}
+
+/* ═══════════ FAN TAKES SOCIAL PLATFORM ═══════════ */
+
+/* AVATAR */
+.take-avatar2{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;}
+
+/* SORT / FILTER BAR */
+.feed-controls{margin-bottom:16px;}
+.sort-bar{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap;}
+.sort-btn{font-family:'Space Mono',monospace;font-size:9px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.sort-btn.active{background:var(--red);color:#fff;border-color:var(--red);}
+.sort-btn:hover:not(.active){border-color:var(--red);color:#fff;}
+.sport-pills{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;}
+.sport-pills::-webkit-scrollbar{display:none;}
+.sport-pill{font-family:'Space Mono',monospace;font-size:8px;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0;}
+.sport-pill.active{background:var(--surface3);color:#fff;border-color:var(--faint);}
+.sport-pill:hover:not(.active){border-color:var(--red);color:var(--red);}
+
+/* TAKE CARD v2 */
+.take-card2{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:12px;transition:border-color 0.2s,transform 0.15s;position:relative;overflow:hidden;}
+.take-card2:hover{border-color:rgba(255,61,61,0.4);transform:translateY(-1px);}
+.take-card2::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--red),#ff8c00);transform:scaleX(0);transform-origin:left;transition:transform 0.25s;}
+.take-card2:hover::before{transform:scaleX(1);}
+.take-inner{padding:16px;}
+.take-meta-label{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
+.repost-label{color:#3FB950;}
+.stitch-label{color:var(--amber);}
+.duet-label{color:#58A6FF;}
+.take-head2{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.take-head2-info{flex:1;min-width:0;}
+.take-username{font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:#fff;line-height:1;}
+.take-sub{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;}
+.take-sport-badge{font-family:'Space Mono',monospace;font-size:8px;padding:2px 8px;border-radius:12px;}
+.take-ts{font-family:'Space Mono',monospace;font-size:8px;color:var(--faint);}
+.take-type-badge{font-family:'Space Mono',monospace;font-size:7px;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:0.06em;}
+.type-badge-long{background:rgba(88,166,255,0.15);color:#58A6FF;}
+.type-badge-thread{background:rgba(63,185,80,0.15);color:#3FB950;}
+.type-badge-video{background:rgba(255,61,61,0.15);color:var(--red);}
+
+/* TAKE TEXT */
+.take-text-short{font-family:'Oswald',sans-serif;font-size:18px;font-weight:600;line-height:1.4;color:#fff;margin-bottom:12px;}
+.take-text-long{font-family:'Inter',sans-serif;font-size:14px;line-height:1.65;color:var(--text);margin-bottom:12px;}
+.take-text-truncated{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.take-read-more{font-family:'Space Mono',monospace;font-size:9px;color:var(--red);background:none;border:none;cursor:pointer;padding:0;margin-bottom:12px;display:block;}
+
+/* THREAD DISPLAY */
+.thread-parts{margin-bottom:12px;}
+.thread-part{display:flex;gap:10px;}
+.thread-part-line{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.thread-part-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:4px;}
+.thread-part-connector{width:2px;flex:1;background:linear-gradient(to bottom,var(--red),rgba(255,61,61,0.1));margin:4px 0;min-height:20px;}
+.thread-part-content{flex:1;min-width:0;padding-bottom:8px;}
+.thread-part-num{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-bottom:4px;}
+.thread-part-text{font-family:'Oswald',sans-serif;font-size:16px;font-weight:500;line-height:1.4;color:#fff;}
+.thread-view-more{font-family:'Space Mono',monospace;font-size:9px;color:var(--red);background:none;border:none;cursor:pointer;padding:0 0 12px;}
+
+/* MEDIA */
+.take-media{margin-bottom:12px;border-radius:10px;overflow:hidden;position:relative;}
+.take-image{width:100%;max-height:400px;object-fit:cover;display:block;border-radius:10px;}
+.take-video-thumb{position:relative;cursor:pointer;}
+.take-video-thumb img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;border-radius:10px;}
+.take-video-play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);border-radius:10px;}
+.take-video-play-btn{width:52px;height:52px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;}
+.take-video-play-tri{width:0;height:0;border-style:solid;border-width:10px 0 10px 18px;border-color:transparent transparent transparent #fff;margin-left:4px;}
+
+/* QUOTED TAKE */
+.quoted-take{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--surface2);cursor:pointer;transition:border-color 0.15s;}
+.quoted-take:hover{border-color:rgba(255,61,61,0.4);}
+.quoted-take-header{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.quoted-take-avatar{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:8px;font-weight:700;color:#fff;flex-shrink:0;}
+.quoted-take-user{font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;color:#fff;}
+.quoted-take-text{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* GAME TAG */
+.game-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(210,153,34,0.12);border:1px solid rgba(210,153,34,0.25);border-radius:6px;padding:3px 8px;font-family:'Space Mono',monospace;font-size:8px;color:var(--amber);margin-bottom:10px;}
+
+/* VOTE BAR */
+.vote-bar2{margin-bottom:12px;}
+.vote-bar2-track{height:4px;border-radius:2px;background:var(--surface3);overflow:hidden;margin-bottom:4px;}
+.vote-bar2-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--red),#ff8c00);transition:width 0.4s ease;}
+.vote-bar2-pcts{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:8px;}
+
+/* ACTION BUTTONS */
+.take-actions2{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:0;}
+.ta-btn{display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:8px;border:1px solid transparent;font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;background:none;color:var(--muted);transition:all 0.15s;white-space:nowrap;}
+.ta-btn:hover{background:var(--surface2);}
+.ta-fire{color:var(--red);}
+.ta-fire:hover,.ta-fire.voted{background:rgba(255,61,61,0.15);border-color:rgba(255,61,61,0.3);}
+.ta-fire.voted{color:var(--red);}
+.ta-ice{color:#58A6FF;}
+.ta-ice:hover,.ta-ice.voted{background:rgba(88,166,255,0.1);border-color:rgba(88,166,255,0.25);}
+.ta-ice.voted{color:#58A6FF;}
+.ta-reply:hover{color:#3FB950;background:rgba(63,185,80,0.1);}
+.ta-repost:hover{color:#3FB950;background:rgba(63,185,80,0.08);}
+.ta-stitch:hover{color:var(--amber);background:rgba(210,153,34,0.1);}
+.ta-share:hover{color:#58A6FF;background:rgba(88,166,255,0.08);}
+
+/* REPLY THREADS */
+.replies-section{border-top:1px solid var(--border);margin-top:4px;}
+.reply-input-row{display:flex;gap:8px;padding:10px 16px;align-items:center;}
+.reply-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:8px 14px;color:#fff;font-family:'Inter',sans-serif;font-size:13px;outline:none;transition:border-color 0.15s;}
+.reply-input:focus{border-color:var(--red);}
+.reply-submit-btn{background:var(--red);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:20px;cursor:pointer;flex-shrink:0;}
+.reply-list{padding:0 16px 8px;}
+.reply-item{display:flex;gap:8px;padding:10px 0;position:relative;}
+.reply-item:not(:last-child)::before{content:'';position:absolute;left:17px;top:42px;bottom:-2px;width:2px;background:var(--border);}
+.reply-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;}
+.reply-content{flex:1;min-width:0;}
+.reply-user{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;color:#fff;}
+.reply-ts{font-family:'Space Mono',monospace;font-size:7px;color:var(--faint);margin-left:6px;}
+.reply-text{font-family:'Inter',sans-serif;font-size:13px;color:var(--text);line-height:1.5;margin-top:2px;}
+.reply-votes{display:flex;gap:8px;margin-top:5px;}
+.reply-vote-btn{font-family:'Space Mono',monospace;font-size:8px;border:none;background:none;color:var(--muted);cursor:pointer;padding:0;transition:color 0.15s;}
+.reply-vote-btn.voted-fire{color:var(--red);}
+.reply-vote-btn.voted-ice{color:#58A6FF;}
+.reply-vote-btn:hover{color:#fff;}
+.nested-reply{display:flex;gap:6px;margin-top:6px;padding:8px 10px;background:var(--surface2);border-radius:8px;}
+.nested-reply-text{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);}
+.show-more-replies{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);background:none;border:none;cursor:pointer;padding:6px 16px 10px;display:block;}
+
+/* HOF BADGES */
+.hof-badge{display:inline-flex;align-items:center;gap:3px;font-family:'Space Mono',monospace;font-size:7px;padding:2px 6px;border-radius:4px;margin-right:4px;font-weight:700;letter-spacing:0.04em;}
+.hof-on-fire{background:rgba(255,61,61,0.2);color:var(--red);}
+.hof-cooked{background:rgba(88,166,255,0.15);color:#58A6FF;}
+.hof-goat{background:rgba(210,153,34,0.2);color:var(--amber);}
+.hof-breaking{background:rgba(63,185,80,0.15);color:#3FB950;}
+.hof-viral{background:rgba(138,180,248,0.15);color:#8AB4F8;}
+
+/* COMPOSER MODAL v2 */
+.composer-modal{background:var(--surface);border:1px solid rgba(255,61,61,0.4);border-radius:20px;padding:24px;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;}
+.composer-types{display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:10px;padding:4px;}
+.comp-type-btn{flex:1;font-family:'Space Mono',monospace;font-size:8px;padding:7px 6px;border-radius:7px;border:none;cursor:pointer;text-align:center;transition:all 0.15s;background:none;color:var(--muted);}
+.comp-type-btn.active{background:var(--red);color:#fff;}
+.comp-type-btn:hover:not(.active){color:#fff;}
+.thread-parts-composer{margin-bottom:14px;}
+.thread-part-comp{position:relative;display:flex;gap:8px;margin-bottom:0;}
+.thread-part-comp-line{display:flex;flex-direction:column;align-items:center;padding-top:10px;flex-shrink:0;}
+.thread-part-comp-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;}
+.thread-part-comp-connector{width:2px;background:rgba(255,61,61,0.3);flex:1;margin:4px 0;}
+.thread-part-comp-area{flex:1;}
+.comp-thread-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:#fff;font-family:'Oswald',sans-serif;font-size:16px;resize:none;height:80px;outline:none;transition:border-color 0.15s;line-height:1.4;margin-bottom:6px;}
+.comp-thread-input:focus{border-color:var(--red);}
+.thread-part-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.thread-part-label{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);}
+.remove-part-btn{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);background:none;border:none;cursor:pointer;}
+.remove-part-btn:hover{color:var(--red);}
+.add-part-btn{font-family:'Space Mono',monospace;font-size:9px;color:var(--red);background:rgba(255,61,61,0.1);border:1px dashed rgba(255,61,61,0.4);border-radius:8px;padding:8px;width:100%;cursor:pointer;transition:all 0.15s;text-align:center;}
+.add-part-btn:hover{background:rgba(255,61,61,0.2);}
+.add-part-btn:disabled{opacity:0.4;cursor:default;}
+.media-upload-row{display:flex;gap:8px;margin-bottom:14px;}
+.media-btn{display:flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:9px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;}
+.media-btn:hover{border-color:var(--red);color:#fff;}
+.media-preview-wrap{position:relative;margin-bottom:14px;border-radius:10px;overflow:hidden;}
+.media-preview-wrap img,.media-preview-wrap video{width:100%;max-height:200px;object-fit:cover;display:block;border-radius:10px;}
+.remove-media-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border:none;color:#fff;border-radius:50%;width:24px;height:24px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.quoted-take-composer{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:14px;background:var(--surface2);}
+.quoted-take-composer-label{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);margin-bottom:6px;}
+.quoted-take-composer-text{font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.link-game-row{margin-bottom:14px;}
+.link-game-btn{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px;}
+.link-game-btn.linked{border-color:var(--amber);color:var(--amber);background:rgba(210,153,34,0.1);}
+.link-game-btn:hover:not(.linked){border-color:var(--border);color:#fff;}
+.game-dropdown{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:6px;margin-top:6px;}
+.game-dropdown-item{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);padding:7px 10px;border-radius:6px;cursor:pointer;transition:background 0.1s;}
+.game-dropdown-item:hover{background:var(--surface3);color:#fff;}
+.game-dropdown-item.selected{background:rgba(210,153,34,0.15);color:var(--amber);}
+.composer-footer{display:flex;justify-content:space-between;align-items:center;margin-top:14px;}
+.char-count{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);}
+.char-count.warn{color:var(--amber);}
+.char-count.danger{color:var(--red);}
+.post-take-btn{background:var(--red);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:11px 28px;border-radius:10px;cursor:pointer;transition:opacity 0.15s;}
+.post-take-btn:hover{opacity:0.9;}
 </style>
 </head>
 <body>
@@ -417,18 +589,38 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="takes-hero">
         <div style="font-size:52px;margin-bottom:10px">🔥</div>
         <h2>Fan Takes</h2>
-        <p>Drop your hottest sports opinions.<br>The crowd votes fire or ice. Clap back. Go viral.</p>
+        <p>Drop your hottest sports opinions.<br>The crowd votes fire or ice. Reply. Repost. Go viral.</p>
         <div class="takes-btns">
           <button class="takes-btn primary" onclick="openTakeModal()">🔥 Drop Your Take</button>
-          <button class="takes-btn" onclick="openTakeModal('⚔ Clapping back: ')">⚔ Clap Back</button>
+          <button class="takes-btn" onclick="openTakeModal('',null,'quote')">🔁 Quote a Take</button>
         </div>
       </div>
-      <div class="sec"><div class="sec-title">🏆 Hall of Flame</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Most fired takes this week</span></div>
-      <div id="hall-of-flame" style="margin-bottom:8px"></div>
-      <div class="sec">
-        <div class="sec-title">🔥 All Takes</div>
-        <button class="sec-more" onclick="openTakeModal()">+ Post Take</button>
+
+      <!-- HALL OF FLAME -->
+      <div class="sec"><div class="sec-title">🏆 Hall of Flame</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">All-time most fired takes</span></div>
+      <div id="hall-of-flame" style="margin-bottom:16px"></div>
+
+      <!-- SORT + FILTER -->
+      <div class="feed-controls">
+        <div class="sort-bar">
+          <button class="sort-btn active" id="sort-hot" onclick="setSortMode('hot',this)">🔥 Hot</button>
+          <button class="sort-btn" id="sort-new" onclick="setSortMode('new',this)">⚡ New</button>
+          <button class="sort-btn" id="sort-discussed" onclick="setSortMode('discussed',this)">💬 Discussed</button>
+          <button class="sort-btn" id="sort-hof" onclick="setSortMode('hof',this)">🏆 Hall of Flame</button>
+        </div>
+        <div class="sport-pills">
+          <button class="sport-pill active" onclick="setSportPill('All',this)">All</button>
+          <button class="sport-pill" onclick="setSportPill('NBA',this)">🏀 NBA</button>
+          <button class="sport-pill" onclick="setSportPill('NFL',this)">🏈 NFL</button>
+          <button class="sport-pill" onclick="setSportPill('MLB',this)">⚾ MLB</button>
+          <button class="sport-pill" onclick="setSportPill('Soccer',this)">⚽ Soccer</button>
+          <button class="sport-pill" onclick="setSportPill('UFC',this)">🥊 UFC</button>
+          <button class="sport-pill" onclick="setSportPill('F1',this)">🏎 F1</button>
+          <button class="sport-pill" onclick="setSportPill('Rugby',this)">🏉 Rugby</button>
+          <button class="sport-pill" onclick="setSportPill('NHL',this)">🏒 NHL</button>
+        </div>
       </div>
+
       <div id="takes-list"></div>
     </div>
 
@@ -553,19 +745,35 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   </div>
 </div>
 
-<!-- POST TAKE MODAL -->
+<!-- POST TAKE MODAL v2 -->
 <div class="modal" id="take-modal" onclick="if(event.target===this)closeTakeModal()">
-  <div class="take-form-modal">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px">
+  <div class="composer-modal">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
       <div>
-        <div style="font-family:Oswald,sans-serif;font-size:30px;font-weight:700;color:#fff;line-height:1">Drop Your Take 🔥</div>
-        <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-top:4px">Any sport. Any opinion. Let the crowd decide.</div>
+        <div style="font-family:Oswald,sans-serif;font-size:26px;font-weight:700;color:#fff;line-height:1" id="composer-title">Drop Your Take 🔥</div>
+        <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-top:3px">Any sport. Any opinion. Let the crowd decide.</div>
       </div>
-      <button onclick="closeTakeModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:Oswald,sans-serif;font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer;flex-shrink:0">✕</button>
+      <button onclick="closeTakeModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:Space Mono,monospace;font-size:11px;padding:7px 14px;border-radius:8px;cursor:pointer;flex-shrink:0">✕ Close</button>
     </div>
-    <div style="margin-bottom:18px">
-      <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">Pick your sport</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px">
+
+    <!-- Type Selector (hidden when quoting/stitching/dueting) -->
+    <div class="composer-types" id="comp-type-row">
+      <button class="comp-type-btn active" id="ctype-short" onclick="setTakeMode('short',this)">✏️ Short Take</button>
+      <button class="comp-type-btn" id="ctype-long" onclick="setTakeMode('long',this)">📝 Long Take</button>
+      <button class="comp-type-btn" id="ctype-thread" onclick="setTakeMode('thread',this)">🧵 Thread</button>
+    </div>
+
+    <!-- Handle -->
+    <div style="margin-bottom:14px">
+      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Your handle (optional)</div>
+      <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
+    </div>
+
+    <!-- Sport Selector -->
+    <div style="margin-bottom:14px">
+      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Pick your sport</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
         <button class="sport-pick active" onclick="pickSport('NBA',this)">🏀 NBA</button>
         <button class="sport-pick" onclick="pickSport('NFL',this)">🏈 NFL</button>
         <button class="sport-pick" onclick="pickSport('Soccer',this)">⚽ Soccer</button>
@@ -577,20 +785,69 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <button class="sport-pick" onclick="pickSport('WNBA',this)">🏀 WNBA</button>
       </div>
     </div>
-    <div id="clapback-context" style="display:none;border-left:3px solid var(--red);padding:10px 14px;margin-bottom:18px;background:rgba(255,61,61,0.07);border-radius:0 8px 8px 0">
-      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--red);margin-bottom:4px">⚔ Clapping back at:</div>
-      <div id="clapback-quote" style="font-family:Oswald,sans-serif;font-size:14px;color:var(--muted);font-style:italic;line-height:1.3"></div>
+
+    <!-- Quoted/Stitch/Duet context (shown when applicable) -->
+    <div id="quote-context" style="display:none" class="quoted-take-composer">
+      <div class="quoted-take-composer-label" id="quote-context-label">🔁 Quoting:</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div class="quoted-take-avatar" id="qc-avatar" style="width:20px;height:20px;font-size:8px"></div>
+        <span style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;color:#fff" id="qc-user"></span>
+      </div>
+      <div class="quoted-take-composer-text" id="qc-text"></div>
     </div>
-    <div style="margin-bottom:16px">
-      <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">Your handle (optional)</div>
-      <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
+
+    <!-- SHORT TAKE input -->
+    <div id="comp-short-area">
+      <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="onMainInputChange()" maxlength="280" style="height:110px;font-size:17px;"></textarea>
     </div>
-    <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="updateTakeCount(this)" maxlength="280"></textarea>
+
+    <!-- LONG TAKE input -->
+    <div id="comp-long-area" style="display:none">
+      <textarea class="take-input" id="take-input-long" placeholder="Write your full take. No limit. Say what needs to be said." oninput="onLongInputChange()" maxlength="2000" style="height:160px;font-size:15px;font-family:Inter,sans-serif;line-height:1.6;"></textarea>
+    </div>
+
+    <!-- THREAD composer -->
+    <div id="comp-thread-area" style="display:none">
+      <div class="thread-parts-composer" id="thread-parts-list"></div>
+      <button class="add-part-btn" id="add-thread-part-btn" onclick="addThreadPart()">+ Add another part (max 5)</button>
+    </div>
+
+    <!-- Media upload -->
+    <div id="comp-media-row" style="margin-top:12px">
+      <div class="media-upload-row">
+        <label class="media-btn" style="cursor:pointer">
+          📹 Add Video
+          <input type="file" id="video-upload" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="handleVideoUpload(this)">
+        </label>
+        <label class="media-btn" style="cursor:pointer">
+          🖼 Add Image
+          <input type="file" id="image-upload" accept="image/jpeg,image/png,image/gif" style="display:none" onchange="handleImageUpload(this)">
+        </label>
+      </div>
+      <div id="media-preview" style="display:none" class="media-preview-wrap">
+        <img id="media-preview-img" style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px" alt="">
+        <video id="media-preview-vid" style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px" muted playsinline></video>
+        <button class="remove-media-btn" onclick="removeMedia()">✕</button>
+      </div>
+    </div>
+
+    <!-- Link to Live Game -->
+    <div class="link-game-row" id="link-game-row" style="margin-top:10px">
+      <button class="link-game-btn" id="link-game-btn" onclick="toggleGameDropdown()">⚡ Link to Live Game</button>
+      <div id="game-dropdown" style="display:none" class="game-dropdown"></div>
+    </div>
+
+    <!-- Error -->
     <div id="take-error" style="display:none;font-family:Space Mono,monospace;font-size:10px;color:var(--red);margin-top:10px;padding:8px 12px;background:rgba(255,61,61,0.1);border-radius:6px;border-left:3px solid var(--red)"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
-      <span id="take-char-count" style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">0 / 280</span>
-      <button onclick="submitTake()" style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:12px 32px;border-radius:10px;cursor:pointer">Drop It 🔥</button>
+
+    <!-- Footer -->
+    <div class="composer-footer">
+      <span class="char-count" id="take-char-count">0 / 280</span>
+      <button class="post-take-btn" onclick="submitTake()">Drop It 🔥</button>
     </div>
+
+    <!-- Hidden canvas for video thumbnail extraction -->
+    <canvas id="thumb-canvas" style="display:none"></canvas>
   </div>
 </div>
 
@@ -635,28 +892,62 @@ var SPORTS_TODAY = [
   {icon:'🏎', name:'F1', status:'Race weekend', cls:'status-active'},
 ];
 
+/* ══════════ FAN TAKES SOCIAL PLATFORM v2 ══════════ */
+
+var AVATAR_COLORS = ['#FF3D3D','#FF8C00','#3FB950','#58A6FF','#D29922','#C65334','#8AB4F8','#FF6B6B','#4ECDC4','#A78BFA'];
+function avatarColor(user) {
+  var h=0,s=String(user||'');
+  for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))&0x7fffffff;
+  return AVATAR_COLORS[h%AVATAR_COLORS.length];
+}
+function genId() { return 't_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); }
+
 var DEFAULT_TAKES = [
-  {id:1, user:'@bigballer_88', team:'Lakers fan', sport:'NBA', quote:'"LeBron is still the GOAT and it is not even close. Period."', fires:8400, ices:1200, cbs:312, ts:Date.now()-3600000, comments:[]},
-  {id:2, user:'@packerfan4life', team:'Green Bay fan', sport:'NFL', quote:'"Jordan Love is a top 5 QB right now. I said what I said."', fires:5100, ices:3200, cbs:891, ts:Date.now()-7200000, comments:[]},
-  {id:3, user:'@messi_or_bust', team:'Inter Miami fan', sport:'Soccer', quote:'"Messi at 37 is still better than 99% of players alive."', fires:12100, ices:2900, cbs:2300, ts:Date.now()-14400000, comments:[]},
-  {id:4, user:'@billsmafia716', team:'Bills fan', sport:'NFL', quote:'"This is finally our year. Super Bowl. Book it."', fires:6700, ices:4100, cbs:1100, ts:Date.now()-18000000, comments:[]},
-  {id:5, user:'@rugbymad_nz', team:'All Blacks fan', sport:'Rugby', quote:'"NZ rugby is back. Nobody is touching us this year."', fires:3200, ices:800, cbs:144, ts:Date.now()-21600000, comments:[]},
-  {id:6, user:'@f1purist99', team:'F1 fan', sport:'F1', quote:'"Bring back refueling. F1 is boring at the front right now."', fires:4400, ices:2200, cbs:788, ts:Date.now()-25200000, comments:[]},
-  {id:7, user:'@hockeyhead_mn', team:'Wild fan', sport:'NHL', quote:'"Connor McDavid is the most dominant player in NHL history. Not close."', fires:7200, ices:2100, cbs:543, ts:Date.now()-28800000, comments:[]},
-  {id:8, user:'@kingofkings_ufc', team:'UFC fan', sport:'UFC', quote:'"Jon Jones will retire as the greatest fighter of all time. Every division."', fires:9800, ices:3400, cbs:1234, ts:Date.now()-32400000, comments:[]},
+  {id:'t_1',user:'@bigballer_88',team:'Lakers fan',sport:'NBA',type:'short',text:'LeBron is still the GOAT and it is not even close. Period.',fires:8400,ices:1200,replies:[],shareCount:12,ts:Date.now()-3600000},
+  {id:'t_2',user:'@packerfan4life',team:'Green Bay fan',sport:'NFL',type:'short',text:'Jordan Love is a top 5 QB right now. I said what I said.',fires:5100,ices:3200,replies:[],shareCount:5,ts:Date.now()-7200000},
+  {id:'t_3',user:'@messi_or_bust',team:'Inter Miami fan',sport:'Soccer',type:'long',text:'Messi at 37 is still better than 99% of players alive. I\'ve watched every match this season and people are underrating what he\'s doing at Inter Miami. Age is just a number when you have that kind of football IQ. The man sees the game in a way nobody else ever has.',fires:12100,ices:2900,replies:[{id:'r_1',user:'@soccerhead_uk',text:'Facts. The vision is still elite.',fires:340,ices:20,ts:Date.now()-13000000,replies:[]}],shareCount:89,ts:Date.now()-14400000},
+  {id:'t_4',user:'@billsmafia716',team:'Bills fan',sport:'NFL',type:'thread',parts:['This is finally our year. Super Bowl. Book it.','The offense is finally clicking. Josh Allen is playing the best football of his career.','Defense has improved massively. This team is built differently.'],fires:6700,ices:4100,replies:[],shareCount:31,ts:Date.now()-18000000},
+  {id:'t_5',user:'@rugbymad_nz',team:'All Blacks fan',sport:'Rugby',type:'short',text:'NZ rugby is back. Nobody is touching us this year.',fires:3200,ices:800,replies:[],shareCount:7,ts:Date.now()-21600000},
+  {id:'t_6',user:'@f1purist99',team:'F1 fan',sport:'F1',type:'short',text:'Bring back refueling. F1 is boring at the front right now.',fires:4400,ices:2200,replies:[{id:'r_2',user:'@vettel_era',text:'Hard disagree. Strategy IS the racing.',fires:280,ices:90,ts:Date.now()-24000000,replies:[]}],shareCount:18,ts:Date.now()-25200000},
+  {id:'t_7',user:'@hockeyhead_mn',team:'Wild fan',sport:'NHL',type:'short',text:'Connor McDavid is the most dominant player in NHL history. Not close.',fires:7200,ices:2100,replies:[],shareCount:42,ts:Date.now()-28800000},
+  {id:'t_8',user:'@kingofkings_ufc',team:'UFC fan',sport:'UFC',type:'short',text:'Jon Jones will retire as the greatest fighter of all time. Every division.',fires:9800,ices:3400,replies:[],shareCount:67,ts:Date.now()-32400000},
 ];
+
+function migrateTake(t) {
+  if(t.text) return t;
+  var txt = (t.quote||'').replace(/^"|"$/g,'');
+  return Object.assign({},t,{
+    text: txt, type:'short', parts:null,
+    replies: t.comments ? t.comments.map(function(c){return {id:genId(),user:c.user||'@fan',text:c.text,fires:0,ices:0,ts:Date.now(),replies:[]};}) : [],
+    shareCount: t.cbs||0, id: String(t.id)
+  });
+}
 
 var TAKES = (function(){
   try {
     var saved = localStorage.getItem('sl_takes');
-    if(saved){ var p=JSON.parse(saved); if(Array.isArray(p)&&p.length) return p; }
+    if(saved){ var p=JSON.parse(saved); if(Array.isArray(p)&&p.length) return p.map(migrateTake); }
   } catch(e){}
-  return DEFAULT_TAKES.map(function(t){return Object.assign({},t,{comments:[]});});
+  return DEFAULT_TAKES.slice();
 })();
 
 var takeVotes = (function(){
   try { var s=localStorage.getItem('sl_tv'); return s?JSON.parse(s):{};} catch(e){return {};}
 })();
+var replyVotes = (function(){
+  try { var s=localStorage.getItem('sl_rv'); return s?JSON.parse(s):{};} catch(e){return {};}
+})();
+
+/* ── TAKES STATE ── */
+var currentSortMode = 'hot';
+var currentSportFilter = 'All';
+var composerMode = 'short'; // short | long | thread | quote | stitch | duet
+var composerQuotedTakeId = null;
+var composerMediaThumb = null;
+var composerMediaType = null; // 'video' | 'image'
+var composerMediaData = null;
+var composerLinkedGame = null;
+var threadPartCount = 1;
 
 /* ── STATE ── */
 var allGames = [];
@@ -917,147 +1208,484 @@ window.pickScoreDate = function(daysAgo, btn) {
 };
 
 /* ── FAN TAKES INTERACTIONS ── */
+
+function getHofBadges(t) {
+  var badges = '';
+  var fires=t.fires||0, ices=t.ices||0, total=fires+ices;
+  var fp = total ? fires/total : 0.5;
+  if(fires >= 100) badges += '<span class="hof-badge hof-on-fire">🔥 On Fire</span>';
+  if(total > 10 && fp <= 0.2) badges += '<span class="hof-badge hof-cooked">💀 Cooked</span>';
+  if(fires >= 5000 && fp > 0.7) badges += '<span class="hof-badge hof-goat">👑 GOAT Take</span>';
+  if((t.shareCount||0) >= 50) badges += '<span class="hof-badge hof-viral">🌍 Gone Viral</span>';
+  if(t.gameTag) badges += '<span class="hof-badge hof-breaking">⚡ Breaking</span>';
+  return badges;
+}
+
+function getSortedTakes() {
+  var filtered = currentSportFilter==='All' ? TAKES.slice() : TAKES.filter(function(t){return t.sport===currentSportFilter;});
+  if(currentSortMode==='hot') return filtered.sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  if(currentSortMode==='new') return filtered.sort(function(a,b){return (b.ts||0)-(a.ts||0);});
+  if(currentSortMode==='discussed') return filtered.sort(function(a,b){return ((b.replies||[]).length)-(( a.replies||[]).length);});
+  if(currentSortMode==='hof') return filtered.sort(function(a,b){
+    var ta=a.fires+a.ices||1, tb=b.fires+b.ices||1;
+    return (b.fires/tb)-(a.fires/ta);
+  });
+  return filtered;
+}
+
 function refreshTakesUI() {
-  setHTML('takes-list', TAKES.map(renderTakeCard).join(''));
-  var sorted = TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
-  setHTML('home-takes', sorted.slice(0,3).map(renderTakeCard).join(''));
-  var hofEl=document.getElementById('hall-of-flame');
-  if(hofEl) hofEl.innerHTML=sorted.slice(0,3).map(function(t,i){return renderHallCard(t,i+1);}).join('');
+  var sorted = getSortedTakes();
+  setHTML('takes-list', sorted.map(renderTakeCard).join('')||'<div class="empty" style="padding:20px 0">No takes yet — be the first! 🔥</div>');
+  var byFire = TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  setHTML('home-takes', byFire.slice(0,3).map(renderTakeCard).join(''));
+  var hofEl = document.getElementById('hall-of-flame');
+  if(hofEl) hofEl.innerHTML = byFire.slice(0,3).map(function(t,i){return renderHallCard(t,i+1);}).join('');
   saveTakes();
 }
+
+window.setSortMode = function(mode, btn) {
+  currentSortMode = mode;
+  document.querySelectorAll('.sort-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  refreshTakesUI();
+};
+window.setSportPill = function(sport, btn) {
+  currentSportFilter = sport;
+  document.querySelectorAll('.sport-pill').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  refreshTakesUI();
+};
 
 window.voteTake = function(id, type) {
   var take = TAKES.find(function(t){return t.id===id;});
   if(!take) return;
   var prev = takeVotes[id];
-  if(prev==='fire') take.fires = Math.max(0,take.fires-1);
-  if(prev==='ice')  take.ices  = Math.max(0,take.ices-1);
+  if(prev==='fire') take.fires = Math.max(0,(take.fires||0)-1);
+  if(prev==='ice')  take.ices  = Math.max(0,(take.ices||0)-1);
   if(prev===type) { delete takeVotes[id]; }
-  else { if(type==='fire') take.fires++; else take.ices++; takeVotes[id]=type; }
+  else { if(type==='fire') take.fires=(take.fires||0)+1; else take.ices=(take.ices||0)+1; takeVotes[id]=type; }
   saveTakeVotes(); saveTakes();
+  /* update all cards showing this take */
   document.querySelectorAll('[data-take-id="'+id+'"]').forEach(function(card) {
-    var tot=take.fires+take.ices, fp=tot?Math.round(take.fires/tot*100):50, ip=100-fp;
-    var fill=card.querySelector('.vote-bar-fill'); if(fill) fill.style.width=fp+'%';
-    var fpe=card.querySelector('.vote-fire-pct'); if(fpe) fpe.textContent='🔥 '+fp+'% Fire';
-    var ipe=card.querySelector('.vote-ice-pct');  if(ipe) ipe.textContent=ip+'% Ice ❄️';
-    var vpts=card.querySelectorAll('.vote-pcts span'); if(vpts[1]) vpts[1].textContent=fmtNum(tot)+' votes';
-    var fb=card.querySelector('.t-btn-fire'); if(fb){fb.textContent='🔥 '+fmtNum(take.fires);fb.classList.toggle('voted',takeVotes[id]==='fire');}
-    var ib=card.querySelector('.t-btn-ice');  if(ib){ib.textContent='❄️ '+fmtNum(take.ices); ib.classList.toggle('voted',takeVotes[id]==='ice');}
+    var tot=(take.fires||0)+(take.ices||0), fp=tot?Math.round(take.fires/tot*100):50, ip=100-fp;
+    var fill=card.querySelector('.vote-bar2-fill'); if(fill) fill.style.width=fp+'%';
+    var fpEl=card.querySelector('.vb-fire-pct'); if(fpEl) fpEl.textContent='🔥 '+fp+'%';
+    var ipEl=card.querySelector('.vb-ice-pct');  if(ipEl) ipEl.textContent=ip+'% ❄️';
+    var vtEl=card.querySelector('.vb-total');    if(vtEl) vtEl.textContent=fmtNum(tot)+' votes';
+    var fb=card.querySelector('.ta-fire-count'); if(fb) fb.textContent=fmtNum(take.fires||0);
+    var ib=card.querySelector('.ta-ice-count');  if(ib) ib.textContent=fmtNum(take.ices||0);
+    card.querySelectorAll('.ta-fire').forEach(function(b){b.classList.toggle('voted',takeVotes[id]==='fire');});
+    card.querySelectorAll('.ta-ice').forEach(function(b){b.classList.toggle('voted',takeVotes[id]==='ice');});
   });
-  var sorted=TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
-  setHTML('home-takes', sorted.slice(0,3).map(renderTakeCard).join(''));
+  var byFire=TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
+  setHTML('home-takes', byFire.slice(0,3).map(renderTakeCard).join(''));
 };
 
-window.toggleComments = function(id) {
-  var s=document.getElementById('comments-'+id); if(!s) return;
-  var open=s.style.display!=='none'; s.style.display=open?'none':'block';
-  if(!open){ var inp=document.getElementById('ci-'+id); if(inp) inp.focus(); }
-};
-
-window.submitComment = function(id) {
-  var inp=document.getElementById('ci-'+id); if(!inp||!inp.value.trim()) return;
-  var take=TAKES.find(function(t){return t.id===id;}); if(!take) return;
-  if(!take.comments) take.comments=[];
-  take.comments.push({user:'@you', text:inp.value.trim()});
+window.voteReply = function(takeId, replyId, type, btn) {
+  var take = TAKES.find(function(t){return t.id===takeId;}); if(!take) return;
+  var reply = (take.replies||[]).find(function(r){return r.id===replyId;}); if(!reply) return;
+  var key = replyId+'_'+type, prev = replyVotes[replyId];
+  if(prev==='fire') reply.fires=Math.max(0,(reply.fires||0)-1);
+  if(prev==='ice')  reply.ices=Math.max(0,(reply.ices||0)-1);
+  if(prev===type){delete replyVotes[replyId];}
+  else{if(type==='fire')reply.fires=(reply.fires||0)+1; else reply.ices=(reply.ices||0)+1; replyVotes[replyId]=type;}
+  localStorage.setItem('sl_rv',JSON.stringify(replyVotes));
   saveTakes();
-  var s=document.getElementById('comments-'+id);
-  if(s) s.innerHTML=take.comments.map(makeCommentHtml).join('')+makeCommentInput(id);
-  document.querySelectorAll('[data-take-id="'+id+'"] .t-btn:not(.t-btn-fire):not(.t-btn-ice):not(.t-btn-clap):not(.t-btn-share)').forEach(function(b){b.textContent='💬 '+take.comments.length;});
+  var container = document.getElementById('reply-'+replyId);
+  if(container){
+    var fBtn=container.querySelector('.rv-fire'); if(fBtn){fBtn.textContent='🔥 '+(reply.fires||0);fBtn.classList.toggle('voted-fire',replyVotes[replyId]==='fire');}
+    var iBtn=container.querySelector('.rv-ice');  if(iBtn){iBtn.textContent='❄️ '+(reply.ices||0);iBtn.classList.toggle('voted-ice',replyVotes[replyId]==='ice');}
+  }
 };
 
-var clapBackTargetId = null;
-window.clapBack = function(id) {
-  clapBackTargetId = id;
-  var take=TAKES.find(function(t){return t.id===id;});
-  openTakeModal('', take||null);
+window.toggleReplyBox = function(takeId) {
+  var rs = document.getElementById('replies-'+takeId); if(!rs) return;
+  var inputRow = rs.querySelector('.reply-input-row');
+  if(!inputRow){
+    var html = '<div class="reply-input-row">'+
+      '<input class="reply-input" id="ri-'+takeId+'" placeholder="Write a reply..." maxlength="280" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();submitReply(\''+takeId+'\');}">'+
+      '<button class="reply-submit-btn" onclick="submitReply(\''+takeId+'\')">Reply</button>'+
+    '</div>';
+    rs.insertAdjacentHTML('afterbegin', html);
+    var inp = document.getElementById('ri-'+takeId); if(inp) inp.focus();
+  } else {
+    inputRow.remove();
+  }
+};
+
+window.submitReply = function(takeId) {
+  var inp = document.getElementById('ri-'+takeId); if(!inp||!inp.value.trim()) return;
+  var take = TAKES.find(function(t){return t.id===takeId;}); if(!take) return;
+  var text = stripHTML(inp.value).slice(0,280);
+  if(PROFANITY_RE.test(text)) return;
+  if(!take.replies) take.replies=[];
+  var newReply = {id:genId(), user:'@you', text:text, fires:0, ices:0, ts:Date.now(), replies:[]};
+  take.replies.push(newReply);
+  saveTakes();
+  inp.value='';
+  var listEl = document.getElementById('reply-list-'+takeId);
+  if(listEl) listEl.innerHTML = renderReplyList(take.replies, takeId, false);
+  var cntEl = document.querySelector('[data-take-id="'+takeId+'"] .ta-reply-count'); if(cntEl) cntEl.textContent=take.replies.length;
+};
+
+window.submitNestedReply = function(takeId, replyId) {
+  var inp = document.getElementById('nri-'+replyId); if(!inp||!inp.value.trim()) return;
+  var take = TAKES.find(function(t){return t.id===takeId;}); if(!take) return;
+  var reply = (take.replies||[]).find(function(r){return r.id===replyId;}); if(!reply) return;
+  var text = stripHTML(inp.value).slice(0,280);
+  if(PROFANITY_RE.test(text)) return;
+  if(!reply.replies) reply.replies=[];
+  reply.replies.push({id:genId(), user:'@you', text:text, ts:Date.now()});
+  saveTakes();
+  inp.value='';
+  var nr = document.getElementById('nested-replies-'+replyId);
+  if(nr) nr.innerHTML = (reply.replies||[]).map(function(nr2){
+    return '<div class="nested-reply"><span style="font-family:Oswald,sans-serif;font-size:11px;color:var(--red);margin-right:5px">'+esc(nr2.user)+'</span><span class="nested-reply-text">'+esc(nr2.text)+'</span></div>';
+  }).join('');
+};
+
+window.expandReplies = function(takeId) {
+  var take = TAKES.find(function(t){return t.id===takeId;}); if(!take) return;
+  var listEl = document.getElementById('reply-list-'+takeId);
+  if(listEl) listEl.innerHTML = renderReplyList(take.replies||[], takeId, true);
+};
+
+function renderReplyList(replies, takeId, showAll) {
+  if(!replies||!replies.length) return '';
+  var shown = showAll ? replies : replies.slice(0,2);
+  var html = shown.map(function(r){
+    var rv = replyVotes[r.id];
+    var nestedHtml = (r.replies||[]).slice(0,2).map(function(nr){
+      return '<div class="nested-reply"><span style="font-family:Oswald,sans-serif;font-size:11px;color:var(--red);margin-right:5px">'+esc(nr.user)+'</span><span class="nested-reply-text">'+esc(nr.text)+'</span></div>';
+    }).join('');
+    return '<div class="reply-item" id="reply-'+r.id+'">'+
+      '<div class="reply-avatar" style="background:'+avatarColor(r.user)+'">'+esc(r.user.replace('@','').slice(0,2).toUpperCase())+'</div>'+
+      '<div class="reply-content">'+
+        '<span class="reply-user">'+esc(r.user)+'</span><span class="reply-ts">'+timeAgo(r.ts)+'</span>'+
+        '<div class="reply-text">'+esc(r.text)+'</div>'+
+        '<div class="reply-votes">'+
+          '<button class="reply-vote-btn rv-fire'+(rv==='fire'?' voted-fire':'')+'" onclick="voteReply(\''+takeId+'\',\''+r.id+'\',\'fire\',this)">🔥 '+(r.fires||0)+'</button>'+
+          '<button class="reply-vote-btn rv-ice'+(rv==='ice'?' voted-ice':'')+'" onclick="voteReply(\''+takeId+'\',\''+r.id+'\',\'ice\',this)">❄️ '+(r.ices||0)+'</button>'+
+          '<button class="reply-vote-btn" onclick="document.getElementById(\'nri-'+r.id+'\').style.display=document.getElementById(\'nri-'+r.id+'\').style.display===\'block\'?\'none\':\'block\'" style="color:var(--muted)">↩ Reply</button>'+
+        '</div>'+
+        '<div id="nested-replies-'+r.id+'">'+nestedHtml+'</div>'+
+        '<input id="nri-'+r.id+'" placeholder="Reply to '+esc(r.user)+'..." maxlength="280" style="display:none;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;color:#fff;font-family:Inter,sans-serif;font-size:12px;outline:none;margin-top:6px" onkeydown="if(event.key===\'Enter\')submitNestedReply(\''+takeId+'\',\''+r.id+'\')">'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  if(!showAll && replies.length > 2) {
+    html += '<button class="show-more-replies" onclick="expandReplies(\''+takeId+'\')">View all '+replies.length+' replies ↓</button>';
+  }
+  return html;
+}
+
+/* ── QUOTE / REPOST / STITCH / DUET ── */
+window.quoteTake = function(id) {
+  var take = TAKES.find(function(t){return t.id===id;}); if(!take) return;
+  openTakeModal('', take, 'quote');
+};
+window.repostTake = function(id) {
+  var take = TAKES.find(function(t){return t.id===id;}); if(!take) return;
+  openTakeModal('', take, 'repost');
+};
+window.stitchTake = function(id) {
+  var take = TAKES.find(function(t){return t.id===id;}); if(!take) return;
+  openTakeModal('', take, 'stitch');
+};
+window.duetTake = function(id) {
+  var take = TAKES.find(function(t){return t.id===id;}); if(!take) return;
+  openTakeModal('', take, 'duet');
 };
 
 window.shareTake = function(id, evt) {
   document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});
-  var take=TAKES.find(function(t){return t.id===id;});
-  var link='https://fantakes.app';
-  var rawTxt=take?take.quote.replace(/^"|"$/g,'')+' — via Sideline on fantakes.app':'Hot sports take on Sideline! fantakes.app';
-  var igTxt=rawTxt+'\n\n'+link+'\n\n#FanTakes #sports #sideline';
-  var ttTxt=rawTxt+'\n\n'+link+'\n\n#FanTakes #sports #hottake #sideline';
-  var tw='https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt+'\n\n'+link);
-  var menu=document.createElement('div'); menu.className='share-menu';
-  var copy="navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Copied!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},900);";
-  var copyIG="navigator.clipboard&&navigator.clipboard.writeText("+JSON.stringify(igTxt)+");this.textContent='✓ Copied! Paste in Instagram caption';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1400);";
-  var copyTT="navigator.clipboard&&navigator.clipboard.writeText("+JSON.stringify(ttTxt)+");this.textContent='✓ Copied! Paste in TikTok caption';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},1400);";
-  menu.innerHTML=
+  var take = TAKES.find(function(t){return t.id===id;});
+  var link = 'https://fantakes.app';
+  var rawTxt = take ? (take.text||'').slice(0,200)+' — via Sideline' : 'Hot sports take on Sideline! fantakes.app';
+  var tw = 'https://twitter.com/intent/tweet?text='+encodeURIComponent(rawTxt+'\n\n'+link);
+  var menu = document.createElement('div'); menu.className='share-menu';
+  var copyFn = "navigator.clipboard&&navigator.clipboard.writeText('"+link+"');this.textContent='✓ Copied!';setTimeout(function(){document.querySelectorAll('.share-menu').forEach(function(m){m.remove();});},900);";
+  menu.innerHTML =
     '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);padding:6px 12px 4px;text-transform:uppercase;letter-spacing:0.06em">Share via</div>'+
-    '<button class="share-menu-item" onclick="'+copy+'">🔗 Copy Link</button>'+
+    '<button class="share-menu-item" onclick="'+copyFn+'">🔗 Copy Link</button>'+
     '<a class="share-menu-item" href="'+tw+'" target="_blank" rel="noopener">𝕏 Post on X</a>'+
-    '<button class="share-menu-item" onclick="'+copyIG+'">📸 Instagram (copy + link)</button>'+
-    '<button class="share-menu-item" onclick="'+copyTT+'">🎵 TikTok (copy + link)</button>';
+    '<button class="share-menu-item" onclick="quoteTake(\''+id+'\');document.querySelectorAll(\'.share-menu\').forEach(function(m){m.remove();})">🔁 Quote This Take</button>';
   var btn=evt.currentTarget, rect=btn.getBoundingClientRect();
-  menu.style.cssText='bottom:'+(window.innerHeight-rect.top+6)+'px;left:'+Math.max(8,rect.left-60)+'px;';
+  menu.style.cssText='bottom:'+(window.innerHeight-rect.top+6)+'px;left:'+Math.max(8,rect.left-80)+'px;';
   document.body.appendChild(menu);
   setTimeout(function(){
     function cl(e){if(!menu.contains(e.target)){menu.remove();document.removeEventListener('click',cl);}}
     document.addEventListener('click',cl);
   },50);
+  if(take){take.shareCount=(take.shareCount||0)+1;saveTakes();}
 };
 
+/* ── COMPOSER ── */
 var activeSport='NBA';
-window.openTakeModal=function(prefill, origTake){
-  var inp=document.getElementById('take-input'); if(inp) inp.value=prefill||'';
-  var cc=document.getElementById('take-char-count'); if(cc) cc.textContent=(prefill?prefill.length:0)+' / 280';
-  var un=document.getElementById('take-username'); if(un) un.value='';
-  var ctx=document.getElementById('clapback-context');
-  var cq=document.getElementById('clapback-quote');
-  if(ctx&&cq){
-    if(origTake){ctx.style.display='block';cq.textContent=origTake.quote||'';}
-    else{ctx.style.display='none';cq.textContent='';}
-  }
-  var modal=document.getElementById('take-modal');
-  if(modal){modal.classList.add('open');document.body.style.overflow='hidden';}
-  setTimeout(function(){inp&&inp.focus();},80);
+
+window.setTakeMode = function(mode, btn) {
+  composerMode = mode;
+  document.querySelectorAll('.comp-type-btn').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  var isShort=mode==='short', isLong=mode==='long', isThread=mode==='thread';
+  var sa=document.getElementById('comp-short-area'), la=document.getElementById('comp-long-area'), ta=document.getElementById('comp-thread-area');
+  if(sa) sa.style.display=isShort?'block':'none';
+  if(la) la.style.display=isLong?'block':'none';
+  if(ta) ta.style.display=isThread?'block':'none';
+  updateCharCount();
 };
-window.closeTakeModal=function(){
-  document.getElementById('take-modal').classList.remove('open');
-  document.body.style.overflow='';
-  var ctx=document.getElementById('clapback-context'); if(ctx) ctx.style.display='none';
-  var errEl=document.getElementById('take-error'); if(errEl){errEl.style.display='none';errEl.textContent='';}
-  var inp=document.getElementById('take-input'); if(inp) inp.style.borderColor='';
-  clapBackTargetId=null;
+
+window.addThreadPart = function() {
+  if(threadPartCount>=5) return;
+  threadPartCount++;
+  var list = document.getElementById('thread-parts-list'); if(!list) return;
+  var idx = threadPartCount;
+  var div = document.createElement('div'); div.className='thread-part-comp'; div.id='tpc-'+idx;
+  div.innerHTML =
+    '<div class="thread-part-comp-line"><div class="thread-part-comp-dot"></div><div class="thread-part-comp-connector"></div></div>'+
+    '<div class="thread-part-comp-area">'+
+      '<div class="thread-part-meta"><span class="thread-part-label">Part '+idx+'</span>'+
+        (idx>1?'<button class="remove-part-btn" onclick="removeThreadPart('+idx+')">✕ Remove</button>':'')+'</div>'+
+      '<textarea class="comp-thread-input" id="tti-'+idx+'" placeholder="Continue your take..." maxlength="500" oninput="updateThreadCount(this,'+idx+')"></textarea>'+
+      '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-align:right" id="ttc-'+idx+'">0 / 500</div>'+
+    '</div>';
+  list.appendChild(div);
+  var addBtn = document.getElementById('add-thread-part-btn');
+  if(addBtn) addBtn.disabled = threadPartCount>=5;
+  document.getElementById('tti-'+idx)&&document.getElementById('tti-'+idx).focus();
 };
-window.updateTakeCount=function(el){
-  var l=el.value.length; if(l>280){el.value=el.value.slice(0,280);l=280;}
+
+window.removeThreadPart = function(idx) {
+  var el = document.getElementById('tpc-'+idx); if(el) el.remove();
+  threadPartCount--;
+  var addBtn = document.getElementById('add-thread-part-btn'); if(addBtn) addBtn.disabled=false;
+};
+
+window.updateThreadCount = function(el, idx) {
+  var cc = document.getElementById('ttc-'+idx); if(cc) cc.textContent=el.value.length+' / 500';
+};
+
+window.handleVideoUpload = function(inp) {
+  var file = inp.files&&inp.files[0]; if(!file) return;
+  if(file.size > 60*1024*1024){showTakeError('Video must be under 60MB');inp.value='';return;}
+  composerMediaType='video'; composerMediaData=null; composerMediaThumb=null;
+  var url = URL.createObjectURL(file);
+  var vid = document.getElementById('media-preview-vid');
+  var img = document.getElementById('media-preview-img');
+  var wrap = document.getElementById('media-preview');
+  if(vid){vid.src=url;vid.style.display='block';}
+  if(img) img.style.display='none';
+  if(wrap) wrap.style.display='block';
+  /* extract thumbnail */
+  var tmpVid = document.createElement('video');
+  tmpVid.src=url; tmpVid.muted=true; tmpVid.playsInline=true;
+  tmpVid.addEventListener('loadeddata',function(){
+    tmpVid.currentTime=0.5;
+  });
+  tmpVid.addEventListener('seeked',function(){
+    var canvas = document.getElementById('thumb-canvas');
+    if(canvas){
+      canvas.width=320; canvas.height=180;
+      var ctx2=canvas.getContext('2d');
+      ctx2.drawImage(tmpVid,0,0,320,180);
+      try{composerMediaThumb=canvas.toDataURL('image/jpeg',0.7);}catch(e){}
+    }
+  });
+  tmpVid.load();
+};
+
+window.handleImageUpload = function(inp) {
+  var file = inp.files&&inp.files[0]; if(!file) return;
+  if(file.size > 10*1024*1024){showTakeError('Image must be under 10MB');inp.value='';return;}
+  composerMediaType='image';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    composerMediaData = e.target.result;
+    var img = document.getElementById('media-preview-img');
+    var vid = document.getElementById('media-preview-vid');
+    var wrap = document.getElementById('media-preview');
+    if(img){img.src=e.target.result;img.style.display='block';}
+    if(vid) vid.style.display='none';
+    if(wrap) wrap.style.display='block';
+  };
+  reader.readAsDataURL(file);
+};
+
+window.removeMedia = function() {
+  composerMediaType=null; composerMediaData=null; composerMediaThumb=null;
+  var wrap=document.getElementById('media-preview'); if(wrap) wrap.style.display='none';
+  var vid=document.getElementById('media-preview-vid'); if(vid){vid.src='';vid.style.display='none';}
+  var img=document.getElementById('media-preview-img'); if(img){img.src='';img.style.display='none';}
+  var vu=document.getElementById('video-upload'); if(vu) vu.value='';
+  var iu=document.getElementById('image-upload'); if(iu) iu.value='';
+};
+
+window.toggleGameDropdown = function() {
+  var dd = document.getElementById('game-dropdown'); if(!dd) return;
+  if(dd.style.display==='block'){dd.style.display='none';return;}
+  dd.style.display='block';
+  var liveGames = allGames.filter(function(g){return g.state==='in';});
+  if(!liveGames.length){dd.innerHTML='<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);padding:8px 10px">No live games right now</div>';return;}
+  dd.innerHTML = liveGames.map(function(g){
+    var sel = composerLinkedGame && composerLinkedGame.id===g.id;
+    return '<div class="game-dropdown-item'+(sel?' selected':'')+'" onclick="linkGame(\''+esc(g.id||g.label)+'\',\''+esc(g.label)+'\',\''+esc(g.detail||'')+'\')">'+(sel?'✓ ':'')+esc(g.label)+': '+esc(g.away.name)+' '+esc(String(g.away.score))+' - '+esc(g.home.name)+' '+esc(String(g.home.score))+'</div>';
+  }).join('');
+};
+
+window.linkGame = function(id, label, detail) {
+  composerLinkedGame = {id:id, label:label, detail:detail};
+  var btn = document.getElementById('link-game-btn');
+  if(btn){btn.textContent='⚡ '+label+(detail?' · '+detail:'');btn.classList.add('linked');}
+  var dd = document.getElementById('game-dropdown'); if(dd) dd.style.display='none';
+};
+
+function showTakeError(msg) {
+  var el=document.getElementById('take-error');
+  if(el){el.textContent=msg;el.style.display='block';}
+}
+function hideTakeError() {
+  var el=document.getElementById('take-error');
+  if(el){el.style.display='none';el.textContent='';}
+}
+
+window.onMainInputChange = function() {
+  var inp=document.getElementById('take-input'); if(!inp) return;
+  if(inp.value.length>280) inp.value=inp.value.slice(0,280);
+  updateCharCount();
+};
+window.onLongInputChange = function() {
+  var inp=document.getElementById('take-input-long'); if(!inp) return;
+  if(inp.value.length>2000) inp.value=inp.value.slice(0,2000);
+  updateCharCount();
+};
+function updateCharCount() {
   var cc=document.getElementById('take-char-count');
-  if(cc){cc.textContent=l+' / 280';cc.style.color=l>250?'var(--red)':'var(--muted)';}
-};
+  if(!cc) return;
+  var len=0, max=280;
+  if(composerMode==='short'){var i=document.getElementById('take-input');if(i)len=i.value.length;max=280;}
+  else if(composerMode==='long'){var i=document.getElementById('take-input-long');if(i)len=i.value.length;max=2000;}
+  else{cc.textContent='Thread mode';return;}
+  cc.textContent=len+' / '+max;
+  cc.className='char-count'+(len>max*0.9?' danger':len>max*0.75?' warn':'');
+}
+window.updateTakeCount = window.onMainInputChange;
+
 window.pickSport=function(sport,el){
   activeSport=sport;
   document.querySelectorAll('.sport-pick').forEach(function(b){b.classList.remove('active');});
   el.classList.add('active');
 };
+
+window.openTakeModal=function(prefill, origTake, mode){
+  hideTakeError();
+  composerMode = mode||'short';
+  composerQuotedTakeId = null;
+  composerLinkedGame = null;
+  var inp=document.getElementById('take-input'); if(inp) inp.value=prefill||'';
+  var inpL=document.getElementById('take-input-long'); if(inpL) inpL.value='';
+  var un=document.getElementById('take-username'); if(un) un.value='';
+  removeMedia();
+
+  /* Type buttons */
+  var typeRow=document.getElementById('comp-type-row');
+  var qctx=document.getElementById('quote-context');
+  var title=document.getElementById('composer-title');
+
+  if(mode==='quote'||mode==='repost'||mode==='stitch'||mode==='duet'){
+    if(typeRow) typeRow.style.display='none';
+    composerQuotedTakeId = origTake?origTake.id:null;
+    var labelMap={quote:'🔁 Quoting:',repost:'🔁 Reposting:',stitch:'✂️ Stitched from:',duet:'⚔️ Duet with:'};
+    var titleMap={quote:'Quote This Take',repost:'Repost With Comment',stitch:'Stitch This Take',duet:'Duet This Take'};
+    if(title) title.textContent=(titleMap[mode]||'Your Take')+' 🔥';
+    if(qctx&&origTake){
+      qctx.style.display='block';
+      var lbl=document.getElementById('quote-context-label'); if(lbl) lbl.textContent=labelMap[mode]||'Quoting:';
+      var av=document.getElementById('qc-avatar');
+      if(av){av.textContent=origTake.user.replace('@','').slice(0,2).toUpperCase();av.style.background=avatarColor(origTake.user);}
+      var qu=document.getElementById('qc-user'); if(qu) qu.textContent=origTake.user;
+      var qt=document.getElementById('qc-text'); if(qt) qt.textContent=(origTake.text||origTake.quote||'').slice(0,150);
+    }
+    /* force short mode for these */
+    composerMode='short';
+    var sa=document.getElementById('comp-short-area'); if(sa) sa.style.display='block';
+    var la=document.getElementById('comp-long-area'); if(la) la.style.display='none';
+    var ta=document.getElementById('comp-thread-area'); if(ta) ta.style.display='none';
+  } else {
+    if(typeRow) typeRow.style.display='flex';
+    if(qctx) qctx.style.display='none';
+    if(title) title.textContent='Drop Your Take 🔥';
+    setTakeMode(composerMode, document.getElementById('ctype-'+composerMode));
+  }
+
+  /* reset thread */
+  threadPartCount=1;
+  var tlist=document.getElementById('thread-parts-list');
+  if(tlist){
+    tlist.innerHTML='<div class="thread-part-comp" id="tpc-1">'+
+      '<div class="thread-part-comp-line"><div class="thread-part-comp-dot"></div><div class="thread-part-comp-connector"></div></div>'+
+      '<div class="thread-part-comp-area">'+
+        '<div class="thread-part-meta"><span class="thread-part-label">Part 1</span></div>'+
+        '<textarea class="comp-thread-input" id="tti-1" placeholder="Start your thread..." maxlength="500" oninput="updateThreadCount(this,1)"></textarea>'+
+        '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-align:right" id="ttc-1">0 / 500</div>'+
+      '</div></div>';
+  }
+  var addBtn=document.getElementById('add-thread-part-btn'); if(addBtn) addBtn.disabled=false;
+
+  /* reset game link */
+  var lgBtn=document.getElementById('link-game-btn');
+  if(lgBtn){lgBtn.textContent='⚡ Link to Live Game';lgBtn.classList.remove('linked');}
+  var dd=document.getElementById('game-dropdown'); if(dd) dd.style.display='none';
+
+  updateCharCount();
+  var modal=document.getElementById('take-modal');
+  if(modal){modal.classList.add('open');document.body.style.overflow='hidden';}
+  setTimeout(function(){var i=document.getElementById('take-input');if(i)i.focus();},80);
+};
+
+window.closeTakeModal=function(){
+  var m=document.getElementById('take-modal'); if(m) m.classList.remove('open');
+  document.body.style.overflow='';
+  hideTakeError();
+  composerQuotedTakeId=null; composerLinkedGame=null; composerMediaType=null; composerMediaData=null; composerMediaThumb=null;
+};
+
 window.submitTake=function(){
-  var errEl=document.getElementById('take-error');
-  if(errEl){errEl.style.display='none';errEl.textContent='';}
-  var inp=document.getElementById('take-input');
-  var text=stripHTML(inp?inp.value:'').slice(0,280);
-  if(!text){
-    if(inp){inp.style.borderColor='var(--red)';inp.focus();}
-    return;
-  }
-  if(PROFANITY_RE.test(text)){
-    if(errEl){errEl.textContent='Keep it clean — slurs and extreme language are not allowed.';errEl.style.display='block';}
-    if(inp){inp.style.borderColor='var(--red)';inp.focus();}
-    return;
-  }
+  hideTakeError();
   var unEl=document.getElementById('take-username');
-  var rawUname=stripHTML(unEl?unEl.value:'').replace(/[^a-zA-Z0-9_@.\-]/g,'').slice(0,30)||'@you';
+  var rawUname=stripHTML(unEl?unEl.value:'').replace(/[^a-zA-Z0-9_@.\-]/g,'').slice(0,30)||'@fan';
   var uname=rawUname[0]==='@'?rawUname:'@'+rawUname;
-  var newTake={id:Date.now(),user:uname,team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[],clapBackOf:clapBackTargetId||null};
-  takeVotes[newTake.id]='fire';
-  if(clapBackTargetId) {
-    var orig=TAKES.find(function(t){return t.id===clapBackTargetId;});
-    if(orig) orig.cbs=(orig.cbs||0)+1;
+  var newTake={
+    id:genId(), user:uname, team:activeSport+' fan', sport:activeSport,
+    fires:1, ices:0, replies:[], shareCount:0, ts:Date.now(),
+    gameTag: composerLinkedGame||null,
+    videoThumb: composerMediaType==='video'?composerMediaThumb:null,
+    imageUrl: composerMediaType==='image'?composerMediaData:null,
+    quotedTakeId: composerQuotedTakeId||null,
+  };
+  if(composerMode==='short'||composerMode==='quote'||composerMode==='repost'||composerMode==='stitch'||composerMode==='duet'){
+    var inp=document.getElementById('take-input');
+    var text=stripHTML(inp?inp.value:'').slice(0,280);
+    if(!text&&!composerMediaType&&composerMode==='short'){showTakeError('Write something first!');if(inp){inp.style.borderColor='var(--red)';inp.focus();}return;}
+    if(PROFANITY_RE.test(text)){showTakeError('Keep it clean — no slurs or extreme language.');return;}
+    newTake.type=composerMode==='short'?'short':composerMode;
+    newTake.text=text;
+  } else if(composerMode==='long'){
+    var inp=document.getElementById('take-input-long');
+    var text=stripHTML(inp?inp.value:'').slice(0,2000);
+    if(!text){showTakeError('Write something first!');if(inp){inp.focus();}return;}
+    if(PROFANITY_RE.test(text)){showTakeError('Keep it clean — no slurs or extreme language.');return;}
+    newTake.type='long'; newTake.text=text;
+  } else if(composerMode==='thread'){
+    var parts=[];
+    for(var i=1;i<=5;i++){var el=document.getElementById('tti-'+i);if(el&&el.value.trim())parts.push(stripHTML(el.value).slice(0,500));}
+    if(!parts.length){showTakeError('Add at least one part to your thread!');return;}
+    for(var j=0;j<parts.length;j++){if(PROFANITY_RE.test(parts[j])){showTakeError('Keep it clean.');return;}}
+    newTake.type='thread'; newTake.parts=parts; newTake.text=parts[0];
   }
-  clapBackTargetId=null;
+  takeVotes[newTake.id]='fire';
   TAKES.unshift(newTake);
   if(TAKES.length>100) TAKES=TAKES.slice(0,100);
+  saveTakeVotes(); saveTakes();
   closeTakeModal();
   refreshTakesUI();
   showTab('takes',document.querySelectorAll('.tab')[6]);
@@ -1077,24 +1705,22 @@ function trendingTakeRow(t, rank) {
   var fp=total?Math.round(fires/total*100):50;
   var voted=takeVotes[t.id];
   var rankColor = rank===1?'var(--red)':rank===2?'#FF8C00':rank===3?'#D29922':'var(--border)';
-  return '<div class="take-card" style="display:flex;gap:14px;align-items:flex-start;cursor:pointer" onclick="showTab(\'takes\',document.querySelectorAll(\'.tab\')[6])">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:44px;font-weight:700;color:'+rankColor+';min-width:48px;text-align:center;line-height:1;padding-top:2px">#'+rank+'</div>'+
+  return '<div class="take-card2" data-take-id="'+t.id+'" style="cursor:pointer" onclick="showTab(\'takes\',document.querySelectorAll(\'.tab\')[6])">'+
+    '<div class="take-inner" style="display:flex;gap:14px;align-items:flex-start">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:42px;font-weight:700;color:'+rankColor+';min-width:46px;text-align:center;line-height:1;padding-top:2px">#'+rank+'</div>'+
     '<div style="flex:1;min-width:0">'+
       '<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);margin-bottom:4px">'+esc(t.user)+' · '+esc(t.sport||'Sports')+(t.ts?' · '+timeAgo(t.ts):'')+'</div>'+
-      '<div style="font-family:Oswald,sans-serif;font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:10px">'+esc(t.quote)+'</div>'+
-      '<div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:6px;overflow:hidden">'+
-        '<div style="height:100%;width:'+fp+'%;background:linear-gradient(90deg,var(--red),#ff7043);border-radius:2px"></div>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'+
+      '<div style="font-family:Oswald,sans-serif;font-size:18px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:10px">'+esc(t.text||t.quote||'')+'</div>'+
+      '<div class="vote-bar2-track" style="margin-bottom:6px"><div class="vote-bar2-fill vb-fire-fill" style="width:'+fp+'%"></div></div>'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
         '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">🔥 '+fmtNum(fires)+' fires</span>'+
         '<span style="font-family:Space Mono,monospace;font-size:9px;color:#58A6FF">❄️ '+fmtNum(ices)+' ices</span>'+
-        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+fp+'% on fire · '+fmtNum(total)+' votes</span>'+
-        '<button class="t-btn t-btn-fire'+(voted==='fire'?' voted':'')+'" onclick="event.stopPropagation();voteTake('+t.id+',\'fire\')" style="padding:4px 10px;font-size:9px">🔥 Fire</button>'+
-        '<button class="t-btn t-btn-ice'+(voted==='ice'?' voted':'')+'" onclick="event.stopPropagation();voteTake('+t.id+',\'ice\')" style="padding:4px 10px;font-size:9px">❄️ Ice</button>'+
-        '<button class="t-btn t-btn-clap" onclick="event.stopPropagation();clapBack('+t.id+')" style="padding:4px 10px;font-size:9px">⚔ '+(t.cbs||0)+' CBs</button>'+
+        '<button class="ta-btn ta-fire'+(voted==='fire'?' voted':'')+'" onclick="event.stopPropagation();voteTake(\''+t.id+'\',\'fire\')" style="padding:4px 10px;font-size:9px">🔥 Fire</button>'+
+        '<button class="ta-btn ta-ice'+(voted==='ice'?' voted':'')+'" onclick="event.stopPropagation();voteTake(\''+t.id+'\',\'ice\')" style="padding:4px 10px;font-size:9px">❄️ Ice</button>'+
+        '<button class="ta-btn ta-reply" onclick="event.stopPropagation();quoteTake(\''+t.id+'\')" style="padding:4px 10px;font-size:9px">🔁 Quote</button>'+
       '</div>'+
     '</div>'+
-  '</div>';
+    '</div></div>';
 }
 
 function loadTrendingTab() {
@@ -1150,20 +1776,6 @@ var SPORT_BADGE_STYLES={
   'WNBA':'background:rgba(255,140,0,0.2);color:#FF8C00;',
 };
 
-function makeCommentHtml(c){
-  return '<div style="padding:8px 0;border-top:1px solid var(--border)">'+
-    '<span style="font-family:Oswald,sans-serif;font-size:12px;color:var(--red);margin-right:6px">'+esc(c.user)+'</span>'+
-    '<span style="font-family:Inter,sans-serif;font-size:12px;color:var(--text)">'+esc(c.text)+'</span>'+
-  '</div>';
-}
-
-function makeCommentInput(id){
-  return '<div style="display:flex;gap:8px;margin-top:10px">'+
-    '<input id="ci-'+id+'" placeholder="Add a comment..." style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:#fff;font-family:Inter,sans-serif;font-size:12px;outline:none" onkeydown="if(event.key===\'Enter\')submitComment('+id+')">'+
-    '<button onclick="submitComment('+id+')" style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;padding:8px 14px;border-radius:8px;cursor:pointer">Post</button>'+
-  '</div>';
-}
-
 /* ── GAME POPUP ── */
 window.showGamePopup = function(dataStr) {
   var g; try { g=JSON.parse(dataStr); } catch(e){return;}
@@ -1192,62 +1804,177 @@ window.closeGamePopup=function(){
 function renderHallCard(t, rank) {
   var fires=t.fires||0, ices=t.ices||0, total=fires+ices;
   var fp=total?Math.round(fires/total*100):50;
-  return '<div class="take-card" style="display:flex;gap:14px;align-items:center">'+
-    '<div style="font-family:Oswald,sans-serif;font-size:42px;font-weight:700;color:var(--border);min-width:44px;text-align:center;line-height:1">'+rank+'</div>'+
+  var badges=getHofBadges(t);
+  var rankColors=['','var(--red)','#FF8C00','var(--amber)'];
+  return '<div class="take-card2" data-take-id="'+t.id+'"><div class="take-inner" style="display:flex;gap:14px;align-items:flex-start">'+
+    '<div style="font-family:Oswald,sans-serif;font-size:38px;font-weight:700;color:'+(rankColors[rank]||'var(--border)')+';min-width:42px;text-align:center;line-height:1;padding-top:4px">#'+rank+'</div>'+
     '<div style="flex:1;min-width:0">'+
-      '<div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:6px">'+esc(t.quote)+'</div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
-        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">🔥 '+fmtNum(fires)+' fires</span>'+
+      (badges?'<div style="margin-bottom:6px">'+badges+'</div>':'')+
+      '<div style="font-family:Oswald,sans-serif;font-size:17px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:8px">'+esc(t.text||t.quote||'')+'</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">'+
+        '<div class="take-avatar2" style="width:22px;height:22px;font-size:9px;background:'+avatarColor(t.user)+'">'+esc(t.user.replace('@','').slice(0,2).toUpperCase())+'</div>'+
         '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(t.user)+'</span>'+
-        (t.sport?'<span style="font-family:Space Mono,monospace;font-size:8px;padding:2px 8px;border-radius:20px;background:rgba(255,61,61,0.15);color:var(--red)">'+esc(t.sport)+'</span>':'')+
+        (t.sport?'<span class="take-sport-badge" style="'+( SPORT_BADGE_STYLES[t.sport]||'background:rgba(255,61,61,0.15);color:var(--red);')+'">'+esc(t.sport)+'</span>':'')+
+        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--red)">🔥 '+fmtNum(fires)+'</span>'+
       '</div>'+
+    '</div>'+
+  '</div></div>';
+}
+
+/* ── TAKE CARD v2 ── */
+function renderTakeCard(t) {
+  var id = t.id;
+  var initials = t.user.replace('@','').slice(0,2).toUpperCase();
+  var aColor = avatarColor(t.user);
+  var fires=t.fires||0, ices=t.ices||0, total=fires+ices;
+  var fp=total?Math.round(fires/total*100):50, ip=100-fp;
+  var bs=SPORT_BADGE_STYLES[t.sport]||'background:rgba(255,61,61,0.15);color:var(--red);';
+  var voted=takeVotes[id];
+  var replies=t.replies||[];
+  var badges=getHofBadges(t);
+  var type=t.type||'short';
+  var isVideo=!!t.videoThumb, isImage=!!t.imageUrl;
+  var isThread=type==='thread', isLong=type==='long', isQuote=type==='quote'||type==='repost', isStitch=type==='stitch', isDuet=type==='duet';
+
+  /* type badge */
+  var typeBadge='';
+  if(isThread) typeBadge='<span class="take-type-badge type-badge-thread">🧵 Thread</span>';
+  else if(isLong) typeBadge='<span class="take-type-badge type-badge-long">📝 Long</span>';
+  else if(isVideo||t.videoThumb) typeBadge='<span class="take-type-badge type-badge-video">📹 Video</span>';
+
+  /* label above card */
+  var topLabel='';
+  if(isStitch) topLabel='<div class="take-meta-label stitch-label">✂️ Stitched take</div>';
+  else if(isDuet) topLabel='<div class="take-meta-label duet-label">⚔️ Duet</div>';
+  else if(isQuote&&t.quotedTakeId) topLabel='<div class="take-meta-label repost-label">🔁 '+esc(t.user)+' reposted</div>';
+
+  /* main text */
+  var textHtml='';
+  if(isThread&&t.parts&&t.parts.length){
+    var shownParts=t.parts.slice(0,2);
+    textHtml='<div class="thread-parts">';
+    shownParts.forEach(function(p,i){
+      var isLast=i===shownParts.length-1&&t.parts.length<=2;
+      textHtml+='<div class="thread-part">'+
+        '<div class="thread-part-line">'+
+          '<div class="thread-part-dot"></div>'+
+          (!isLast?'<div class="thread-part-connector"></div>':'')+
+        '</div>'+
+        '<div class="thread-part-content">'+
+          '<div class="thread-part-num">'+(i+1)+' / '+t.parts.length+'</div>'+
+          '<div class="thread-part-text">'+esc(p)+'</div>'+
+        '</div>'+
+      '</div>';
+    });
+    textHtml+='</div>';
+    if(t.parts.length>2) textHtml+='<button class="thread-view-more" onclick="event.stopPropagation()">View full thread ('+t.parts.length+' parts) →</button>';
+  } else if(isLong&&t.text){
+    var longText=esc(t.text);
+    var truncated=t.text.length>300;
+    textHtml='<div class="take-text-long'+(truncated?' take-text-truncated':'')+'" id="lt-'+id+'">'+longText+'</div>';
+    if(truncated) textHtml+='<button class="take-read-more" onclick="expandLong(\''+id+'\')">Read more...</button>';
+  } else {
+    textHtml='<div class="take-text-short">'+esc(t.text||t.quote||'')+'</div>';
+  }
+
+  /* media */
+  var mediaHtml='';
+  if(isVideo&&t.videoThumb){
+    mediaHtml='<div class="take-media"><div class="take-video-thumb">'+
+      '<img src="'+esc(t.videoThumb)+'" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px">'+
+      '<div class="take-video-play"><div class="take-video-play-btn"><div class="take-video-play-tri"></div></div></div>'+
+    '</div></div>';
+  } else if(isImage&&t.imageUrl){
+    mediaHtml='<div class="take-media"><img class="take-image" src="'+esc(t.imageUrl)+'" alt=""></div>';
+  }
+
+  /* quoted take */
+  var quotedHtml='';
+  if(t.quotedTakeId){
+    var orig=TAKES.find(function(x){return x.id===t.quotedTakeId;});
+    if(orig){
+      quotedHtml='<div class="quoted-take" onclick="event.stopPropagation()">'+
+        '<div class="quoted-take-header">'+
+          '<div class="quoted-take-avatar" style="background:'+avatarColor(orig.user)+';width:20px;height:20px;font-size:8px">'+esc(orig.user.replace('@','').slice(0,2).toUpperCase())+'</div>'+
+          '<span class="quoted-take-user">'+esc(orig.user)+'</span>'+
+          (orig.sport?'<span class="take-sport-badge" style="font-size:7px;'+(SPORT_BADGE_STYLES[orig.sport]||'background:rgba(255,61,61,0.15);color:var(--red);')+'">'+esc(orig.sport)+'</span>':'')+
+        '</div>'+
+        '<div class="quoted-take-text">'+esc((orig.text||orig.quote||'').slice(0,200))+'</div>'+
+      '</div>';
+    }
+  }
+
+  /* game tag */
+  var gameTagHtml='';
+  if(t.gameTag) gameTagHtml='<div class="game-tag">⚡ During '+esc(t.gameTag.label)+(t.gameTag.detail?' · '+esc(t.gameTag.detail):'')+'</div>';
+
+  /* badges */
+  var badgesHtml=badges?'<div style="margin-bottom:8px">'+badges+'</div>':'';
+
+  /* stitch/duet has no video upload yet — show reference label */
+  var stitchRef='';
+  if(isStitch) stitchRef='<div style="font-family:Space Mono,monospace;font-size:8px;color:var(--amber);margin-bottom:8px;background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.2);border-radius:6px;padding:4px 8px;display:inline-block">✂️ Stitched response</div>';
+  if(isDuet) stitchRef='<div style="font-family:Space Mono,monospace;font-size:8px;color:#58A6FF;margin-bottom:8px;background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.2);border-radius:6px;padding:4px 8px;display:inline-block">⚔️ Duet response</div>';
+
+  return '<div class="take-card2" data-take-id="'+id+'">'+
+    (topLabel?'<div style="padding:8px 16px 0;border-bottom:1px solid var(--border);margin-bottom:0">'+topLabel+'</div>':'')+
+    '<div class="take-inner">'+
+      /* header */
+      '<div class="take-head2">'+
+        '<div class="take-avatar2" style="background:'+aColor+'">'+initials+'</div>'+
+        '<div class="take-head2-info">'+
+          '<div class="take-username">'+esc(t.user)+'</div>'+
+          '<div class="take-sub">'+
+            (t.sport?'<span class="take-sport-badge" style="'+bs+'">'+esc(t.sport)+'</span>':'')+
+            '<span class="take-ts">'+timeAgo(t.ts||Date.now())+'</span>'+
+            typeBadge+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      /* badges */
+      badgesHtml+
+      /* game tag */
+      gameTagHtml+
+      /* stitch/duet ref */
+      stitchRef+
+      /* text content */
+      textHtml+
+      /* media */
+      mediaHtml+
+      /* quoted take */
+      quotedHtml+
+      /* vote bar */
+      '<div class="vote-bar2">'+
+        '<div class="vote-bar2-track"><div class="vote-bar2-fill" style="width:'+fp+'%"></div></div>'+
+        '<div class="vote-bar2-pcts">'+
+          '<span class="vb-fire-pct" style="color:var(--red)">🔥 '+fp+'%</span>'+
+          '<span class="vb-total" style="color:var(--faint)">'+fmtNum(total)+' votes</span>'+
+          '<span class="vb-ice-pct" style="color:#58A6FF">'+ip+'% ❄️</span>'+
+        '</div>'+
+      '</div>'+
+      /* actions */
+      '<div class="take-actions2">'+
+        '<button class="ta-btn ta-fire'+(voted==='fire'?' voted':'')+'" onclick="voteTake(\''+id+'\',\'fire\')">🔥 <span class="ta-fire-count">'+fmtNum(fires)+'</span></button>'+
+        '<button class="ta-btn ta-ice'+(voted==='ice'?' voted':'')+'" onclick="voteTake(\''+id+'\',\'ice\')">❄️ <span class="ta-ice-count">'+fmtNum(ices)+'</span></button>'+
+        '<button class="ta-btn ta-reply" onclick="toggleReplyBox(\''+id+'\')">💬 <span class="ta-reply-count">'+replies.length+'</span></button>'+
+        '<button class="ta-btn ta-repost" onclick="quoteTake(\''+id+'\')">🔁</button>'+
+        (isVideo?'<button class="ta-btn ta-stitch" onclick="stitchTake(\''+id+'\')">✂️</button>':'')+
+        '<button class="ta-btn ta-share" onclick="shareTake(\''+id+'\',event)">📤</button>'+
+      '</div>'+
+    '</div>'+
+    /* replies section */
+    '<div class="replies-section" id="replies-'+id+'">'+
+      (replies.length?'<div class="reply-list" id="reply-list-'+id+'">'+renderReplyList(replies,id,false)+'</div>':'<div class="reply-list" id="reply-list-'+id+'"></div>')+
     '</div>'+
   '</div>';
 }
 
-function renderTakeCard(t) {
-  var initials = t.user.replace('@','').slice(0,2).toUpperCase();
-  var fires = t.fires||0, ices=t.ices||0, cbs=t.cbs||0;
-  var total = fires+ices;
-  var fp = total ? Math.round(fires/total*100) : 50;
-  var ip = 100-fp;
-  var bs = SPORT_BADGE_STYLES[t.sport]||'background:rgba(255,61,61,0.15);color:var(--red);';
-  var voted = takeVotes[t.id];
-  var comments = t.comments||[];
-  return '<div class="take-card" data-take-id="'+t.id+'">'+
-    '<div class="take-head">'+
-      '<div style="display:flex;align-items:center;gap:10px">'+
-        '<div class="take-avatar">'+initials+'</div>'+
-        '<div><div class="take-user">'+esc(t.user)+'</div><div class="take-team">'+esc(t.team)+'</div></div>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:8px">'+
-        (t.sport?'<span class="take-badge" style="'+bs+'">'+esc(t.sport)+'</span>':'')+
-        '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--faint)">'+esc(t.ts?timeAgo(t.ts):'now')+'</span>'+
-      '</div>'+
-    '</div>'+
-    (t.clapBackOf?(function(){var orig=TAKES.find(function(x){return x.id===t.clapBackOf;});return orig?'<div style="border-left:3px solid var(--red);margin:0 0 10px;padding:6px 10px;background:rgba(255,61,61,0.07);border-radius:0 6px 6px 0"><div style="font-family:Space Mono,monospace;font-size:8px;color:var(--red);margin-bottom:4px">⚔ Clapping back at '+esc(orig.user)+'</div><div style="font-family:Oswald,sans-serif;font-size:13px;color:var(--muted);font-style:italic">'+esc(orig.quote)+'</div></div>':'';}()):'')  +
-    '<div class="take-quote">'+esc(t.quote)+'</div>'+
-    '<div class="vote-bar-wrap">'+
-      '<div class="vote-bar"><div class="vote-bar-fill" style="width:'+fp+'%"></div></div>'+
-      '<div class="vote-pcts">'+
-        '<span class="vote-fire-pct">🔥 '+fp+'% Fire</span>'+
-        '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--faint)">'+fmtNum(total)+' votes</span>'+
-        '<span class="vote-ice-pct">'+ip+'% Ice ❄️</span>'+
-      '</div>'+
-    '</div>'+
-    '<div class="take-actions-new">'+
-      '<button class="t-btn t-btn-fire'+(voted==='fire'?' voted':'')+'" onclick="voteTake('+t.id+',\'fire\')">🔥 '+fmtNum(fires)+'</button>'+
-      '<button class="t-btn t-btn-ice'+(voted==='ice'?' voted':'')+'" onclick="voteTake('+t.id+',\'ice\')">❄️ '+fmtNum(ices)+'</button>'+
-      '<button class="t-btn t-btn-clap" onclick="clapBack('+t.id+')">⚔ '+fmtNum(cbs)+'</button>'+
-      '<button class="t-btn" style="border-color:rgba(255,255,255,0.15);color:var(--muted)" onclick="toggleComments('+t.id+')">💬 '+comments.length+'</button>'+
-      '<button class="t-btn t-btn-share" onclick="shareTake('+t.id+',event)">↗ Share</button>'+
-    '</div>'+
-    '<div id="comments-'+t.id+'" style="display:none;margin-top:12px">'+
-      comments.map(makeCommentHtml).join('')+
-      makeCommentInput(t.id)+
-    '</div>'+
-  '</div>';
-}
+window.expandLong = function(id) {
+  var el=document.getElementById('lt-'+id);
+  var btn=el&&el.nextElementSibling;
+  if(el){el.classList.remove('take-text-truncated');}
+  if(btn&&btn.classList.contains('take-read-more')) btn.remove();
+};
 
 function loadHomeContent() {
   /* ── NEWS: direct fetch, bypass cache ── */
@@ -1296,7 +2023,7 @@ function loadHomeContent() {
   }
 }
 
-var SPORT_TAKES_IDX = { american:[0,1,4], soccer:[3], rugby:[2], racing:[5], combat:[] };
+var SPORT_TAB_MAP = { american:['NBA','NFL','MLB','NHL','WNBA'], soccer:['Soccer'], rugby:['Rugby'], combat:['UFC'], racing:['F1','Racing'] };
 
 function loadSportTab(tab) {
   /* news — direct fetch */
@@ -1312,8 +2039,8 @@ function loadSportTab(tab) {
         var srcCount = d.sources_used ? '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-left:8px">Pulling from '+d.sources_used+' sources</span>' : '';
         var secTitle = newsEl.previousElementSibling;
         if(secTitle && secTitle.classList.contains('sec') && srcCount) {
-          var t = secTitle.querySelector('.sec-title');
-          if(t && !t.querySelector('.src-count')) { var sp=document.createElement('span'); sp.className='src-count'; sp.innerHTML=srcCount; t.appendChild(sp); }
+          var sTitleEl = secTitle.querySelector('.sec-title');
+          if(sTitleEl && !sTitleEl.querySelector('.src-count')) { var sp=document.createElement('span'); sp.className='src-count'; sp.innerHTML=srcCount; sTitleEl.appendChild(sp); }
         }
         newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
       })
@@ -1333,12 +2060,12 @@ function loadSportTab(tab) {
       })
       .catch(function(){vidEl.innerHTML='<span class="empty">Could not load videos</span>';});
   }
-  /* takes */
+  /* takes: filter by sports for this tab */
   var takesEl = document.getElementById('takes-'+tab);
   if(takesEl) {
-    var idxs = SPORT_TAKES_IDX[tab]||[];
-    var filtered=idxs.map(function(i){return TAKES[i];}).filter(Boolean);
-    if(filtered.length) takesEl.innerHTML=filtered.map(renderTakeCard).join('');
+    var sports = SPORT_TAB_MAP[tab]||[];
+    var filtered = sports.length ? TAKES.filter(function(t){return sports.indexOf(t.sport)!==-1;}) : [];
+    takesEl.innerHTML = filtered.slice(0,4).map(renderTakeCard).join('') || '<span class="empty">No '+tab+' takes yet</span>';
   }
 }
 
