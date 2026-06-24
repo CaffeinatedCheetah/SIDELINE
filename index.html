@@ -751,12 +751,12 @@ function renderScores() {
 
 /* ── NEWS -- YOUR SERVER ONLY ── */
 function fetchNews(sport, callback) {
-  if(newsCache[sport]) { callback(newsCache[sport]); return; }
+  if(newsCache[sport] && newsCache[sport].length) { callback(newsCache[sport]); return; }
   fetch('/api/news?sport='+sport)
     .then(function(r){ return r.json(); })
     .then(function(d){
       var articles = d.articles || [];
-      newsCache[sport] = articles;
+      if(articles.length) newsCache[sport] = articles;
       callback(articles);
     })
     .catch(function(){ callback([]); });
@@ -788,12 +788,12 @@ function newsCardHtml(article, featured) {
 
 /* -- VIDEOS FETCHER -- */
 function fetchVideos(sport, callback) {
-  if(videoCache[sport]) { callback(videoCache[sport]); return; }
+  if(videoCache[sport] && videoCache[sport].length) { callback(videoCache[sport]); return; }
   fetch('/api/videos?sport=' + sport)
     .then(function(r){ return r.json(); })
     .then(function(d){
       var videos = d.videos || [];
-      videoCache[sport] = videos;
+      if(videos.length) videoCache[sport] = videos;
       callback(videos);
     })
     .catch(function(){ callback([]); });
@@ -989,28 +989,39 @@ function trendingTakeRow(t, rank) {
 }
 
 function loadTrendingTab() {
-  /* Takes: top 5 by fires */
+  /* Hot Takes: always live from local TAKES array */
   var sorted=TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
   setHTML('trending-takes', sorted.slice(0,5).map(function(t,i){return trendingTakeRow(t,i+1);}).join('') ||
     '<div class="empty" style="padding:20px 0">No takes yet — be the first to drop a hot take 🔥</div>');
 
-  /* News: fresh fetch */
+  /* Breaking News: direct fetch, ignore cache so we always get fresh articles */
   var nEl=document.getElementById('trending-news');
   if(nEl) {
-    nEl.innerHTML='<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Pulling breaking stories...</div>';
-    fetchNews('home', function(articles) {
-      if(!articles.length){nEl.innerHTML='<div class="empty" style="grid-column:1/-1">Stories loading...</div>';return;}
-      nEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
-    });
+    nEl.innerHTML='<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Pulling breaking stories...</div>';
+    fetch('/api/news?sport=home')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var articles=d.articles||[];
+        if(!articles.length){nEl.innerHTML='<div class="empty" style="grid-column:1/-1">No stories right now — check back soon</div>';return;}
+        newsCache['home']=articles;
+        nEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+      })
+      .catch(function(){nEl.innerHTML='<div class="empty" style="grid-column:1/-1">Could not load stories right now</div>';});
   }
 
-  /* Videos: reuse cache or fetch */
+  /* Must-Watch Highlights: direct fetch, ignore cache */
   var vEl=document.getElementById('trending-vids');
   if(vEl) {
-    vEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top highlights...</div>';
-    fetchVideos('all', function(vids){
-      vEl.innerHTML = vids.slice(0,8).map(vidCardHtml).join('') || '<span class="empty">Loading...</span>';
-    });
+    vEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading top highlights...</div>';
+    fetch('/api/videos?sport=all')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var vids=d.videos||[];
+        if(!vids.length){vEl.innerHTML='<span class="empty">No highlights available right now</span>';return;}
+        videoCache['all']=vids;
+        vEl.innerHTML=vids.slice(0,8).map(vidCardHtml).join('');
+      })
+      .catch(function(){vEl.innerHTML='<span class="empty">Could not load videos right now</span>';});
   }
 }
 
