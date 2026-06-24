@@ -731,7 +731,9 @@ function renderScores() {
   var combat=allGames.filter(function(g){return g.cat==='combat';});
   var racing=allGames.filter(function(g){return g.cat==='racing';});
 
-  setHTML('rail-home', allGames.slice(0,16).map(scoreCard).join('')||'<span class="empty">No games today</span>');
+  var homeGames=allGames.filter(function(g){return g.state==='in'||g.state==='post';});
+  var sortedHome=homeGames.slice().sort(function(a,b){return (b.state==='in'?1:0)-(a.state==='in'?1:0);});
+  setHTML('rail-home', sortedHome.slice(0,16).map(scoreCard).join('')||'<span class="empty">No live or recent games right now</span>');
   setHTML('rail-american', american.slice(0,14).map(scoreCard).join('')||'<span class="empty">No games today</span>');
   setHTML('rail-soccer', soccer.slice(0,12).map(scoreCard).join('')||'<span class="empty">No matches today</span>');
   setHTML('rail-rugby', rugby.slice(0,10).map(scoreCard).join('')||'<span class="empty">No matches today</span>');
@@ -1164,24 +1166,49 @@ function renderTakeCard(t) {
 }
 
 function loadHomeContent() {
+  /* ── NEWS: direct fetch, bypass cache ── */
   var newsEl = document.getElementById('home-news');
   var trendEl = document.getElementById('trending-cards');
   if(newsEl) {
-    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top stories...</div>';
+    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading top stories...</div>';
     if(trendEl) trendEl.innerHTML = '';
-    fetchNews('home', function(articles) {
-      if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">Stories loading...</div>'; return; }
-      newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
-      if(trendEl && articles.length > 5) {
-        trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
-      }
-    });
+    fetch('/api/news?sport=home')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var articles = d.articles || [];
+        if(!articles.length){
+          newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">No stories right now — check back soon</div>';
+          return;
+        }
+        newsCache['home'] = articles;
+        newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+        if(trendEl && articles.length > 5) {
+          trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
+        }
+      })
+      .catch(function(){
+        newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">Could not load stories right now</div>';
+      });
   }
+
+  /* ── VIDEOS: direct fetch, bypass cache ── */
   var vidEl = document.getElementById('home-vids');
   if(vidEl) {
-    fetchVideos('all', function(vids){
-      vidEl.innerHTML = vids.slice(0,4).map(vidCardHtml).join('') || '<span class="empty">Loading videos...</span>';
-    });
+    vidEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading videos...</div>';
+    fetch('/api/videos?sport=all')
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var vids = d.videos || [];
+        if(!vids.length){
+          vidEl.innerHTML='<span class="empty">No videos available right now</span>';
+          return;
+        }
+        videoCache['all'] = vids;
+        vidEl.innerHTML = vids.slice(0,4).map(vidCardHtml).join('');
+      })
+      .catch(function(){
+        vidEl.innerHTML='<span class="empty">Could not load videos right now</span>';
+      });
   }
 }
 

@@ -3,49 +3,84 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET');
 
   const sport = req.query.sport || 'home';
-  const NEWS_KEY = 'fa4847ed84614698b66c937a10a28c83';
 
-  const SPORT_QUERIES = {
-    home:     'sports NFL NBA soccer UFC "Formula 1" highlights',
-    american: 'NFL OR NBA OR MLB OR NHL basketball football',
-    soccer:   '"World Cup" OR "Premier League" OR "Champions League" OR "soccer transfer" OR Messi OR Ronaldo OR "La Liga"',
-    rugby:    '"rugby union" OR "rugby league" OR "Six Nations" OR "Super Rugby" OR "All Blacks"',
-    combat:   'UFC OR MMA OR boxing OR "fight night" OR "title fight"',
-    racing:   '"Formula 1" OR F1 OR NASCAR OR IndyCar OR "MotoGP"',
-    nfl:      'NFL football',
-    nba:      'NBA basketball',
-    mlb:      'MLB baseball',
-    nhl:      'NHL hockey',
-    ufc:      'UFC MMA fight',
-    f1:       '"Formula 1" F1 grand prix',
+  // ESPN public RSS feeds — no API key, no domain restrictions
+  const RSS_URLS = {
+    home:     ['https://www.espn.com/espn/rss/news'],
+    american: ['https://www.espn.com/espn/rss/nfl/news', 'https://www.espn.com/espn/rss/nba/news'],
+    soccer:   ['https://www.espn.com/espn/rss/soccer/news'],
+    rugby:    ['https://www.espn.com/espn/rss/news'],
+    combat:   ['https://www.espn.com/espn/rss/news'],
+    racing:   ['https://www.espn.com/espn/rss/news'],
+    nfl:      ['https://www.espn.com/espn/rss/nfl/news'],
+    nba:      ['https://www.espn.com/espn/rss/nba/news'],
+    mlb:      ['https://www.espn.com/espn/rss/mlb/news'],
+    nhl:      ['https://www.espn.com/espn/rss/nhl/news'],
   };
 
-  const query = SPORT_QUERIES[sport] || sport;
+  function extractTag(xml, tag) {
+    const m = xml.match(new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i'));
+    return m ? m[1].trim() : '';
+  }
+
+  function extractAttr(xml, tag, attr) {
+    const t = tag.replace(':', '\\:');
+    const m = xml.match(new RegExp(`<${t}[^>]*\\s${attr}="([^"]+)"`));
+    return m ? m[1] : '';
+  }
+
+  function clean(s) {
+    return s
+      .replace(/<[^>]+>/g, '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&apos;/g, "'")
+      .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function parseRSS(xml, sourceName) {
+    const items = [];
+    const re = /<item>([\s\S]*?)<\/item>/g;
+    let m;
+    while ((m = re.exec(xml)) !== null) {
+      const item = m[1];
+      const title = clean(extractTag(item, 'title'));
+      const link  = extractTag(item, 'link') || extractAttr(item, 'link', 'href') || extractAttr(item, 'atom:link', 'href');
+      const desc  = clean(extractTag(item, 'description'));
+      const pub   = extractTag(item, 'pubDate');
+      const image = extractAttr(item, 'media:thumbnail', 'url')
+                 || extractAttr(item, 'media:content', 'url')
+                 || extractAttr(item, 'enclosure', 'url')
+                 || '';
+      if (title && link) {
+        items.push({
+          title,
+          url:         link.trim(),
+          description: desc.slice(0, 200),
+          image,
+          source:      sourceName || 'ESPN',
+          publishedAt: pub ? new Date(pub).toISOString() : new Date().toISOString(),
+        });
+      }
+    }
+    return items;
+  }
 
   try {
-    const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${NEWS_KEY}`;
-    const response = await fetch(url);
-    const data = await response.json();
+    const urls = RSS_URLS[sport] || RSS_URLS['home'];
+    const results = await Promise.all(urls.map(async url => {
+      try {
+        const r = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Sideline/1.0; +https://fantakes.app)' },
+        });
+        if (!r.ok) return [];
+        return parseRSS(await r.text(), 'ESPN');
+      } catch { return []; }
+    }));
 
-    if (data.status !== 'ok') {
-      return res.status(500).json({ error: data.message });
-    }
-
-    const articles = (data.articles || [])
-      .filter(a => a.title && a.title !== '[Removed]' && a.urlToImage)
-      .slice(0, 20)
-      .map(a => ({
-        title:       a.title,
-        description: a.description,
-        url:         a.url,
-        image:       a.urlToImage,
-        source:      a.source?.name || 'News',
-        publishedAt: a.publishedAt,
-      }));
-
-    res.setHeader('Cache-Control', 's-maxage=300');
+    const articles = results.flat().slice(0, 20);
+    res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
     return res.status(200).json({ articles });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(200).json({ articles: [], error: err.message });
   }
 }
