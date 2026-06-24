@@ -586,6 +586,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
     </div>
     <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="updateTakeCount(this)" maxlength="280"></textarea>
+    <div id="take-error" style="display:none;font-family:Space Mono,monospace;font-size:10px;color:var(--red);margin-top:10px;padding:8px 12px;background:rgba(255,61,61,0.1);border-radius:6px;border-left:3px solid var(--red)"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
       <span id="take-char-count" style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">0 / 280</span>
       <button onclick="submitTake()" style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:12px 32px;border-radius:10px;cursor:pointer">Drop It 🔥</button>
@@ -600,6 +601,9 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
 /* ── ALL API CALLS GO THROUGH YOUR VERCEL SERVER ── */
 /* ── NO KEYS IN BROWSER. EVER. ── */
+
+var PROFANITY_RE = /\b(fuck(ing|er|ed|s|face)?|nigger|nigga|faggot|fag\b|cunt|motherfucker|motherfucking|cocksucker|kike|chink|spic|wetback)\b/i;
+function stripHTML(s){return String(s||'').replace(/<[^>]*>/g,'').replace(/&[a-z#0-9]+;/gi,' ').trim();}
 
 var SPORT_IMAGES = {
   'NFL':'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80',
@@ -972,6 +976,8 @@ window.closeTakeModal=function(){
   document.getElementById('take-modal').classList.remove('open');
   document.body.style.overflow='';
   var ctx=document.getElementById('clapback-context'); if(ctx) ctx.style.display='none';
+  var errEl=document.getElementById('take-error'); if(errEl){errEl.style.display='none';errEl.textContent='';}
+  var inp=document.getElementById('take-input'); if(inp) inp.style.borderColor='';
   clapBackTargetId=null;
 };
 window.updateTakeCount=function(el){
@@ -985,11 +991,22 @@ window.pickSport=function(sport,el){
   el.classList.add('active');
 };
 window.submitTake=function(){
-  var inp=document.getElementById('take-input'); var text=inp?inp.value.trim():'';
-  if(!text){if(inp){inp.style.borderColor='var(--red)';inp.focus();}return;}
+  var errEl=document.getElementById('take-error');
+  if(errEl){errEl.style.display='none';errEl.textContent='';}
+  var inp=document.getElementById('take-input');
+  var text=stripHTML(inp?inp.value:'').slice(0,280);
+  if(!text){
+    if(inp){inp.style.borderColor='var(--red)';inp.focus();}
+    return;
+  }
+  if(PROFANITY_RE.test(text)){
+    if(errEl){errEl.textContent='Keep it clean — slurs and extreme language are not allowed.';errEl.style.display='block';}
+    if(inp){inp.style.borderColor='var(--red)';inp.focus();}
+    return;
+  }
   var unEl=document.getElementById('take-username');
-  var uname=(unEl&&unEl.value.trim())||'@you';
-  if(uname&&uname[0]!=='@') uname='@'+uname;
+  var rawUname=stripHTML(unEl?unEl.value:'').replace(/[^a-zA-Z0-9_@.\-]/g,'').slice(0,30)||'@you';
+  var uname=rawUname[0]==='@'?rawUname:'@'+rawUname;
   var newTake={id:Date.now(),user:uname,team:activeSport+' fan',sport:activeSport,quote:'"'+text+'"',fires:1,ices:0,cbs:0,ts:Date.now(),comments:[],clapBackOf:clapBackTargetId||null};
   takeVotes[newTake.id]='fire';
   if(clapBackTargetId) {
@@ -998,6 +1015,7 @@ window.submitTake=function(){
   }
   clapBackTargetId=null;
   TAKES.unshift(newTake);
+  if(TAKES.length>100) TAKES=TAKES.slice(0,100);
   closeTakeModal();
   refreshTakesUI();
   showTab('takes',document.querySelectorAll('.tab')[6]);
@@ -1075,7 +1093,7 @@ function loadTrendingTab() {
 }
 
 function fmtNum(n){n=parseInt(n)||0;if(n>=1000000)return (n/1000000).toFixed(1).replace(/\.0$/,'')+'M';if(n>=1000)return (n/1000).toFixed(1).replace(/\.0$/,'')+'K';return String(n);}
-function saveTakes(){try{localStorage.setItem('sl_takes',JSON.stringify(TAKES));}catch(e){}}
+function saveTakes(){try{localStorage.setItem('sl_takes',JSON.stringify(TAKES.slice(0,100)));}catch(e){}}
 function saveTakeVotes(){try{localStorage.setItem('sl_tv',JSON.stringify(takeVotes));}catch(e){}}
 
 var SPORT_BADGE_STYLES={

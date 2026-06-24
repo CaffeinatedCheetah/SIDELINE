@@ -1,6 +1,13 @@
+import { checkRateLimit, getClientIP } from './_ratelimit.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
+
+  const ip = getClientIP(req);
+  if (!checkRateLimit(ip)) {
+    return res.status(429).json({ error: 'Rate limit exceeded. Try again in a minute.', videos: [] });
+  }
 
   const YT_KEY = process.env.YOUTUBE_API_KEY;
   const sport = req.query.sport || 'all';
