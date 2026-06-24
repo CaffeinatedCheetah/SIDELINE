@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Sideline"/>
 <meta name="theme-color" content="#FF3D3D"/>
-<title>Sideline — fantakes.app | Live Sports, Scores & Fan Takes</title>
+<title>FanTakes — Live Sports Debate | fantakes.app</title>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -453,6 +453,14 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <!-- ALL SCORES -->
     <div class="page" id="page-allscores">
       <div class="sec"><div class="sec-title">📊 All Scores</div></div>
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="score-sport-btns">
+        <button class="vf active" onclick="filterAllScores('all',this)">All Sports</button>
+        <button class="vf" onclick="filterAllScores('american',this)">🏈 American</button>
+        <button class="vf" onclick="filterAllScores('soccer',this)">⚽ Soccer</button>
+        <button class="vf" onclick="filterAllScores('rugby',this)">🏉 Rugby</button>
+        <button class="vf" onclick="filterAllScores('combat',this)">🥊 Combat</button>
+        <button class="vf" onclick="filterAllScores('racing',this)">🏎 Racing</button>
+      </div>
       <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="score-date-btns">
         <button class="vf active" onclick="pickScoreDate(0,this)">Today</button>
         <button class="vf" onclick="pickScoreDate(1,this)">Yesterday</button>
@@ -648,6 +656,8 @@ var takeVotes = (function(){
 
 /* ── STATE ── */
 var allGames = [];
+var allScoreGames = [];
+var currentScoreSport = 'all';
 var newsCache = {};
 var videoCache = {};
 var vidFilter = 'all';
@@ -739,7 +749,8 @@ function renderScores() {
   setHTML('rail-rugby', rugby.slice(0,10).map(scoreCard).join('')||'<span class="empty">No matches today</span>');
   setHTML('rail-combat', combat.slice(0,8).map(scoreCard).join('')||'<span class="empty">No events today</span>');
   setHTML('rail-racing', racing.slice(0,8).map(scoreCard).join('')||'<span class="empty">No racing today</span>');
-  setHTML('all-scores', allGames.map(allScoreCard).join('')||'<span class="empty">No scores yet today</span>');
+  allScoreGames = allGames;
+  renderAllScores();
 
   var sbGames=live.length?live:allGames.slice(0,5);
   setHTML('sb-live', sbGames.map(function(g){
@@ -830,10 +841,22 @@ function vidCardHtml(v) {
 
 /* -- TAB CONTENT -- */
 /* ── SCORE DATE PICKER ── */
+function renderAllScores() {
+  var games = currentScoreSport==='all' ? allScoreGames : allScoreGames.filter(function(g){return g.cat===currentScoreSport;});
+  setHTML('all-scores', games.length ? games.map(allScoreCard).join('') : '<span class="empty">No '+(currentScoreSport==='all'?'':''+currentScoreSport+' ')+'games found</span>');
+}
+
+window.filterAllScores = function(sport, btn) {
+  currentScoreSport = sport;
+  document.querySelectorAll('#score-sport-btns .vf').forEach(function(b){b.classList.remove('active');});
+  if(btn) btn.classList.add('active');
+  renderAllScores();
+};
+
 window.pickScoreDate = function(daysAgo, btn) {
   document.querySelectorAll('#score-date-btns .vf').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-  setHTML('all-scores','<span class="empty">Loading...</span>');
+  if(btn) btn.classList.add('active');
+  setHTML('all-scores','<span class="empty">Loading scores...</span>');
   var d = new Date();
   d.setDate(d.getDate() - daysAgo);
   var m = d.getMonth()+1, dy = d.getDate();
@@ -841,9 +864,10 @@ window.pickScoreDate = function(daysAgo, btn) {
   fetch('/api/scores?date='+ds)
     .then(function(r){return r.json();})
     .then(function(data){
-      setHTML('all-scores', data.games&&data.games.length ? data.games.map(allScoreCard).join('') : '<span class="empty">No games found for that date</span>');
+      allScoreGames = data.games || [];
+      renderAllScores();
     })
-    .catch(function(){ setHTML('all-scores','<span class="empty">Error loading scores</span>'); });
+    .catch(function(){ setHTML('all-scores','<span class="empty">Could not load scores — try again</span>'); });
 };
 
 /* ── FAN TAKES INTERACTIONS ── */
@@ -1215,28 +1239,40 @@ function loadHomeContent() {
 var SPORT_TAKES_IDX = { american:[0,1,4], soccer:[3], rugby:[2], racing:[5], combat:[] };
 
 function loadSportTab(tab) {
+  /* news — direct fetch */
   var newsEl = document.getElementById('news-'+tab);
   if(newsEl) {
-    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div>';
-    fetchNews(tab, function(articles) {
-      if(!articles.length) { newsEl.innerHTML = '<div style="grid-column:1/-1" class="empty">No stories right now</div>'; return; }
-      newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
-    });
+    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading stories...</div>';
+    fetch('/api/news?sport='+tab)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var articles = d.articles||[];
+        if(!articles.length){newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">No stories right now — check back soon</div>';return;}
+        newsCache[tab]=articles;
+        newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
+      })
+      .catch(function(){newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">Could not load stories</div>';});
   }
+  /* videos — direct fetch */
   var vidEl = document.getElementById('vids-'+tab);
   if(vidEl) {
-    vidEl.innerHTML = '<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div>';
-    fetchVideos(tab, function(vids){
-      vidEl.innerHTML = vids.length
-        ? '<div class="vid-grid">'+vids.slice(0,6).map(vidCardHtml).join('')+'</div>'
-        : '<span class="empty">No videos found — check YouTube API key</span>';
-    });
+    vidEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading videos...</div>';
+    fetch('/api/videos?sport='+tab)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var vids=d.videos||[];
+        if(!vids.length){vidEl.innerHTML='<span class="empty">No videos right now</span>';return;}
+        videoCache[tab]=vids;
+        vidEl.innerHTML='<div class="vid-grid">'+vids.slice(0,6).map(vidCardHtml).join('')+'</div>';
+      })
+      .catch(function(){vidEl.innerHTML='<span class="empty">Could not load videos</span>';});
   }
+  /* takes */
   var takesEl = document.getElementById('takes-'+tab);
   if(takesEl) {
-    var idxs = SPORT_TAKES_IDX[tab] || [];
-    var filtered = idxs.map(function(i){return TAKES[i];}).filter(Boolean);
-    if(filtered.length) takesEl.innerHTML = filtered.map(renderTakeCard).join('');
+    var idxs = SPORT_TAKES_IDX[tab]||[];
+    var filtered=idxs.map(function(i){return TAKES[i];}).filter(Boolean);
+    if(filtered.length) takesEl.innerHTML=filtered.map(renderTakeCard).join('');
   }
 }
 

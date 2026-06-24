@@ -4,19 +4,34 @@ export default async function handler(req, res) {
 
   const sport = req.query.sport || 'home';
 
-  // ESPN public RSS feeds — no API key, no domain restrictions
+  // Free public RSS feeds — no API key, no domain restrictions
+  // BBC Sport for rugby/combat/racing/soccer, ESPN for American sports
   const RSS_URLS = {
-    home:     ['https://www.espn.com/espn/rss/news'],
-    american: ['https://www.espn.com/espn/rss/nfl/news', 'https://www.espn.com/espn/rss/nba/news'],
-    soccer:   ['https://www.espn.com/espn/rss/soccer/news'],
-    rugby:    ['https://www.espn.com/espn/rss/news'],
-    combat:   ['https://www.espn.com/espn/rss/news'],
-    racing:   ['https://www.espn.com/espn/rss/news'],
-    nfl:      ['https://www.espn.com/espn/rss/nfl/news'],
+    home:     ['https://feeds.bbci.co.uk/sport/rss.xml',
+               'https://www.espn.com/espn/rss/news'],
+    american: ['https://www.espn.com/espn/rss/nfl/news',
+               'https://www.espn.com/espn/rss/nba/news',
+               'https://feeds.bbci.co.uk/sport/american-football/rss.xml'],
+    soccer:   ['https://feeds.bbci.co.uk/sport/football/rss.xml',
+               'https://www.espn.com/espn/rss/soccer/news'],
+    rugby:    ['https://feeds.bbci.co.uk/sport/rugby-union/rss.xml',
+               'https://feeds.bbci.co.uk/sport/rugby-league/rss.xml'],
+    combat:   ['https://feeds.bbci.co.uk/sport/boxing/rss.xml',
+               'https://feeds.bbci.co.uk/sport/mixed-martial-arts/rss.xml'],
+    racing:   ['https://feeds.bbci.co.uk/sport/formula1/rss.xml'],
+    nfl:      ['https://www.espn.com/espn/rss/nfl/news',
+               'https://feeds.bbci.co.uk/sport/american-football/rss.xml'],
     nba:      ['https://www.espn.com/espn/rss/nba/news'],
     mlb:      ['https://www.espn.com/espn/rss/mlb/news'],
     nhl:      ['https://www.espn.com/espn/rss/nhl/news'],
   };
+
+  // Source name by domain
+  function sourceName(url) {
+    if (url.includes('bbc')) return 'BBC Sport';
+    if (url.includes('espn')) return 'ESPN';
+    return 'Sports';
+  }
 
   function extractTag(xml, tag) {
     const m = xml.match(new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?<\\/${tag}>`, 'i'));
@@ -37,14 +52,16 @@ export default async function handler(req, res) {
       .replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
-  function parseRSS(xml, sourceName) {
+  function parseRSS(xml, src) {
     const items = [];
     const re = /<item>([\s\S]*?)<\/item>/g;
     let m;
     while ((m = re.exec(xml)) !== null) {
       const item = m[1];
       const title = clean(extractTag(item, 'title'));
-      const link  = extractTag(item, 'link') || extractAttr(item, 'link', 'href') || extractAttr(item, 'atom:link', 'href');
+      const link  = extractTag(item, 'link')
+                 || extractAttr(item, 'link', 'href')
+                 || extractAttr(item, 'atom:link', 'href');
       const desc  = clean(extractTag(item, 'description'));
       const pub   = extractTag(item, 'pubDate');
       const image = extractAttr(item, 'media:thumbnail', 'url')
@@ -57,7 +74,7 @@ export default async function handler(req, res) {
           url:         link.trim(),
           description: desc.slice(0, 200),
           image,
-          source:      sourceName || 'ESPN',
+          source:      src,
           publishedAt: pub ? new Date(pub).toISOString() : new Date().toISOString(),
         });
       }
@@ -70,10 +87,13 @@ export default async function handler(req, res) {
     const results = await Promise.all(urls.map(async url => {
       try {
         const r = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Sideline/1.0; +https://fantakes.app)' },
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; Sideline/1.0; +https://fantakes.app)',
+            'Accept': 'application/rss+xml, application/xml, text/xml',
+          },
         });
         if (!r.ok) return [];
-        return parseRSS(await r.text(), 'ESPN');
+        return parseRSS(await r.text(), sourceName(url));
       } catch { return []; }
     }));
 
