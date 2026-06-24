@@ -748,7 +748,40 @@ function renderScores() {
   var homeGames=allGames.filter(function(g){return g.state==='in'||g.state==='post';});
   var sortedHome=homeGames.slice().sort(function(a,b){return (b.state==='in'?1:0)-(a.state==='in'?1:0);});
   setHTML('rail-home', sortedHome.slice(0,16).map(scoreCard).join('')||'<span class="empty">No live or recent games right now</span>');
-  setHTML('rail-american', american.slice(0,14).map(scoreCard).join('')||'<span class="empty">No games today</span>');
+  // FIX 1: Show only sports with games TODAY, grouped per sport, live first
+  var todayStr = new Date().toISOString().split('T')[0];
+  var americanToday = american.filter(function(g) {
+    if (g.state === 'in' || g.state === 'post') return true;
+    if (!g.date) return false;
+    return g.date.startsWith(todayStr);
+  });
+  var byLabel = {};
+  americanToday.forEach(function(g) {
+    if (!byLabel[g.label]) byLabel[g.label] = [];
+    byLabel[g.label].push(g);
+  });
+  var sportEntries = Object.keys(byLabel).map(function(label) {
+    var games = byLabel[label];
+    var hasLive = games.some(function(g) { return g.state === 'in'; });
+    return { label: label, games: games, hasLive: hasLive };
+  }).sort(function(a, b) { return (b.hasLive ? 1 : 0) - (a.hasLive ? 1 : 0); });
+  if (sportEntries.length) {
+    var amEl = document.getElementById('rail-american');
+    if (amEl) {
+      amEl.style.cssText = 'display:block;overflow:visible;';
+      amEl.innerHTML = sportEntries.map(function(s) {
+        return '<div style="margin-bottom:14px">'+
+          '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px">'+
+          esc(s.label)+(s.hasLive ? '<span class="sc-live-badge">LIVE</span>' : '')+
+          '</div>'+
+          '<div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none">'+
+          s.games.slice(0, 8).map(scoreCard).join('')+
+          '</div></div>';
+      }).join('');
+    }
+  } else {
+    setHTML('rail-american', '<span class="empty">No American sports games today</span>');
+  }
   setHTML('rail-soccer', soccer.slice(0,12).map(scoreCard).join('')||'<span class="empty">No matches today</span>');
   setHTML('rail-rugby', rugby.slice(0,10).map(scoreCard).join('')||'<span class="empty">No matches today</span>');
   setHTML('rail-combat', combat.slice(0,8).map(scoreCard).join('')||'<span class="empty">No events today</span>');
@@ -791,26 +824,33 @@ function fetchNews(sport, callback) {
 }
 
 function newsCardHtml(article, featured) {
-  var img = article.urlToImage || article.image || SPORT_IMAGES['default'];
+  var img = article.image || article.urlToImage || SPORT_IMAGES['default'];
   var title = article.title || '';
   var src = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
-  
+  var fallback = SPORT_IMAGES['default'];
+
+  var badges = '';
+  if (article.breaking)  badges += '<span style="background:var(--red);color:#fff;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">⚡ BREAKING</span>';
+  if (article.trending)  badges += '<span style="background:rgba(255,61,61,0.2);color:var(--red);font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🔥 TRENDING</span>';
+  if (article.exclusive) badges += '<span style="background:rgba(63,185,80,0.15);color:#3FB950;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🌍 EXCLUSIVE</span>';
+
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
   var onclick = url && url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
   return '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
     '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy">'+
+      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+fallback+'\'">'+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
-        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(src)+'</div>' : '')+
+        (badges ? '<div style="margin-bottom:5px">'+badges+'</div>' : '')+
+        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(src)+'</div>' : '')+
         '<div style="font-family:Oswald,sans-serif;font-size:'+titleSize+';font-weight:'+(featured?'700':'600')+';color:#fff;line-height:1.25;margin-bottom:4px">'+esc(title)+'</div>'+
         (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.5)">'+esc(time)+'</div>' : '')+
       '</div>'+
     '</div>'+
-    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+'</div></div>' : '')+
+    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+(badges?' · '+badges:'')+'</div></div>' : '')+
   '</div>';
 }
 
@@ -829,16 +869,18 @@ function fetchVideos(sport, callback) {
 
 /* -- VIDEO CARD HTML -- */
 function vidCardHtml(v) {
-  var thumb = v.thumb || ('https://img.youtube.com/vi/' + v.id + '/mqdefault.jpg');
-  return '<div class="vid-card" style="cursor:pointer" data-vid="'+esc(v.id)+'" data-title="'+esc(v.title||'')+'" onclick="playVid(this.dataset.vid,this.dataset.title)">'+
+  var isDM = !!v.embedUrl;
+  var thumb = v.thumb || (isDM ? '' : 'https://img.youtube.com/vi/'+v.id+'/mqdefault.jpg');
+  var embed = v.embedUrl || '';
+  return '<div class="vid-card" style="cursor:pointer" data-vid="'+esc(v.id)+'" data-title="'+esc(v.title||'')+'" data-embed="'+esc(embed)+'" onclick="playVid(this.dataset.vid,this.dataset.title,this.dataset.embed)">'+
     '<div class="vid-thumb">'+
-      '<img src="'+esc(thumb)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block">'+
+      (thumb ? '<img src="'+esc(thumb)+'" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block" onerror="this.style.display=\'none\'">' : '<div style="width:100%;height:100%;background:var(--surface3)"></div>')+
       '<div class="vid-overlay"><div class="vid-play"><div class="vid-tri"></div></div></div>'+
     '</div>'+
     '<div class="vid-info">'+
       '<div class="vid-tag '+tagClass(v.tag)+'">'+esc(v.tag)+'</div>'+
       '<div class="vid-title">'+esc(v.title)+'</div>'+
-      '<div class="vid-ch">'+esc(v.channel)+'</div>'+
+      '<div class="vid-ch">'+esc(v.channel||'')+(isDM ? ' · Dailymotion' : '')+'</div>'+
     '</div>'+
   '</div>';
 }
@@ -1267,6 +1309,12 @@ function loadSportTab(tab) {
         var articles = d.articles||[];
         if(!articles.length){newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">No stories right now — check back soon</div>';return;}
         newsCache[tab]=articles;
+        var srcCount = d.sources_used ? '<span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-left:8px">Pulling from '+d.sources_used+' sources</span>' : '';
+        var secTitle = newsEl.previousElementSibling;
+        if(secTitle && secTitle.classList.contains('sec') && srcCount) {
+          var t = secTitle.querySelector('.sec-title');
+          if(t && !t.querySelector('.src-count')) { var sp=document.createElement('span'); sp.className='src-count'; sp.innerHTML=srcCount; t.appendChild(sp); }
+        }
         newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
       })
       .catch(function(){newsEl.innerHTML='<div style="grid-column:1/-1" class="empty">Could not load stories</div>';});
@@ -1313,11 +1361,18 @@ window.filterVids = function(f, btn) {
 };
 window.loadVideos = function(){ loadVideoTab('all'); };
 
-window.playVid = function(id, title) {
+window.playVid = function(id, title, embedUrl) {
   document.getElementById('modal-title').textContent = title;
-  document.getElementById('vid-frame').src = 'https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0';
+  var isDM = embedUrl && embedUrl.indexOf('dailymotion') !== -1;
+  document.getElementById('vid-frame').src = embedUrl || ('https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0');
   var foot = document.getElementById('modal-foot');
-  if(foot) foot.innerHTML = 'Official content from YouTube &middot; <a href="https://www.youtube.com/watch?v='+esc(id)+'" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none">Open on YouTube ↗</a> &middot; Tap outside to close';
+  if(foot) {
+    if(isDM) {
+      foot.innerHTML = 'Content from Dailymotion &middot; <a href="https://www.dailymotion.com/video/'+esc(id)+'" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none">Open on Dailymotion ↗</a> &middot; Tap outside to close';
+    } else {
+      foot.innerHTML = 'Official content from YouTube &middot; <a href="https://www.youtube.com/watch?v='+esc(id)+'" target="_blank" rel="noopener" style="color:var(--red);text-decoration:none">Open on YouTube ↗</a> &middot; Tap outside to close';
+    }
+  }
   document.getElementById('vid-modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 };
