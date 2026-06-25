@@ -468,13 +468,13 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <div style="font-family:'Space Mono',monospace;font-size:9px;font-weight:400;color:rgba(255,255,255,0.45);text-transform:lowercase;letter-spacing:0.04em">fantakes.app</div>
   </div>
   <div class="nav-links">
-    <button class="nav-link">Scores</button>
-    <button class="nav-link">Videos</button>
-    <button class="nav-link">Fan Takes</button>
-    <button class="nav-link">Trending</button>
+    <button class="nav-link" onclick="navTo('allscores',8)">Scores</button>
+    <button class="nav-link" onclick="navTo('videos',7)">Videos</button>
+    <button class="nav-link" onclick="navTo('takes',6)">Fan Takes</button>
+    <button class="nav-link" onclick="navTo('trending',9)">Trending</button>
   </div>
   <div class="nav-right">
-    <input class="search" type="text" placeholder="Search players, teams..."/>
+    <input class="search" type="text" placeholder="Search players, teams..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch(this.value)"/>
     <button class="nav-cta" onclick="openTakeModal()">Post Take</button>
   </div>
 </nav>
@@ -514,10 +514,10 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <!-- HOME -->
     <div class="page active" id="page-home">
 
-      <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more">See all</button></div>
+      <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more" onclick="navTo('allscores',8)">See all</button></div>
       <div class="rail" id="rail-home"></div>
 
-      <div class="sec"><div class="sec-title">🔥 Trending Now</div><button class="sec-more">More</button></div>
+      <div class="sec"><div class="sec-title">🔥 Trending Now</div><button class="sec-more" onclick="navTo('trending',9)">More</button></div>
       <div class="content-grid" id="trending-cards"></div>
 
       <div class="sec"><div class="sec-title">🌍 All Sports</div></div>
@@ -533,7 +533,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
         <div class="sport-tile" onclick="showTab('trending',document.querySelectorAll('.tab')[9])" style="border-color:rgba(255,61,61,0.4);background:linear-gradient(135deg,rgba(255,61,61,0.08),transparent)"><span class="sport-tile-icon">🔥</span><div class="sport-tile-name" style="color:var(--red)">Trending</div><div class="sport-tile-sub">Hot takes · Breaking · Highlights</div></div>
       </div>
 
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more">More news</button></div>
+      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more" onclick="navTo('trending',9)">More news</button></div>
       <div class="content-grid" id="home-news"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top stories...</div></div>
 
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Trending Videos</div><button class="sec-more" onclick="showTab('videos',document.querySelectorAll('.tab')[7])">See all</button></div>
@@ -1132,7 +1132,8 @@ function renderScores() {
   setHTML('sb-live', sbGames.map(function(g){
     var fin=g.state==='post';
     var meta=g.state==='in'?'<span class="live-dot"></span>'+esc(g.detail||'Live'):fin?'Final':esc(fmtTime(g.date));
-    return '<div class="sb-card">'+
+    var gd=esc(JSON.stringify({state:g.state,detail:g.detail||'',label:g.label,date:g.date,url:g.url||'',away:{name:g.away.name,score:g.away.score,winner:g.away.winner},home:{name:g.home.name,score:g.home.score,winner:g.home.winner}}));
+    return '<div class="sb-card" style="cursor:pointer" onclick="showGamePopup(this.dataset.g)" data-g="'+gd+'">'+
       '<div class="sb-row"><span class="sb-name">'+esc(g.away.name)+'</span><span class="sb-score" style="'+(fin&&!g.away.winner?'color:var(--faint)':'')+'">'+esc(String(g.away.score))+'</span></div>'+
       '<div class="sb-row"><span class="sb-name">'+esc(g.home.name)+'</span><span class="sb-score" style="'+(fin&&!g.home.winner?'color:var(--faint)':'')+'">'+esc(String(g.home.score))+'</span></div>'+
       '<div class="sb-meta">'+esc(g.label)+' · '+meta+'</div></div>';
@@ -1285,8 +1286,18 @@ function getHofBadges(t) {
   return badges;
 }
 
+var searchQuery = '';
+var searchTimer = null;
+
 function getSortedTakes() {
+  var q = searchQuery ? searchQuery.toLowerCase() : '';
   var filtered = currentSportFilter==='All' ? TAKES.slice() : TAKES.filter(function(t){return t.sport===currentSportFilter;});
+  if(q) filtered = filtered.filter(function(t){
+    return (t.text||'').toLowerCase().indexOf(q)!==-1 ||
+           (t.sport||'').toLowerCase().indexOf(q)!==-1 ||
+           (t.user||'').toLowerCase().indexOf(q)!==-1 ||
+           (t.parts||[]).some(function(p){return p.toLowerCase().indexOf(q)!==-1;});
+  });
   if(currentSortMode==='hot') return filtered.sort(function(a,b){return (b.fires||0)-(a.fires||0);});
   if(currentSortMode==='new') return filtered.sort(function(a,b){return (b.ts||0)-(a.ts||0);});
   if(currentSortMode==='discussed') return filtered.sort(function(a,b){return ((b.replies||[]).length)-(( a.replies||[]).length);});
@@ -1299,7 +1310,13 @@ function getSortedTakes() {
 
 function refreshTakesUI() {
   var sorted = getSortedTakes();
-  setHTML('takes-list', sorted.map(renderTakeCard).join('')||'<div class="empty" style="padding:20px 0">No takes yet — be the first! 🔥</div>');
+  var searchHdr = searchQuery
+    ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);padding:8px 0 14px;display:flex;align-items:center;gap:10px">'+
+        sorted.length+' result'+(sorted.length===1?'':'s')+' for <strong style="color:#fff">"'+esc(searchQuery)+'"</strong>'+
+        '<button onclick="clearSearch()" style="color:var(--red);background:none;border:1px solid rgba(255,61,61,0.3);border-radius:4px;cursor:pointer;font-family:Space Mono,monospace;font-size:8px;padding:2px 7px">✕ Clear</button>'+
+      '</div>'
+    : '';
+  setHTML('takes-list', searchHdr + (sorted.map(renderTakeCard).join('')||'<div class="empty" style="padding:20px 0">'+(searchQuery?'No takes matched "'+esc(searchQuery)+'"':'No takes yet — be the first! 🔥')+'</div>'));
   var byFire = TAKES.slice().sort(function(a,b){return (b.fires||0)-(a.fires||0);});
   setHTML('home-takes', byFire.slice(0,3).map(renderTakeCard).join(''));
   var hofEl = document.getElementById('hall-of-flame');
@@ -1933,7 +1950,7 @@ function renderTakeCard(t) {
       '</div>';
     });
     textHtml+='</div>';
-    if(t.parts.length>2) textHtml+='<button class="thread-view-more" onclick="event.stopPropagation()">View full thread ('+t.parts.length+' parts) →</button>';
+    if(t.parts.length>2) textHtml+='<button class="thread-view-more" onclick="event.stopPropagation();expandThread(\''+id+'\')">View full thread ('+t.parts.length+' parts) →</button>';
   } else if(isLong&&t.text){
     var longText=esc(t.text);
     var truncated=t.text.length>300;
@@ -1946,7 +1963,7 @@ function renderTakeCard(t) {
   /* media */
   var mediaHtml='';
   if(isVideo&&t.videoThumb){
-    mediaHtml='<div class="take-media"><div class="take-video-thumb">'+
+    mediaHtml='<div class="take-media"><div class="take-video-thumb" onclick="event.stopPropagation();showToast(\'Video preview only — full playback coming soon\')">'+
       '<img src="'+esc(t.videoThumb)+'" alt="" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:10px">'+
       '<div class="take-video-play"><div class="take-video-play-btn"><div class="take-video-play-tri"></div></div></div>'+
     '</div></div>';
@@ -2244,12 +2261,82 @@ window.closeVid = function() {
 };
 
 setHTML('sb-hot', HOT.map(function(h){
-  return '<div class="hot-card"><div class="hot-label" style="color:'+h.color+'">'+esc(h.label)+'</div><div class="hot-title">'+esc(h.title)+'</div><div class="hot-stat">'+esc(h.stat)+'</div></div>';
+  return '<div class="hot-card" style="cursor:pointer" onclick="navTo(\'takes\',6)"><div class="hot-label" style="color:'+h.color+'">'+esc(h.label)+'</div><div class="hot-title">'+esc(h.title)+'</div><div class="hot-stat">'+esc(h.stat)+'</div></div>';
 }).join(''));
 setHTML('sb-sports', SPORTS_TODAY.map(function(s){
   return '<div class="sport-row"><div class="sport-row-left"><span>'+s.icon+'</span>'+esc(s.name)+'</div><span class="sport-row-status '+s.cls+'">'+esc(s.status)+'</span></div>';
 }).join(''));
 refreshTakesUI();
+
+/* ── NAV HELPER ─────────────────────────────────────────────────────── */
+function navTo(id, tabIdx) {
+  showTab(id, document.querySelectorAll('.tab')[tabIdx]);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+window.navTo = navTo;
+
+/* ── THREAD EXPAND ────────────────────────────────────────────────────── */
+window.expandThread = function(id) {
+  var take = TAKES.find(function(t){return t.id===id;});
+  if(!take||!take.parts||!take.parts.length) return;
+  var card = document.querySelector('[data-take-id="'+id+'"]');
+  if(!card) return;
+  var threadDiv = card.querySelector('.thread-parts');
+  var btn = card.querySelector('.thread-view-more');
+  if(!threadDiv) return;
+  threadDiv.innerHTML = take.parts.map(function(p,i){
+    var isLast = i===take.parts.length-1;
+    return '<div class="thread-part">'+
+      '<div class="thread-part-line">'+
+        '<div class="thread-part-dot"></div>'+
+        (!isLast?'<div class="thread-part-connector"></div>':'')+
+      '</div>'+
+      '<div class="thread-part-content">'+
+        '<div class="thread-part-num">'+(i+1)+' / '+take.parts.length+'</div>'+
+        '<div class="thread-part-text">'+esc(p)+'</div>'+
+      '</div></div>';
+  }).join('');
+  if(btn) btn.remove();
+};
+
+/* ── TOAST ──────────────────────────────────────────────────────────── */
+window.showToast = function(msg) {
+  var t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1C2128;border:1px solid var(--border);color:var(--muted);font-family:Space Mono,monospace;font-size:10px;padding:8px 16px;border-radius:8px;z-index:9999;white-space:nowrap;pointer-events:none;';
+  document.body.appendChild(t);
+  setTimeout(function(){t.remove();},2200);
+};
+
+/* ── SEARCH ──────────────────────────────────────────────────────────── */
+window.handleSearch = function(q) {
+  clearTimeout(searchTimer);
+  q = (q||'').trim().toLowerCase();
+  if(!q) {
+    if(searchQuery){searchQuery='';refreshTakesUI();}
+    return;
+  }
+  searchTimer = setTimeout(function(){
+    searchQuery = q;
+    var takesPage = document.getElementById('page-takes');
+    if(takesPage && takesPage.classList.contains('active')) refreshTakesUI();
+  }, 300);
+};
+
+window.doSearch = function(q) {
+  q = (q||'').trim().toLowerCase();
+  if(!q) return;
+  searchQuery = q;
+  navTo('takes', 6);
+  setTimeout(refreshTakesUI, 50);
+};
+
+window.clearSearch = function() {
+  searchQuery = '';
+  var inp = document.querySelector('.search');
+  if(inp) inp.value = '';
+  refreshTakesUI();
+};
 
 /* ── SCOUT AI ─────────────────────────────────────────────────────── */
 var SCOUT_PROFILE_KEY = 'sl_user_profile';
