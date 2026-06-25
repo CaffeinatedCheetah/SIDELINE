@@ -44,9 +44,9 @@ async function fetchYouTubeAPI(sport, key) {
   return results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
 }
 
-// ── Dailymotion tag-based fallback (confirmed working) ─────────────────────
+// ── Dailymotion tag-based (primary source) ────────────────────────────────
 const DM_TAGS = {
-  all:      ['nfl','nba','mlb','soccer','formula1'],
+  all:      ['nfl','nba','soccer','mlb','ufc'],
   american: ['nfl','nba','mlb','nhl'],
   soccer:   ['soccer','football','premier-league'],
   rugby:    ['rugby'],
@@ -59,19 +59,19 @@ async function fetchDailymotion(sport) {
   const results = await Promise.allSettled(tags.map(async tag => {
     try {
       const r = await fetch(
-        `https://api.dailymotion.com/videos?fields=id,title,thumbnail_url,url,created_time&tags=${tag}&sort=recent&limit=5`
+        `https://api.dailymotion.com/videos?fields=id,title,thumbnail_url,embed_url,created_time,channel&tags=${tag}&limit=5`
       );
       if (!r.ok) return [];
       const d = await r.json();
       return (d.list || []).map(v => ({
         id:        v.id,
-        tag:       tag.toUpperCase().replace('FORMULA1','F1'),
+        tag:       tag.toUpperCase().replace('PREMIER-LEAGUE','EPL').replace('FORMULA1','F1'),
         title:     v.title,
         thumb:     v.thumbnail_url || '',
-        channel:   'Dailymotion',
+        channel:   v.channel || 'Dailymotion',
         published: new Date(v.created_time * 1000).toISOString(),
         source:    'Dailymotion',
-        embedUrl:  `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`,
+        embedUrl:  (v.embed_url || `https://www.dailymotion.com/embed/video/${v.id}`) + '?autoplay=1',
       }));
     } catch { return []; }
   }));

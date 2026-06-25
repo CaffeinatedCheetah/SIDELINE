@@ -15,6 +15,9 @@ const LEAGUES = [
   { sport: 'soccer',     league: 'ita.1',          label: 'Serie A',    cat: 'soccer'   },
   { sport: 'soccer',     league: 'fra.1',          label: 'Ligue 1',    cat: 'soccer'   },
   { sport: 'soccer',     league: 'uefa.champions', label: 'UCL',        cat: 'soccer'   },
+  { sport: 'soccer',     league: 'fifa.world',     label: 'World Cup',  cat: 'soccer'   },
+  { sport: 'mma',        league: 'ufc',            label: 'UFC',        cat: 'combat'   },
+  { sport: 'racing',     league: 'f1',             label: 'F1',         cat: 'racing'   },
 ];
 
 // ── ESPN scoreboard fetch ──────────────────────────────────────────────────
@@ -110,6 +113,32 @@ export default async function handler(req, res) {
       try {
         games = await fetchTheSportsDB(req.query.date || '');
       } catch { /* ignore */ }
+    }
+
+    // ── Filter: live, finished <3h ago, or starting <2h from now ────────
+    if (!req.query.date) {
+      const now = Date.now();
+      const THREE_HOURS = 3 * 60 * 60 * 1000;
+      const TWO_HOURS   = 2 * 60 * 60 * 1000;
+      games = games.filter(g => {
+        if (g.state === 'in') return true;
+        const t = g.date ? new Date(g.date).getTime() : 0;
+        if (!t || isNaN(t)) return g.state !== 'pre';
+        if (g.state === 'post') return now - t < THREE_HOURS;
+        if (g.state === 'pre')  return t - now < TWO_HOURS && t > now;
+        return false;
+      });
+
+      // Sort: live first, then upcoming by start time, then finished by recency
+      games.sort((a, b) => {
+        const aLive = a.state === 'in' ? 2 : a.state === 'pre' ? 1 : 0;
+        const bLive = b.state === 'in' ? 2 : b.state === 'pre' ? 1 : 0;
+        if (aLive !== bLive) return bLive - aLive;
+        const at = a.date ? new Date(a.date).getTime() : 0;
+        const bt = b.date ? new Date(b.date).getTime() : 0;
+        if (a.state === 'pre') return at - bt;  // soonest first
+        return bt - at;                          // most recent first
+      });
     }
 
     // Cache result if we got data

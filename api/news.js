@@ -43,8 +43,9 @@ function extractTag(xml, tag) {
 
 function extractAttr(xml, tag, attr) {
   const t = tag.replace(':', '\\:');
-  const m = xml.match(new RegExp(`<${t}[^>]*\\s${attr}="([^"]+)"`));
-  return m ? m[1] : '';
+  const m = xml.match(new RegExp(`<${t}[^>]*\\s${attr}="([^"]+)"`))
+         || xml.match(new RegExp(`<${t}[^>]*${attr}="([^"]+)"`));
+  return m ? m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') : '';
 }
 
 const EXCLUSIVE_SOURCES = new Set(['The Guardian','Bleacher Report','Sky Sports','CBS Sports']);
@@ -61,12 +62,15 @@ function parseRSS(xml, sourceName, fallbackImage) {
     const desc    = clean(rawDesc).slice(0, 200);
     const pub     = extractTag(item, 'pubDate');
     // Image: try media tags, then embedded <img> in description HTML, then sport fallback
-    const image   = extractAttr(item, 'media:thumbnail', 'url')
-                 || extractAttr(item, 'media:content', 'url')
-                 || extractAttr(item, 'enclosure', 'url')
-                 || (rawDesc.match(/<img[^>]+src="([^"]+)"/) || [])[1]
-                 || fallbackImage
-                 || '';
+    const fbImg = Array.isArray(fallbackImage) ? pickImg(fallbackImage, title + link) : (fallbackImage || '');
+    const encUrl = extractAttr(item, 'enclosure', 'url');
+    const encType = extractAttr(item, 'enclosure', 'type');
+    const descImg = (rawDesc.match(/<img[^>]+src="([^"]+)"/) || [])[1] || '';
+    const image   = extractAttr(item, 'media:content', 'url')
+                 || extractAttr(item, 'media:thumbnail', 'url')
+                 || (encUrl && (!encType || encType.startsWith('image')) ? encUrl : '')
+                 || (descImg && descImg.startsWith('http') ? descImg : '')
+                 || fbImg;
     if (title && link) {
       const publishedAt = pub ? new Date(pub).toISOString() : new Date().toISOString();
       items.push({
@@ -93,69 +97,133 @@ async function fetchRSS({ url, name, fallbackImage }) {
   return parseRSS(await r.text(), name, fallbackImage);
 }
 
-// ── Sport fallback images ──────────────────────────────────────────────────
-const IMG = {
-  american: 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80',
-  soccer:   'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80',
-  rugby:    'https://images.unsplash.com/photo-1544551763-92ab472cad5d?w=800&q=80',
-  combat:   'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
-  racing:   'https://images.unsplash.com/photo-1541773367336-d3f401acbb7a?w=800&q=80',
-  default:  'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&q=80',
+// ── Sport fallback image pools ─────────────────────────────────────────────
+const IMG_POOLS = {
+  american: [
+    'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80',
+    'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&q=80',
+    'https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=800&q=80',
+    'https://images.unsplash.com/photo-1598136490941-30d885318abd?w=800&q=80',
+    'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?w=800&q=80',
+    'https://images.unsplash.com/photo-1515703407324-5f753afd8be8?w=800&q=80',
+    'https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?w=800&q=80',
+    'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=800&q=80',
+    'https://images.unsplash.com/photo-1521941651707-748bdbae77e7?w=800&q=80',
+    'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?w=800&q=80',
+    'https://images.unsplash.com/photo-1471295253337-3ceaaedca402?w=800&q=80',
+    'https://images.unsplash.com/photo-1590080875852-5fe4f3c7f2e7?w=800&q=80',
+  ],
+  soccer: [
+    'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80',
+    'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=800&q=80',
+    'https://images.unsplash.com/photo-1553778263-73a83bab9b0c?w=800&q=80',
+    'https://images.unsplash.com/photo-1543326727-cf6c39e8f84c?w=800&q=80',
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80',
+    'https://images.unsplash.com/photo-1517466787929-bc90951d0974?w=800&q=80',
+    'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=800&q=80',
+    'https://images.unsplash.com/photo-1540747913346-19212a4b423a?w=800&q=80',
+    'https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800&q=80',
+    'https://images.unsplash.com/photo-1486286701208-1d58e9338013?w=800&q=80',
+  ],
+  rugby: [
+    'https://images.unsplash.com/photo-1544551763-92ab472cad5d?w=800&q=80',
+    'https://images.unsplash.com/photo-1548690312-e3b507d8c110?w=800&q=80',
+    'https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=800&q=80',
+    'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&q=80',
+    'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80',
+    'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=800&q=80',
+  ],
+  combat: [
+    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=800&q=80',
+    'https://images.unsplash.com/photo-1517438322307-e67111335449?w=800&q=80',
+    'https://images.unsplash.com/photo-1544919982-b61976f0ba43?w=800&q=80',
+    'https://images.unsplash.com/photo-1529516548873-9ce57c8f155e?w=800&q=80',
+    'https://images.unsplash.com/photo-1555597673-b21d5c935865?w=800&q=80',
+  ],
+  racing: [
+    'https://images.unsplash.com/photo-1541773367336-d3f401acbb7a?w=800&q=80',
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80',
+    'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800&q=80',
+    'https://images.unsplash.com/photo-1594394797451-d1f75c69a3d8?w=800&q=80',
+    'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80',
+    'https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=800&q=80',
+  ],
+  default: [
+    'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&q=80',
+    'https://images.unsplash.com/photo-1517649763962-0c623066013b?w=800&q=80',
+    'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&q=80',
+    'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80',
+    'https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=800&q=80',
+    'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800&q=80',
+    'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&q=80',
+    'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&q=80',
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80',
+    'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80',
+    'https://images.unsplash.com/photo-1541773367336-d3f401acbb7a?w=800&q=80',
+    'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=800&q=80',
+  ],
 };
+
+function pickImg(pool, seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+  return pool[h % pool.length];
+}
 
 // ── Source registry ────────────────────────────────────────────────────────
 const SOURCES = {
   home: [
-    { url: 'https://feeds.bbci.co.uk/sport/rss.xml',          name: 'BBC Sport',       fallbackImage: IMG.default },
-    { url: 'https://www.espn.com/espn/rss/news',               name: 'ESPN',            fallbackImage: IMG.default },
-    { url: 'https://www.theguardian.com/sport/rss',            name: 'The Guardian',    fallbackImage: IMG.default },
-    { url: 'https://www.skysports.com/rss/12040',              name: 'Sky Sports',      fallbackImage: IMG.default },
-    { url: 'https://www.cbssports.com/rss/headlines',          name: 'CBS Sports',      fallbackImage: IMG.default },
-    { url: 'http://bleacherreport.com/articles/feed',          name: 'Bleacher Report', fallbackImage: IMG.default },
+    { url: 'https://feeds.bbci.co.uk/sport/rss.xml',          name: 'BBC Sport',       fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.espn.com/espn/rss/news',               name: 'ESPN',            fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.theguardian.com/sport/rss',            name: 'The Guardian',    fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.skysports.com/rss/12040',              name: 'Sky Sports',      fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.cbssports.com/rss/headlines',          name: 'CBS Sports',      fallbackImage: IMG_POOLS.default},
+    { url: 'http://bleacherreport.com/articles/feed',          name: 'Bleacher Report', fallbackImage: IMG_POOLS.default},
   ],
   american: [
-    { url: 'https://www.espn.com/espn/rss/nfl/news',           name: 'ESPN NFL',        fallbackImage: IMG.american },
-    { url: 'https://www.espn.com/espn/rss/nba/news',           name: 'ESPN NBA',        fallbackImage: IMG.american },
-    { url: 'https://www.espn.com/espn/rss/mlb/news',           name: 'ESPN MLB',        fallbackImage: IMG.american },
-    { url: 'https://www.espn.com/espn/rss/nhl/news',           name: 'ESPN NHL',        fallbackImage: IMG.american },
-    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport', fallbackImage: IMG.american },
-    { url: 'https://www.cbssports.com/nfl/rss/headlines',      name: 'CBS Sports',      fallbackImage: IMG.american },
+    { url: 'https://www.espn.com/espn/rss/nfl/news',           name: 'ESPN NFL',        fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/nba/news',           name: 'ESPN NBA',        fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/mlb/news',           name: 'ESPN MLB',        fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/nhl/news',           name: 'ESPN NHL',        fallbackImage: IMG_POOLS.american },
+    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport', fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/nfl/rss/headlines',      name: 'CBS Sports',      fallbackImage: IMG_POOLS.american },
   ],
   soccer: [
-    { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG.soccer },
-    { url: 'https://www.espn.com/espn/rss/soccer/news',         name: 'ESPN',           fallbackImage: IMG.soccer },
-    { url: 'https://www.theguardian.com/football/rss',          name: 'The Guardian',   fallbackImage: IMG.soccer },
-    { url: 'https://www.skysports.com/rss/12040',               name: 'Sky Sports',     fallbackImage: IMG.soccer },
+    { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.espn.com/espn/rss/soccer/news',         name: 'ESPN',           fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.theguardian.com/football/rss',          name: 'The Guardian',   fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.skysports.com/rss/12040',               name: 'Sky Sports',     fallbackImage: IMG_POOLS.soccer },
   ],
   rugby: [
-    { url: 'https://feeds.bbci.co.uk/sport/rugby-union/rss.xml',  name: 'BBC Sport',   fallbackImage: IMG.rugby },
-    { url: 'https://feeds.bbci.co.uk/sport/rugby-league/rss.xml', name: 'BBC Sport',   fallbackImage: IMG.rugby },
-    { url: 'https://www.theguardian.com/sport/rugby-union/rss',   name: 'The Guardian',fallbackImage: IMG.rugby },
+    { url: 'https://feeds.bbci.co.uk/sport/rugby-union/rss.xml',  name: 'BBC Sport',   fallbackImage: IMG_POOLS.rugby },
+    { url: 'https://feeds.bbci.co.uk/sport/rugby-league/rss.xml', name: 'BBC Sport',   fallbackImage: IMG_POOLS.rugby },
+    { url: 'https://www.theguardian.com/sport/rugby-union/rss',   name: 'The Guardian',fallbackImage: IMG_POOLS.rugby },
   ],
   combat: [
-    { url: 'https://feeds.bbci.co.uk/sport/boxing/rss.xml',           name: 'BBC Sport', fallbackImage: IMG.combat },
-    { url: 'https://feeds.bbci.co.uk/sport/mixed-martial-arts/rss.xml', name: 'BBC Sport', fallbackImage: IMG.combat },
+    { url: 'https://feeds.bbci.co.uk/sport/boxing/rss.xml',           name: 'BBC Sport', fallbackImage: IMG_POOLS.combat },
+    { url: 'https://feeds.bbci.co.uk/sport/mixed-martial-arts/rss.xml', name: 'BBC Sport', fallbackImage: IMG_POOLS.combat },
   ],
   racing: [
-    { url: 'https://feeds.bbci.co.uk/sport/formula1/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG.racing },
-    { url: 'https://www.theguardian.com/sport/formulaone/rss',  name: 'The Guardian',  fallbackImage: IMG.racing },
+    { url: 'https://feeds.bbci.co.uk/sport/formula1/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG_POOLS.racing },
+    { url: 'https://www.theguardian.com/sport/formulaone/rss',  name: 'The Guardian',  fallbackImage: IMG_POOLS.racing },
   ],
   nfl: [
-    { url: 'https://www.espn.com/espn/rss/nfl/news',            name: 'ESPN NFL',       fallbackImage: IMG.american },
-    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport', fallbackImage: IMG.american },
-    { url: 'https://www.cbssports.com/nfl/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG.american },
+    { url: 'https://www.espn.com/espn/rss/nfl/news',            name: 'ESPN NFL',       fallbackImage: IMG_POOLS.american },
+    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport', fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/nfl/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG_POOLS.american },
   ],
   nba: [
-    { url: 'https://www.espn.com/espn/rss/nba/news',            name: 'ESPN NBA',       fallbackImage: IMG.american },
-    { url: 'https://www.cbssports.com/nba/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG.american },
+    { url: 'https://www.espn.com/espn/rss/nba/news',            name: 'ESPN NBA',       fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/nba/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG_POOLS.american },
   ],
   mlb: [
-    { url: 'https://www.espn.com/espn/rss/mlb/news',            name: 'ESPN MLB',       fallbackImage: IMG.american },
-    { url: 'https://www.cbssports.com/mlb/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG.american },
+    { url: 'https://www.espn.com/espn/rss/mlb/news',            name: 'ESPN MLB',       fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/mlb/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG_POOLS.american },
   ],
   nhl: [
-    { url: 'https://www.espn.com/espn/rss/nhl/news',            name: 'ESPN NHL',       fallbackImage: IMG.american },
-    { url: 'https://www.cbssports.com/nhl/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG.american },
+    { url: 'https://www.espn.com/espn/rss/nhl/news',            name: 'ESPN NHL',       fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/nhl/rss/headlines',       name: 'CBS Sports',     fallbackImage: IMG_POOLS.american },
   ],
 };
 
@@ -204,6 +272,20 @@ export default async function handler(req, res) {
 
   // Sort newest first
   deduped.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+  // Fix duplicate images: if same URL used by >2 articles, replace with unique per-article fallback
+  const imgCount = {};
+  for (const a of deduped) { if (a.image) imgCount[a.image] = (imgCount[a.image] || 0) + 1; }
+  const sportPool = sport === 'soccer' ? IMG_POOLS.soccer
+                  : sport === 'rugby'   ? IMG_POOLS.rugby
+                  : sport === 'combat'  ? IMG_POOLS.combat
+                  : sport === 'racing'  ? IMG_POOLS.racing
+                  : IMG_POOLS.american;
+  for (const a of deduped) {
+    if (a.image && imgCount[a.image] > 2) {
+      a.image = pickImg(sportPool, a.title + a.url + a.publishedAt);
+    }
+  }
 
   const articles = deduped.slice(0, 30);
 
