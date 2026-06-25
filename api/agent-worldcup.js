@@ -122,7 +122,7 @@ export default async function handler(req, res) {
 
   const scoutNote = await generateScoutNote(liveGames, lastGoal);
 
-  const wcState = { active, liveGames, standings: groups, lastGoal };
+  const wcState = { active, allGames: games, liveGames, standings: groups, lastGoal };
   await patchMemory({
     worldCup:      wcState,
     wcLastChecked: new Date().toISOString(),

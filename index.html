@@ -740,7 +740,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div style="font-size:32px;margin-bottom:8px;">📲</div>
       <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">fantakes.app</div>
       <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px;">Sideline &mdash; Coming soon to iOS &amp; Android</div>
-      <button style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;width:100%;">Notify Me</button>
+      <button style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;width:100%;" onclick="showToast('You\'ll be first to know — stay tuned! 📲')">Notify Me</button>
     </div>
   </div>
 </div>
@@ -1344,7 +1344,7 @@ window.voteTake = function(id, type) {
   if(prev==='fire') take.fires = Math.max(0,(take.fires||0)-1);
   if(prev==='ice')  take.ices  = Math.max(0,(take.ices||0)-1);
   if(prev===type) { delete takeVotes[id]; }
-  else { if(type==='fire') take.fires=(take.fires||0)+1; else take.ices=(take.ices||0)+1; takeVotes[id]=type; }
+  else { if(type==='fire') take.fires=(take.fires||0)+1; else take.ices=(take.ices||0)+1; takeVotes[id]=type; trackScoutEngagement(type, take.sport||'Sports'); }
   saveTakeVotes(); saveTakes();
   /* update all cards showing this take */
   document.querySelectorAll('[data-take-id="'+id+'"]').forEach(function(card) {
@@ -1774,7 +1774,7 @@ window.submitTake=function(){
 
 function loadTabContent(tab) {
   if(tab==='home')      { loadHomeContent(); return; }
-  if(tab==='videos')    { loadVideoTab('all'); return; }
+  if(tab==='videos')    { loadVideoTab(vidFilter); return; }
   if(tab==='trending')  { loadTrendingTab(); return; }
   if(tab==='allscores') { renderAllScores(); return; }
   if(tab==='takes')     { refreshTakesUI(); return; }
@@ -2114,38 +2114,37 @@ function loadWorldCup() {
   var grEl = document.getElementById('wc-groups');
   if(!scEl && !grEl) return;
 
-  /* Live scores */
-  if(scEl) {
-    fetchWithTimeout('https://worldcup26.ir/get/games', 10000)
-      .then(function(r){return r.json();})
-      .then(function(data){
-        var games = Array.isArray(data) ? data : (data.games||data.matches||data.data||[]);
-        if(!games.length){scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">No matches today</span>';return;}
-        scEl.innerHTML = games.slice(0,12).map(function(g){
-          var home=g.home||g.homeTeam||g.team_home||{};
-          var away=g.away||g.awayTeam||g.team_away||{};
-          var st=(g.status||g.state||'').toLowerCase();
-          var isLive=st.includes('live')||st.includes('progress')||st.includes('ht')||st==='in';
-          var isFin=st.includes('ft')||st.includes('finish')||st==='post';
-          var hs=Number(home.score??home.goals??g.home_score??0);
-          var as_=Number(away.score??away.goals??g.away_score??0);
-          var statusText=isLive?('● '+(g.time||g.minute||'LIVE')):isFin?'FT':(g.date?new Date(g.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'TBD');
-          return '<div class="score-card'+(isLive?' live':'')+'">'+
-            '<div class="sc-lg">World Cup 2026'+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
-            '<div class="sc-row"><div class="sc-team">'+(away.flag||away.logo?'<img src="'+(away.flag||away.logo||'')+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(away.name||away.team||'')+'</div><span class="sc-score'+(isFin&&hs>as_?' dim':'')+'">'+as_+'</span></div>'+
-            '<div class="sc-row"><div class="sc-team">'+(home.flag||home.logo?'<img src="'+(home.flag||home.logo||'')+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(home.name||home.team||'')+'</div><span class="sc-score'+(isFin&&as_>hs?' dim':'')+'">'+hs+'</span></div>'+
-            '<div class="sc-status '+(isLive?'live-st':isFin?'final-st':'pre-st')+'">'+esc(statusText)+'</div></div>';
-        }).join('');
-      })
-      .catch(function(){if(scEl)scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Check back for live scores</span>';});
-  }
+  fetchWithTimeout('/api/agent-worldcup', 10000)
+    .then(function(r){return r.json();})
+    .then(function(data){
+      /* Scores: show all games (live + recent + upcoming) */
+      if(scEl) {
+        var games = data.allGames || data.liveGames || [];
+        if(!games.length){
+          scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">'+(data.active?'No matches live right now':'Tournament updates coming soon')+'</span>';
+        } else {
+          scEl.innerHTML = games.slice(0,12).map(function(g){
+            var isLive=g.state==='in', isFin=g.state==='post';
+            var statusText=isLive?('● '+(g.detail||'LIVE')):isFin?'FT':(g.date?new Date(g.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'TBD');
+            return '<div class="score-card'+(isLive?' live':'')+'">'+
+              '<div class="sc-lg">World Cup 2026'+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
+              '<div class="sc-row"><div class="sc-team">'+(g.awayFlag?'<img src="'+esc(g.awayFlag)+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(g.awayTeam||'')+'</div><span class="sc-score'+(isFin&&g.homeScore>g.awayScore?' dim':'')+'">'+g.awayScore+'</span></div>'+
+              '<div class="sc-row"><div class="sc-team">'+(g.homeFlag?'<img src="'+esc(g.homeFlag)+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(g.homeTeam||'')+'</div><span class="sc-score'+(isFin&&g.awayScore>g.homeScore?' dim':'')+'">'+g.homeScore+'</span></div>'+
+              '<div class="sc-status '+(isLive?'live-st':isFin?'final-st':'pre-st')+'">'+esc(statusText)+'</div></div>';
+          }).join('');
+        }
+        /* Propagate SCOUT note to banner when WC is active */
+        if(data.active && data.scoutNote) {
+          var noteEl = document.getElementById('scout-note');
+          if(noteEl) noteEl.textContent = data.scoutNote;
+          var banner = document.getElementById('scout-banner');
+          if(banner) banner.style.borderBottomColor = 'rgba(255,215,0,0.4)';
+        }
+      }
 
-  /* Groups */
-  if(grEl) {
-    fetchWithTimeout('https://worldcup26.ir/get/groups', 10000)
-      .then(function(r){return r.json();})
-      .then(function(data){
-        var groups = Array.isArray(data) ? data : (data.groups||data.data||[]);
+      /* Groups/standings */
+      if(grEl) {
+        var groups = data.standings || [];
         if(!groups.length){grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">No group data yet</span>';return;}
         grEl.innerHTML = groups.map(function(grp){
           var name=grp.name||grp.group||'Group';
@@ -2164,9 +2163,12 @@ function loadWorldCup() {
             }).join('')+
           '</div>';
         }).join('');
-      })
-      .catch(function(){if(grEl)grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';});
-  }
+      }
+    })
+    .catch(function(){
+      if(scEl) scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Check back for live scores</span>';
+      if(grEl) grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';
+    });
 }
 window.loadWorldCup = loadWorldCup;
 
@@ -2223,7 +2225,8 @@ function loadVideoTab(filter) {
       var vids = d.videos || [];
       if(!vids.length){if(el)el.innerHTML=errHTML('No videos right now','loadVideoTab(\''+filter+'\')');return;}
       videoCache['all'] = vids;
-      var filtered = filter==='all' ? vids : vids.filter(function(v){return v.tag===filter;});
+      var filterUp = (filter||'').toUpperCase();
+      var filtered = filter==='all' ? vids : vids.filter(function(v){return (v.tag||'').toUpperCase()===filterUp;});
       if(el) el.innerHTML = filtered.slice(0,6).map(vidCardHtml).join('') || errHTML('No videos for this filter','loadVideoTab(\'all\')');
       if(el2) el2.innerHTML = filtered.slice(6,12).map(vidCardHtml).join('');
     })
@@ -2232,6 +2235,7 @@ function loadVideoTab(filter) {
 window.loadVideoTab = loadVideoTab;
 
 window.filterVids = function(f, btn) {
+  vidFilter = f;
   var bar = document.getElementById('vid-filters');
   if(bar) bar.querySelectorAll('.vf').forEach(function(b){b.classList.remove('active');});
   if(btn && btn.classList) btn.classList.add('active');
