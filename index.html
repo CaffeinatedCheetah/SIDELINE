@@ -458,6 +458,14 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .scout-debate-chip{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;}
 .scout-debate-chip:hover{border-color:var(--red);color:#fff;}
 .scout-debate-chip .chip-sport{color:var(--red);margin-right:4px;}
+.breaking-rail{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:6px 20px;background:#0d0a0a;border-bottom:1px solid rgba(255,59,48,0.25);}
+.breaking-rail::-webkit-scrollbar{display:none;}
+.breaking-pill{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;border-radius:20px;padding:4px 10px;transition:all 0.15s;text-decoration:none;display:inline-block;}
+.breaking-pill.tier-breaking{color:#ff3b30;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.4);}
+.breaking-pill.tier-breaking:hover{background:rgba(255,59,48,0.22);}
+.breaking-pill.tier-alert{color:#ff9f0a;background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);}
+.breaking-pill.tier-alert:hover{background:rgba(255,159,10,0.2);}
+.breaking-pill .pill-badge{margin-right:4px;}
 </style>
 </head>
 <body>
@@ -494,6 +502,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   <span class="scout-note" id="scout-note">Always watching. Always one step ahead.</span>
 </div>
 <div class="scout-debate-prompts" id="scout-debate-prompts" style="display:none"></div>
+<div class="breaking-rail" id="breaking-rail" style="display:none"></div>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('home',this)">🏠 Home</button>
@@ -2383,11 +2392,41 @@ function loadScout() {
             }).join('');
         }
       }
-      // World Cup mode: highlight banner
       if (d.siteMode === 'worldcup') {
         var banner = document.getElementById('scout-banner');
         if (banner) banner.style.borderBottomColor = 'rgba(255,215,0,0.4)';
       }
+    })
+    .catch(function() {});
+
+  fetchWithTimeout('/api/agent-hunter', 8000)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(h) {
+      if (!h) return;
+      var rail = document.getElementById('breaking-rail');
+      if (!rail) return;
+      var items = [];
+      (h.breaking || []).forEach(function(s){ items.push({ tier:'breaking', story:s }); });
+      (h.alerts   || []).slice(0,3).forEach(function(s){ items.push({ tier:'alert', story:s }); });
+      if (!items.length) { rail.style.display = 'none'; return; }
+      if (h.fresh && h.breaking && h.breaking[0] && h.breaking[0].reaction) {
+        var noteEl = document.getElementById('scout-note');
+        if (noteEl) noteEl.textContent = h.breaking[0].reaction;
+        var bnr = document.getElementById('scout-banner');
+        if (bnr) bnr.style.borderBottomColor = 'rgba(255,59,48,0.5)';
+      }
+      rail.style.display = 'flex';
+      rail.innerHTML = '<span class="breaking-pill tier-breaking" style="cursor:default;opacity:0.7">⚡ LIVE</span>' +
+        items.map(function(item) {
+          var badge = item.tier === 'breaking' ? '🚨 BREAKING' : '⚠️ ALERT';
+          var title = item.story.title || '';
+          var label = esc(title.length > 60 ? title.slice(0,60) + '…' : title);
+          var url   = esc(item.story.url || '');
+          var cls   = 'breaking-pill tier-' + item.tier;
+          return url
+            ? '<a href="' + url + '" target="_blank" rel="noopener" class="' + cls + '"><span class="pill-badge">' + badge + '</span>' + label + '</a>'
+            : '<span class="' + cls + '"><span class="pill-badge">' + badge + '</span>' + label + '</span>';
+        }).join('');
     })
     .catch(function() {});
 }

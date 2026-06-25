@@ -21,6 +21,10 @@ const DEFAULT = {
     standings: [],
     lastGoal:  null,
   },
+  hunterBreaking:    [],
+  hunterAlerts:      [],
+  hunterWatchlist:   [],
+  hunterLastChecked: null,
 };
 
 function local() {
