@@ -14,13 +14,17 @@ Every goal, every upset, every red card — you feel it and make fans feel it to
 
 async function fetchWCGames() {
   try {
+    console.log('[SCOUT worldcup] fetching https://worldcup26.ir/get/games');
     const r = await fetch('https://worldcup26.ir/get/games', {
       headers: { Accept: 'application/json', 'User-Agent': 'Sideline-SCOUT/1.0' },
       signal: AbortSignal.timeout(6000),
     });
+    console.log('[SCOUT worldcup] games response status:', r.status);
     if (!r.ok) return [];
     const data  = await r.json();
+    console.log('[SCOUT worldcup] raw data type:', typeof data, '| isArray:', Array.isArray(data), '| keys:', typeof data === 'object' && !Array.isArray(data) ? Object.keys(data).join(',') : 'n/a');
     const games = Array.isArray(data) ? data : (data.games || data.matches || data.data || []);
+    console.log('[SCOUT worldcup] parsed', games.length, 'games');
     return games.map(g => {
       const home   = g.home || g.homeTeam || g.team_home || {};
       const away   = g.away || g.awayTeam || g.team_away || {};
@@ -39,7 +43,10 @@ async function fetchWCGames() {
         awayFlag:  away.flag || away.logo || away.crest || '',
       };
     }).filter(g => g.homeTeam && g.awayTeam);
-  } catch { return []; }
+  } catch (err) {
+    console.error('[SCOUT worldcup] fetchWCGames error:', err.message);
+    return [];
+  }
 }
 
 async function fetchWCGroups() {
