@@ -61,6 +61,46 @@ async function fetchESPN(dateParam) {
   return results.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
 }
 
+// ── World Cup 2026 live API ───────────────────────────────────────────────
+async function fetchWorldCup() {
+  try {
+    const r = await fetch('https://worldcup26.ir/get/games', {
+      headers: { 'Accept': 'application/json', 'User-Agent': 'Sideline/1.0' }
+    });
+    if (!r.ok) return [];
+    const data = await r.json();
+    const games = Array.isArray(data) ? data : (data.games || data.matches || data.data || []);
+    return games.map(g => {
+      const home = g.home || g.homeTeam || g.team_home || {};
+      const away = g.away || g.awayTeam || g.team_away || {};
+      const status = (g.status || g.state || g.matchStatus || '').toLowerCase();
+      const isLive = status.includes('live') || status.includes('progress') || status.includes('ht') || status === 'in';
+      const isFin  = status.includes('ft') || status.includes('finish') || status.includes('end') || status === 'post';
+      return {
+        state:  isLive ? 'in' : isFin ? 'post' : 'pre',
+        detail: g.time || g.minute || g.detail || '',
+        cat:    'soccer',
+        label:  'World Cup 2026',
+        wc:     true,
+        date:   g.date || g.datetime || g.kickoff || g.startTime || '',
+        url:    '',
+        home: {
+          name:   home.name || home.team || home.shortName || '',
+          score:  Number(home.score ?? home.goals ?? g.home_score ?? 0),
+          logo:   home.flag || home.logo || home.crest || '',
+          winner: !!(home.winner || (isFin && Number(home.score ?? 0) > Number(away.score ?? 0))),
+        },
+        away: {
+          name:   away.name || away.team || away.shortName || '',
+          score:  Number(away.score ?? away.goals ?? g.away_score ?? 0),
+          logo:   away.flag || away.logo || away.crest || '',
+          winner: !!(away.winner || (isFin && Number(away.score ?? 0) > Number(home.score ?? 0))),
+        },
+      };
+    }).filter(g => g.home.name && g.away.name);
+  } catch { return []; }
+}
+
 // ── TheSportsDB free-tier fallback ─────────────────────────────────────────
 const TSDB_SPORT_MAP = {
   'Soccer': 'soccer', 'Football': 'american', 'Basketball': 'american',
@@ -105,10 +145,22 @@ export default async function handler(req, res) {
   const dateParam = req.query.date ? `?dates=${req.query.date}` : '';
 
   try {
-    // ── LAYER 1: ESPN (primary) ──────────────────────────────────────────
-    let games = await fetchESPN(dateParam);
+    // ── LAYER 1: ESPN + World Cup live simultaneously ─────────────────────
+    const [espnGames, wcGames] = await Promise.all([
+      fetchESPN(dateParam),
+      !req.query.date ? fetchWorldCup() : Promise.resolve([]),
+    ]);
 
-    // ── LAYER 2: TheSportsDB fallback if ESPN returned nothing ──────────
+    // Merge: WC games first (pinned), then ESPN (dedup any WC games ESPN also returned)
+    let games = [...wcGames];
+    for (const g of espnGames) {
+      const isWcDup = g.label === 'World Cup' && wcGames.some(
+        w => w.home.name === g.home.name && w.away.name === g.away.name
+      );
+      if (!isWcDup) games.push(g);
+    }
+
+    // ── LAYER 2: TheSportsDB fallback if all returned nothing ─────────────
     if (!games.length) {
       try {
         games = await fetchTheSportsDB(req.query.date || '');

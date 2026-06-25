@@ -48,7 +48,7 @@ function extractAttr(xml, tag, attr) {
   return m ? m[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>') : '';
 }
 
-const EXCLUSIVE_SOURCES = new Set(['The Guardian','Bleacher Report','Sky Sports','CBS Sports']);
+const EXCLUSIVE_SOURCES = new Set(['The Guardian','Sky Sports','Sports Illustrated','Sporting News','90min']);
 
 function parseRSS(xml, sourceName, fallbackImage) {
   const items = [];
@@ -174,39 +174,48 @@ function pickImg(pool, seed) {
 // ── Source registry ────────────────────────────────────────────────────────
 const SOURCES = {
   home: [
-    { url: 'https://feeds.bbci.co.uk/sport/rss.xml',          name: 'BBC Sport',       fallbackImage: IMG_POOLS.default},
-    { url: 'https://www.espn.com/espn/rss/news',               name: 'ESPN',            fallbackImage: IMG_POOLS.default},
-    { url: 'https://www.theguardian.com/sport/rss',            name: 'The Guardian',    fallbackImage: IMG_POOLS.default},
-    { url: 'https://www.skysports.com/rss/12040',              name: 'Sky Sports',      fallbackImage: IMG_POOLS.default},
-    { url: 'https://www.cbssports.com/rss/headlines',          name: 'CBS Sports',      fallbackImage: IMG_POOLS.default},
-    { url: 'http://bleacherreport.com/articles/feed',          name: 'Bleacher Report', fallbackImage: IMG_POOLS.default},
+    { url: 'https://feeds.bbci.co.uk/sport/rss.xml',                  name: 'BBC Sport',         fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.espn.com/espn/rss/news',                       name: 'ESPN',              fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.theguardian.com/sport/rss',                    name: 'The Guardian',      fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.skysports.com/rss/12040',                      name: 'Sky Sports',        fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.cbssports.com/rss/headlines/',                 name: 'CBS Sports',        fallbackImage: IMG_POOLS.default},
+    { url: 'https://feeds.bleacherreport.com/articles/home.rss',       name: 'Bleacher Report',   fallbackImage: IMG_POOLS.default},
+    { url: 'https://api.foxsports.com/v1/rss',                         name: 'Fox Sports',        fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.si.com/rss/si_topstories.rss',                 name: 'Sports Illustrated',fallbackImage: IMG_POOLS.default},
+    { url: 'https://sports.yahoo.com/rss/',                            name: 'Yahoo Sports',      fallbackImage: IMG_POOLS.default},
+    { url: 'https://www.sportingnews.com/us/rss',                      name: 'Sporting News',     fallbackImage: IMG_POOLS.default},
   ],
   american: [
-    { url: 'https://www.espn.com/espn/rss/nfl/news',           name: 'ESPN NFL',        fallbackImage: IMG_POOLS.american },
-    { url: 'https://www.espn.com/espn/rss/nba/news',           name: 'ESPN NBA',        fallbackImage: IMG_POOLS.american },
-    { url: 'https://www.espn.com/espn/rss/mlb/news',           name: 'ESPN MLB',        fallbackImage: IMG_POOLS.american },
-    { url: 'https://www.espn.com/espn/rss/nhl/news',           name: 'ESPN NHL',        fallbackImage: IMG_POOLS.american },
-    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport', fallbackImage: IMG_POOLS.american },
-    { url: 'https://www.cbssports.com/nfl/rss/headlines',      name: 'CBS Sports',      fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/nfl/news',                   name: 'ESPN NFL',          fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/nba/news',                   name: 'ESPN NBA',          fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/mlb/news',                   name: 'ESPN MLB',          fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.espn.com/espn/rss/nhl/news',                   name: 'ESPN NHL',          fallbackImage: IMG_POOLS.american },
+    { url: 'https://feeds.bbci.co.uk/sport/american-football/rss.xml', name: 'BBC Sport',         fallbackImage: IMG_POOLS.american },
+    { url: 'https://www.cbssports.com/nfl/rss/headlines/',             name: 'CBS Sports',        fallbackImage: IMG_POOLS.american },
+    { url: 'https://feeds.bleacherreport.com/articles/home.rss',       name: 'Bleacher Report',   fallbackImage: IMG_POOLS.american },
+    { url: 'https://api.foxsports.com/v1/rss',                         name: 'Fox Sports',        fallbackImage: IMG_POOLS.american },
   ],
   soccer: [
-    { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG_POOLS.soccer },
-    { url: 'https://www.espn.com/espn/rss/soccer/news',         name: 'ESPN',           fallbackImage: IMG_POOLS.soccer },
-    { url: 'https://www.theguardian.com/football/rss',          name: 'The Guardian',   fallbackImage: IMG_POOLS.soccer },
-    { url: 'https://www.skysports.com/rss/12040',               name: 'Sky Sports',     fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://feeds.bbci.co.uk/sport/football/rss.xml',          name: 'BBC Sport',         fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.espn.com/espn/rss/soccer/news',                name: 'ESPN',              fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.theguardian.com/football/rss',                 name: 'The Guardian',      fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.skysports.com/rss/12040',                      name: 'Sky Sports',        fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.90min.com/feed',                               name: '90min',             fallbackImage: IMG_POOLS.soccer },
+    { url: 'https://www.sportingnews.com/us/rss',                      name: 'Sporting News',     fallbackImage: IMG_POOLS.soccer },
   ],
   rugby: [
-    { url: 'https://feeds.bbci.co.uk/sport/rugby-union/rss.xml',  name: 'BBC Sport',   fallbackImage: IMG_POOLS.rugby },
-    { url: 'https://feeds.bbci.co.uk/sport/rugby-league/rss.xml', name: 'BBC Sport',   fallbackImage: IMG_POOLS.rugby },
-    { url: 'https://www.theguardian.com/sport/rugby-union/rss',   name: 'The Guardian',fallbackImage: IMG_POOLS.rugby },
+    { url: 'https://feeds.bbci.co.uk/sport/rugby-union/rss.xml',       name: 'BBC Sport',         fallbackImage: IMG_POOLS.rugby },
+    { url: 'https://feeds.bbci.co.uk/sport/rugby-league/rss.xml',      name: 'BBC Sport',         fallbackImage: IMG_POOLS.rugby },
+    { url: 'https://www.theguardian.com/sport/rugby-union/rss',        name: 'The Guardian',      fallbackImage: IMG_POOLS.rugby },
   ],
   combat: [
-    { url: 'https://feeds.bbci.co.uk/sport/boxing/rss.xml',           name: 'BBC Sport', fallbackImage: IMG_POOLS.combat },
-    { url: 'https://feeds.bbci.co.uk/sport/mixed-martial-arts/rss.xml', name: 'BBC Sport', fallbackImage: IMG_POOLS.combat },
+    { url: 'https://feeds.bbci.co.uk/sport/boxing/rss.xml',            name: 'BBC Sport',         fallbackImage: IMG_POOLS.combat },
+    { url: 'https://feeds.bbci.co.uk/sport/mixed-martial-arts/rss.xml',name: 'BBC Sport',         fallbackImage: IMG_POOLS.combat },
+    { url: 'https://www.cbssports.com/mma/rss/headlines/',             name: 'CBS Sports',        fallbackImage: IMG_POOLS.combat },
   ],
   racing: [
-    { url: 'https://feeds.bbci.co.uk/sport/formula1/rss.xml',  name: 'BBC Sport',      fallbackImage: IMG_POOLS.racing },
-    { url: 'https://www.theguardian.com/sport/formulaone/rss',  name: 'The Guardian',  fallbackImage: IMG_POOLS.racing },
+    { url: 'https://feeds.bbci.co.uk/sport/formula1/rss.xml',          name: 'BBC Sport',         fallbackImage: IMG_POOLS.racing },
+    { url: 'https://www.theguardian.com/sport/formulaone/rss',         name: 'The Guardian',      fallbackImage: IMG_POOLS.racing },
   ],
   nfl: [
     { url: 'https://www.espn.com/espn/rss/nfl/news',            name: 'ESPN NFL',       fallbackImage: IMG_POOLS.american },

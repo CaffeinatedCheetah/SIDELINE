@@ -539,6 +539,18 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <!-- SOCCER -->
     <div class="page" id="page-soccer">
       <div class="sec"><div class="sec-title">⚽ Soccer</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">EPL · La Liga · UCL · MLS · Bundesliga</span></div>
+      <!-- WORLD CUP 2026 LIVE SECTION -->
+      <div style="background:linear-gradient(135deg,#001a00 0%,#0d1117 60%,#1a0d00 100%);border:1px solid rgba(63,185,80,0.4);border-radius:16px;padding:16px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;color:#3FB950;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#3FB950;animation:pulse 1.4s infinite;display:inline-block"></span>🏆 World Cup 2026 — LIVE</div>
+          <span style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted)">USA · Canada · Mexico</span>
+        </div>
+        <div id="wc-scores" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none"><span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Loading...</span></div>
+        <div style="margin-top:14px">
+          <div style="font-family:Space Mono,monospace;font-size:9px;color:#3FB950;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">Group Standings</div>
+          <div id="wc-groups" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"><span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Loading groups...</span></div>
+        </div>
+      </div>
       <div class="rail" id="rail-soccer"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
       <div class="content-grid" id="news-soccer"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
@@ -1157,8 +1169,8 @@ function newsCardHtml(article, featured) {
 
   var badges = '';
   if (article.breaking)  badges += '<span style="background:var(--red);color:#fff;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">⚡ BREAKING</span>';
-  if (article.trending)  badges += '<span style="background:rgba(255,61,61,0.2);color:var(--red);font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🔥 TRENDING</span>';
-  if (article.exclusive) badges += '<span style="background:rgba(63,185,80,0.15);color:#3FB950;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🌍 EXCLUSIVE</span>';
+  if (article.trending)  badges += '<span style="background:rgba(255,61,61,0.2);color:var(--red);font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🔥 Everywhere Right Now</span>';
+  if (article.exclusive) badges += '<span style="background:rgba(63,185,80,0.15);color:#3FB950;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🌍 Only on Sideline</span>';
 
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
@@ -2061,7 +2073,71 @@ window.loadHomeContent = loadHomeContent;
 
 var SPORT_TAB_MAP = { american:['NBA','NFL','MLB','NHL','WNBA'], soccer:['Soccer'], rugby:['Rugby'], combat:['UFC'], racing:['F1','Racing'] };
 
+function loadWorldCup() {
+  var scEl = document.getElementById('wc-scores');
+  var grEl = document.getElementById('wc-groups');
+  if(!scEl && !grEl) return;
+
+  /* Live scores */
+  if(scEl) {
+    fetchWithTimeout('https://worldcup26.ir/get/games', 10000)
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var games = Array.isArray(data) ? data : (data.games||data.matches||data.data||[]);
+        if(!games.length){scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">No matches today</span>';return;}
+        scEl.innerHTML = games.slice(0,12).map(function(g){
+          var home=g.home||g.homeTeam||g.team_home||{};
+          var away=g.away||g.awayTeam||g.team_away||{};
+          var st=(g.status||g.state||'').toLowerCase();
+          var isLive=st.includes('live')||st.includes('progress')||st.includes('ht')||st==='in';
+          var isFin=st.includes('ft')||st.includes('finish')||st==='post';
+          var hs=Number(home.score??home.goals??g.home_score??0);
+          var as_=Number(away.score??away.goals??g.away_score??0);
+          var statusText=isLive?('● '+(g.time||g.minute||'LIVE')):isFin?'FT':(g.date?new Date(g.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'TBD');
+          return '<div class="score-card'+(isLive?' live':'')+'">'+
+            '<div class="sc-lg">World Cup 2026'+(isLive?'<span class="sc-live-badge">LIVE</span>':'')+'</div>'+
+            '<div class="sc-row"><div class="sc-team">'+(away.flag||away.logo?'<img src="'+(away.flag||away.logo||'')+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(away.name||away.team||'')+'</div><span class="sc-score'+(isFin&&hs>as_?' dim':'')+'">'+as_+'</span></div>'+
+            '<div class="sc-row"><div class="sc-team">'+(home.flag||home.logo?'<img src="'+(home.flag||home.logo||'')+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+esc(home.name||home.team||'')+'</div><span class="sc-score'+(isFin&&as_>hs?' dim':'')+'">'+hs+'</span></div>'+
+            '<div class="sc-status '+(isLive?'live-st':isFin?'final-st':'pre-st')+'">'+esc(statusText)+'</div></div>';
+        }).join('');
+      })
+      .catch(function(){if(scEl)scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Check back for live scores</span>';});
+  }
+
+  /* Groups */
+  if(grEl) {
+    fetchWithTimeout('https://worldcup26.ir/get/groups', 10000)
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var groups = Array.isArray(data) ? data : (data.groups||data.data||[]);
+        if(!groups.length){grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">No group data yet</span>';return;}
+        grEl.innerHTML = groups.map(function(grp){
+          var name=grp.name||grp.group||'Group';
+          var teams=grp.teams||grp.standings||[];
+          return '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(63,185,80,0.2);border-radius:10px;padding:10px">'+
+            '<div style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;color:#3FB950;margin-bottom:6px">'+esc(name)+'</div>'+
+            teams.map(function(t,i){
+              var flag=t.flag||t.logo||t.crest||'';
+              return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'+
+                '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--faint);min-width:12px">'+(i+1)+'</span>'+
+                (flag?'<img src="'+esc(flag)+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+
+                '<span style="font-family:Oswald,sans-serif;font-size:12px;font-weight:500;color:#fff;flex:1">'+esc(t.name||t.team||'')+'</span>'+
+                '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted)">'+
+                  (t.played!==undefined?t.played+' ':'')+(t.points!==undefined?'<strong style="color:#fff">'+t.points+'pts</strong>':'')+'</span>'+
+              '</div>';
+            }).join('')+
+          '</div>';
+        }).join('');
+      })
+      .catch(function(){if(grEl)grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';});
+  }
+}
+window.loadWorldCup = loadWorldCup;
+
 function loadSportTab(tab) {
+  /* World Cup live section on Soccer tab */
+  if(tab === 'soccer') loadWorldCup();
+
   /* news — direct fetch */
   var newsEl = document.getElementById('news-'+tab);
   if(newsEl) {
