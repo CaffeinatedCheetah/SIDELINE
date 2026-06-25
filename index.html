@@ -446,6 +446,18 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .char-count.danger{color:var(--red);}
 .post-take-btn{background:var(--red);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:11px 28px;border-radius:10px;cursor:pointer;transition:opacity 0.15s;}
 .post-take-btn:hover{opacity:0.9;}
+
+/* SCOUT AI BANNER */
+.scout-banner{background:linear-gradient(90deg,#0a0e1a 0%,#0d1117 40%,#0a1a0a 100%);border-bottom:1px solid rgba(63,185,80,0.25);padding:7px 20px;display:flex;align-items:center;gap:8px;min-height:34px;position:relative;overflow:hidden;}
+.scout-banner::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(63,185,80,0.04),transparent 60%);pointer-events:none;}
+.scout-badge{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.35);border-radius:4px;padding:2px 7px;flex-shrink:0;white-space:nowrap;}
+.scout-note{font-family:'Space Mono',monospace;font-size:10px;color:rgba(240,237,232,0.75);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.scout-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse 2s ease-in-out infinite;}
+.scout-debate-prompts{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.scout-debate-prompts::-webkit-scrollbar{display:none;}
+.scout-debate-chip{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all 0.15s;}
+.scout-debate-chip:hover{border-color:var(--red);color:#fff;}
+.scout-debate-chip .chip-sport{color:var(--red);margin-right:4px;}
 </style>
 </head>
 <body>
@@ -475,6 +487,13 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <span class="tick-item"><span class="tick-dot"></span>Loading live scores...</span>
   </div>
 </div>
+
+<div class="scout-banner" id="scout-banner">
+  <span class="scout-dot"></span>
+  <span class="scout-badge">🤖 SCOUT</span>
+  <span class="scout-note" id="scout-note">Always watching. Always one step ahead.</span>
+</div>
+<div class="scout-debate-prompts" id="scout-debate-prompts" style="display:none"></div>
 
 <div class="tabs">
   <button class="tab active" onclick="showTab('home',this)">🏠 Home</button>
@@ -2232,12 +2251,87 @@ setHTML('sb-sports', SPORTS_TODAY.map(function(s){
 }).join(''));
 refreshTakesUI();
 
+/* ── SCOUT AI ─────────────────────────────────────────────────────── */
+var SCOUT_PROFILE_KEY = 'sl_user_profile';
+
+function getUserProfile() {
+  try {
+    var s = localStorage.getItem(SCOUT_PROFILE_KEY);
+    return s ? JSON.parse(s) : { favoriteSports: [], favoriteTeams: [], viewHistory: [], voteHistory: [], engagementScore: {} };
+  } catch(e) { return { favoriteSports: [], favoriteTeams: [], viewHistory: [], voteHistory: [], engagementScore: {} }; }
+}
+
+function patchUserProfile(update) {
+  try {
+    var p = getUserProfile();
+    Object.assign(p, update);
+    localStorage.setItem(SCOUT_PROFILE_KEY, JSON.stringify(p));
+  } catch(e) {}
+}
+
+function loadScout() {
+  var profile = getUserProfile();
+  fetchWithTimeout('/api/agent-pulse', 8000)
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (!d) return;
+      var note = d.editorNote || '';
+      if (note) {
+        var el = document.getElementById('scout-note');
+        if (el) el.textContent = note;
+      }
+      var prompts = d.debatePrompts || [];
+      if (prompts.length) {
+        var bar = document.getElementById('scout-debate-prompts');
+        if (bar) {
+          bar.style.display = 'flex';
+          bar.innerHTML = '<span class="scout-debate-chip" style="border-color:rgba(63,185,80,0.3);color:rgba(63,185,80,0.8);cursor:default">🔥 SCOUT Debates</span>' +
+            prompts.map(function(p) {
+              var sport = p.sport ? '<span class="chip-sport">[' + esc(p.sport.toUpperCase()) + ']</span>' : '';
+              return '<span class="scout-debate-chip" onclick="openDebate(' + JSON.stringify(p.question) + ')">' + sport + esc(p.question) + '</span>';
+            }).join('');
+        }
+      }
+      // World Cup mode: highlight banner
+      if (d.siteMode === 'worldcup') {
+        var banner = document.getElementById('scout-banner');
+        if (banner) banner.style.borderBottomColor = 'rgba(255,215,0,0.4)';
+      }
+    })
+    .catch(function() {});
+}
+
+window.openDebate = function(question) {
+  var input = document.getElementById('take-input');
+  if (input && question) {
+    showTab('takes', document.querySelectorAll('.tab')[6]);
+    setTimeout(function() { openTakeModal(); }, 100);
+    setTimeout(function() {
+      var inp = document.getElementById('take-input');
+      if (inp) { inp.value = question; updateCharCount(); }
+    }, 300);
+  }
+};
+
+// Track engagement events (fire/ice) to SCOUT
+window.trackScoutEngagement = function(event, topic) {
+  try {
+    fetch('/api/agent-engagement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: event, data: { topic: topic } }),
+    }).catch(function(){});
+  } catch(e) {}
+};
+
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
 setHTML('sb-live','<span class="empty">Loading live games...</span>');
 loadScores();
 loadHomeContent();
+loadScout();
 setInterval(loadScores, 30000);
+setInterval(loadScout, 5 * 60 * 1000);
 
 })();
 
