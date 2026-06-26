@@ -1,11 +1,13 @@
 # Sideline — TODO
 
 ## Environment Variables (Vercel Dashboard → Settings → Environment Variables)
-- [ ] `ANTHROPIC_API_KEY` — required by agent-social, agent-breaking, agent-hunter, agent-worldcup, agent-pulse, agent-social-manual
-- [ ] `RAPIDAPI_KEY` — optional; used by agent-social for Twitter154 API (falls back to Nitter RSS without it)
-- [ ] `CRON_SECRET` — recommended; protects cron endpoints from unauthorized manual triggers
+- [ ] `ANTHROPIC_API_KEY` — required by all Claude agents
+- [ ] `RAPIDAPI_KEY` — optional; used by agent-social for Twitter154 API (falls back to Nitter RSS)
+- [ ] `CRON_SECRET` — recommended; protects cron endpoints from unauthorized triggers
 - [ ] `SCOUT_SECRET_KEY` — required for agent-memory POST writes
-- [ ] `KV_REST_API_URL` + `KV_REST_API_TOKEN` — optional; enables persistent SCOUT memory via Vercel KV (without these, memory resets on cold start)
+- [ ] `KV_REST_API_URL` + `KV_REST_API_TOKEN` — optional; persistent SCOUT memory via Vercel KV
+- [ ] `TWITTER_API_KEY` + `TWITTER_API_SECRET` + `TWITTER_ACCESS_TOKEN` + `TWITTER_ACCESS_SECRET` — required for agent-publisher to auto-post to X/Twitter
+- [ ] `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_EMAIL` — required for web push notifications (generate with: `npx web-push generate-vapid-keys`)
 
 ## Cron Agents (all now wired in vercel.json)
 - [x] agent-social — every 15 min

@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src https://www.youtube.com https://www.dailymotion.com; connect-src 'self' https:; object-src 'none'; base-uri 'self';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://platform.twitter.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src https://www.youtube.com https://www.dailymotion.com https://platform.twitter.com https://syndication.twitter.com; connect-src 'self' https:; object-src 'none'; base-uri 'self';"
         },
         {
           "key": "X-Content-Type-Options",
@@ -26,12 +26,20 @@
       ]
     }
   ],
+  "rewrites": [
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+  ],
   "crons": [
-    { "path": "/api/agent-social",   "schedule": "*/15 * * * *" },
-    { "path": "/api/agent-breaking", "schedule": "*/5 * * * *"  },
-    { "path": "/api/agent-hunter",   "schedule": "*/5 * * * *"  },
-    { "path": "/api/agent-worldcup", "schedule": "*/5 * * * *"  },
-    { "path": "/api/agent-pulse",    "schedule": "*/30 * * * *" },
-    { "path": "/api/agent-rivals",   "schedule": "0 * * * *"    }
+    { "path": "/api/agent-social",     "schedule": "*/30 * * * *" },
+    { "path": "/api/agent-breaking",   "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-hunter",     "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-worldcup",   "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-viral",      "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-pulse",      "schedule": "*/30 * * * *" },
+    { "path": "/api/agent-publisher",  "schedule": "*/30 * * * *" },
+    { "path": "/api/push-notify",      "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-rivals",     "schedule": "0 * * * *"    },
+    { "path": "/api/agent-repurpose",  "schedule": "0 * * * *"    },
+    { "path": "/api/agent-seo",        "schedule": "0 */6 * * *"  }
   ]
 }

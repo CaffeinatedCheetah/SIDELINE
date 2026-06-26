@@ -9,6 +9,19 @@
 <meta name="apple-mobile-web-app-title" content="Sideline"/>
 <meta name="theme-color" content="#FF3D3D"/>
 <title>FanTakes — Live Sports Debate | fantakes.app</title>
+<meta name="description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates and trending highlights. NBA, NFL, Soccer, UFC, F1 and more.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Sideline">
+<meta property="og:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
+<meta property="og:description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates. All sports, all fans.">
+<meta property="og:image" content="https://fantakes.app/api/og-image?type=site">
+<meta property="og:url" content="https://fantakes.app">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@sidelineapp">
+<meta name="twitter:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
+<meta name="twitter:image" content="https://fantakes.app/api/og-image?type=site">
+<link rel="canonical" href="https://fantakes.app">
+<link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -746,7 +759,21 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <div class="sec"><div class="sec-title">🏆 Sports Today</div></div>
     <div id="sb-sports"></div>
 
-    <div class="sec" style="margin-top:16px"><div class="sec-title">📱 Get the App</div></div>
+    <!-- Breaking alerts -->
+    <div class="sec" style="margin-top:16px"><div class="sec-title">🔔 Breaking Alerts</div></div>
+    <div id="push-cta" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-bottom:16px">
+      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:10px">Get notified on goals, trades &amp; breaking news</div>
+      <button style="background:var(--red);color:#fff;border:none;font-family:Space Mono,monospace;font-size:11px;font-weight:700;letter-spacing:1px;padding:9px 18px;border-radius:6px;cursor:pointer;width:100%" onclick="subscribePush()">🔔 ENABLE ALERTS</button>
+    </div>
+
+    <!-- Blog link -->
+    <div class="sec"><div class="sec-title">📰 Analysis &amp; Blog</div></div>
+    <a href="/blog.html" style="display:block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;text-decoration:none">
+      <div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:600;color:#fff;margin-bottom:4px">Sports News &amp; Hot Takes →</div>
+      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">AI-powered analysis on every match</div>
+    </a>
+
+    <div class="sec" style="margin-top:4px"><div class="sec-title">📱 Get the App</div></div>
     <div style="background:linear-gradient(135deg,#1a0000,#0d1117);border:1px solid rgba(255,61,61,0.3);border-radius:12px;padding:16px;text-align:center;">
       <div style="font-size:32px;margin-bottom:8px;">📲</div>
       <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">fantakes.app</div>
@@ -1357,6 +1384,11 @@ window.voteTake = function(id, type) {
   if(prev===type) { delete takeVotes[id]; }
   else { if(type==='fire') take.fires=(take.fires||0)+1; else take.ices=(take.ices||0)+1; takeVotes[id]=type; trackScoutEngagement(type, take.sport||'Sports'); }
   saveTakeVotes(); saveTakes();
+  // Debounced server vote sync
+  clearTimeout(take._syncTimer);
+  take._syncTimer=setTimeout(function(){
+    fetch('/api/takes',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id,fires:take.fires,ices:take.ices})}).catch(function(){});
+  },3000);
   /* update all cards showing this take */
   document.querySelectorAll('[data-take-id="'+id+'"]').forEach(function(card) {
     var tot=(take.fires||0)+(take.ices||0), fp=tot?Math.round(take.fires/tot*100):50, ip=100-fp;
@@ -1778,6 +1810,8 @@ window.submitTake=function(){
   TAKES.unshift(newTake);
   if(TAKES.length>100) TAKES=TAKES.slice(0,100);
   saveTakeVotes(); saveTakes();
+  // Sync to server (fire-and-forget)
+  fetch('/api/takes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newTake)}).catch(function(){});
   closeTakeModal();
   refreshTakesUI();
   showTab('takes',document.querySelectorAll('.tab')[6]);
@@ -2469,6 +2503,32 @@ window.trackScoutEngagement = function(event, topic) {
   } catch(e) {}
 };
 
+/* -- PUSH NOTIFICATIONS -- */
+function urlB64ToUint8Array(b64) {
+  var pad = '='.repeat((4 - b64.length % 4) % 4);
+  var raw = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from(Array.from(raw).map(function(c){return c.charCodeAt(0);}));
+}
+window.subscribePush = function() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showToast('Push notifications not supported in this browser'); return;
+  }
+  fetch('/api/push-subscribe')
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if (!d.ready || !d.publicKey) { showToast('Push alerts not configured yet'); return; }
+      navigator.serviceWorker.register('/sw.js').then(function(reg){
+        return reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToUint8Array(d.publicKey) });
+      }).then(function(sub){
+        return fetch('/api/push-subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub.toJSON(),topics:['breaking','goals']})});
+      }).then(function(){
+        var el=document.getElementById('push-cta');
+        if(el) el.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--green);letter-spacing:1px">✓ BREAKING ALERTS ON</span>';
+        showToast('🔔 Breaking news alerts enabled!');
+      }).catch(function(){showToast('Could not enable push notifications');});
+    }).catch(function(){showToast('Could not enable push notifications');});
+};
+
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
 setHTML('sb-live','<span class="empty">Loading live games...</span>');
@@ -2481,6 +2541,5 @@ setInterval(loadScout, 5 * 60 * 1000);
 })();
 
 </script>
-<script src="/api/social-articles-frontend.js"></script>
 </body>
 </html>

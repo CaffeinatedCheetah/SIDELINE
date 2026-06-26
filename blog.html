@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title id="pg-title">Sports News & Hot Takes — Sideline</title>
+  <meta name="description" id="pg-desc" content="Breaking sports news, expert analysis, and hot fan takes. NBA, NFL, Soccer, UFC, F1 and more. Drop your take on Sideline.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Sideline">
+  <meta property="og:title" id="og-title" content="Sports News & Hot Takes — Sideline">
+  <meta property="og:description" id="og-desc" content="Breaking sports news, expert analysis, and hot fan takes. Drop your take on Sideline.">
+  <meta property="og:image" id="og-img" content="/api/og-image?type=site">
+  <meta property="og:url" id="og-url" content="https://fantakes.app/blog.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@sidelineapp">
+  <meta name="twitter:title" id="tw-title" content="Sports News & Hot Takes — Sideline">
+  <meta name="twitter:image" id="tw-img" content="/api/og-image?type=site">
+  <link rel="canonical" id="canonical" href="https://fantakes.app/blog.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script id="ld-breadcrumb" type="application/ld+json">{
+    "@context":"https://schema.org",
+    "@type":"BreadcrumbList",
+    "itemListElement":[
+      {"@type":"ListItem","position":1,"name":"Sideline","item":"https://fantakes.app"},
+      {"@type":"ListItem","position":2,"name":"Blog","item":"https://fantakes.app/blog.html"}
+    ]
+  }</script>
+  <script id="ld-article" type="application/ld+json"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0D1117; --bg2: #161B22; --bg3: #21262D;
+      --red: #FF3D3D; --green: #3FB950; --blue: #58A6FF;
+      --text: #F0EDE8; --sub: #8B949E; --border: #30363D;
+      --mono: 'Space Mono', 'Courier New', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--mono); min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+    /* ── Nav ── */
+    nav { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+    .nav-logo { font-size: 18px; font-weight: 700; color: var(--red); letter-spacing: 3px; }
+    .nav-links { display: flex; gap: 20px; font-size: 11px; letter-spacing: 1px; color: var(--sub); }
+    .nav-links a:hover { color: var(--red); }
+    /* ── Layout ── */
+    .page { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
+    .page-header { margin-bottom: 32px; }
+    .page-header h1 { font-size: clamp(22px, 4vw, 36px); color: var(--text); letter-spacing: -0.5px; }
+    .page-header p  { font-size: 13px; color: var(--sub); margin-top: 8px; }
+    /* ── Filters ── */
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .filter-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--sub); font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 6px 14px; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
+    .filter-btn:hover, .filter-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+    /* ── Article grid ── */
+    .articles { display: grid; gap: 16px; }
+    .article-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: grid; grid-template-columns: 1fr; transition: border-color 0.15s; }
+    .article-card:hover { border-color: var(--red); }
+    .article-card a { display: block; padding: 20px; }
+    .card-meta { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+    .tag { font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 3px 8px; border-radius: 3px; }
+    .tag-breaking  { background: var(--red);   color: #000; }
+    .tag-hot       { background: #FF8C00;       color: #000; }
+    .tag-trending  { background: var(--green);  color: #000; }
+    .tag-analysis  { background: var(--blue);   color: #000; }
+    .tag-default   { background: var(--bg3);    color: var(--sub); border: 1px solid var(--border); }
+    .sport-badge   { font-size: 10px; color: var(--red); letter-spacing: 1px; }
+    .card-date     { font-size: 10px; color: var(--sub); margin-left: auto; }
+    .card-headline { font-size: clamp(15px, 2.5vw, 19px); font-weight: 700; line-height: 1.35; color: var(--text); margin-bottom: 8px; }
+    .card-sub      { font-size: 12px; color: var(--sub); line-height: 1.5; }
+    /* ── Article detail ── */
+    #article-detail { display: none; }
+    .detail-back  { font-size: 12px; color: var(--sub); cursor: pointer; margin-bottom: 20px; }
+    .detail-back:hover { color: var(--red); }
+    .detail-header { margin-bottom: 24px; }
+    .detail-header h1 { font-size: clamp(20px, 4vw, 32px); line-height: 1.25; margin-bottom: 12px; }
+    .detail-header .card-meta { margin-bottom: 12px; }
+    .detail-header .sub { font-size: 14px; color: var(--sub); line-height: 1.6; }
+    .detail-body  { font-size: 14px; line-height: 1.8; color: var(--sub); white-space: pre-wrap; }
+    .detail-body  p { margin-bottom: 18px; color: var(--text); }
+    /* ── CTA ── */
+    .take-cta { background: var(--bg3); border: 1px solid var(--red); border-radius: 6px; padding: 24px; margin-top: 32px; text-align: center; }
+    .take-cta h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+    .take-cta p  { font-size: 12px; color: var(--sub); margin-bottom: 16px; }
+    .cta-btn { display: inline-block; background: var(--red); color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 2px; padding: 12px 28px; border-radius: 4px; text-decoration: none; }
+    .cta-btn:hover { background: #e62e2e; }
+    /* ── Loading / empty ── */
+    .loading { text-align: center; padding: 60px 20px; color: var(--sub); font-size: 13px; letter-spacing: 2px; }
+    .empty   { text-align: center; padding: 60px 20px; color: var(--sub); font-size: 13px; }
+    /* ── Footer ── */
+    footer { border-top: 1px solid var(--border); padding: 24px; text-align: center; font-size: 11px; color: var(--sub); letter-spacing: 1px; }
+    footer a:hover { color: var(--red); }
+    @media (max-width: 600px) {
+      .page { padding: 20px 14px 60px; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+<nav>
+  <a href="/" class="nav-logo">SIDELINE</a>
+  <div class="nav-links">
+    <a href="/">HOME</a>
+    <a href="/#scores">SCORES</a>
+    <a href="/#takes">TAKES</a>
+    <a href="/#videos">VIDEOS</a>
+    <a href="/blog.html" style="color:var(--red)">BLOG</a>
+  </div>
+</nav>
+
+<!-- Article list view -->
+<div class="page" id="list-view">
+  <div class="page-header">
+    <h1>🔥 Sports Analysis & Fan Takes</h1>
+    <p>AI-powered coverage. All sports. All opinions.</p>
+  </div>
+  <div class="filters" id="filters">
+    <button class="filter-btn active" data-sport="all" onclick="filterSport('all')">ALL</button>
+    <button class="filter-btn" data-sport="NFL" onclick="filterSport('NFL')">NFL</button>
+    <button class="filter-btn" data-sport="NBA" onclick="filterSport('NBA')">NBA</button>
+    <button class="filter-btn" data-sport="Soccer" onclick="filterSport('Soccer')">SOCCER</button>
+    <button class="filter-btn" data-sport="MLB" onclick="filterSport('MLB')">MLB</button>
+    <button class="filter-btn" data-sport="NHL" onclick="filterSport('NHL')">NHL</button>
+    <button class="filter-btn" data-sport="UFC" onclick="filterSport('UFC')">UFC</button>
+    <button class="filter-btn" data-sport="F1" onclick="filterSport('F1')">F1</button>
+  </div>
+  <div id="articles-container" class="articles">
+    <div class="loading">LOADING ARTICLES…</div>
+  </div>
+  <div class="take-cta">
+    <h3>Got a hotter take?</h3>
+    <p>Drop your opinion on Sideline and see how the fanbase votes.</p>
+    <a href="/#takes" class="cta-btn">🔥 DROP YOUR TAKE</a>
+  </div>
+</div>
+
+<!-- Article detail view -->
+<div class="page" id="article-detail">
+  <div class="detail-back" onclick="showList()">← BACK TO ARTICLES</div>
+  <div class="detail-header">
+    <div class="card-meta" id="detail-meta"></div>
+    <h1 id="detail-headline"></h1>
+    <div class="sub" id="detail-sub"></div>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+  <div class="take-cta" style="margin-top:40px">
+    <h3 id="detail-cta-q">What's your take on this?</h3>
+    <p>Over 10,000 fans are already debating on Sideline.</p>
+    <a href="/#takes" class="cta-btn">🔥 DROP YOUR TAKE</a>
+  </div>
+</div>
+
+<footer>
+  <a href="/">SIDELINE</a> &nbsp;·&nbsp; <a href="/blog.html">BLOG</a> &nbsp;·&nbsp;
+  <a href="/#takes">FAN TAKES</a> &nbsp;·&nbsp; <a href="/#scores">SCORES</a>
+  &nbsp;&nbsp;|&nbsp;&nbsp; © 2025 FANTAKES.APP
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  let _articles = [];
+  let _sport    = 'all';
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function relTime(iso) {
+    const diff = (Date.now() - new Date(iso || 0).getTime()) / 1000;
+    if (diff < 3600)  return Math.round(diff / 60)  + 'm ago';
+    if (diff < 86400) return Math.round(diff / 3600) + 'h ago';
+    return Math.round(diff / 86400) + 'd ago';
+  }
+  function tagClass(tag) {
+    if (!tag) return 'tag-default';
+    const t = tag.toLowerCase();
+    if (t.includes('break'))   return 'tag-breaking';
+    if (t.includes('hot'))     return 'tag-hot';
+    if (t.includes('trend'))   return 'tag-trending';
+    if (t.includes('analy'))   return 'tag-analysis';
+    return 'tag-default';
+  }
+
+  // ── Render article card ──────────────────────────────────────────────────
+  function renderCard(a) {
+    const tagHtml  = a.tag ? `<span class="tag ${tagClass(a.tag)}">${esc(a.tag.toUpperCase())}</span>` : '';
+    const sportHtml= a.sport ? `<span class="sport-badge">${esc(a.sport.toUpperCase())}</span>` : '';
+    const dateHtml = a.publishedAt ? `<span class="card-date">${relTime(a.publishedAt)}</span>` : '';
+    return `<div class="article-card">
+      <a href="?article=${encodeURIComponent(a.id)}" onclick="openArticle(event,'${esc(a.id)}')">
+        <div class="card-meta">${tagHtml}${sportHtml}${dateHtml}</div>
+        <div class="card-headline">${esc(a.headline)}</div>
+        ${a.subheadline ? `<div class="card-sub">${esc(a.subheadline)}</div>` : ''}
+      </a>
+    </div>`;
+  }
+
+  // ── Render list ──────────────────────────────────────────────────────────
+  function renderList() {
+    const container = document.getElementById('articles-container');
+    const shown     = _sport === 'all' ? _articles : _articles.filter(a => a.sport === _sport);
+    if (!shown.length) {
+      container.innerHTML = `<div class="empty">No articles for ${_sport === 'all' ? 'any sport' : _sport} yet.</div>`;
+      return;
+    }
+    container.innerHTML = shown.map(renderCard).join('');
+  }
+
+  window.filterSport = function (sport) {
+    _sport = sport;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.sport === sport));
+    renderList();
+  };
+
+  // ── Open article detail ──────────────────────────────────────────────────
+  window.openArticle = function (e, id) {
+    e.preventDefault();
+    const a = _articles.find(x => x.id === id);
+    if (!a) return;
+
+    const tagHtml   = a.tag   ? `<span class="tag ${tagClass(a.tag)}">${esc(a.tag.toUpperCase())}</span>` : '';
+    const sportHtml = a.sport ? `<span class="sport-badge">${esc(a.sport.toUpperCase())}</span>` : '';
+    const dateHtml  = a.publishedAt ? `<span class="card-date">${relTime(a.publishedAt)}</span>` : '';
+
+    document.getElementById('detail-meta').innerHTML     = tagHtml + sportHtml + dateHtml;
+    document.getElementById('detail-headline').textContent = a.headline || '';
+    document.getElementById('detail-sub').textContent      = a.subheadline || '';
+
+    // Render body as paragraphs
+    const bodyEl = document.getElementById('detail-body');
+    const body   = String(a.body || a.content || '');
+    bodyEl.innerHTML = body.split(/\n{2,}/).map(p => `<p>${esc(p.trim())}</p>`).join('');
+
+    // CTA question
+    const keywords = a.keywords && a.keywords[0] ? a.keywords[0] : (a.targetKeyword || '');
+    if (keywords) {
+      document.getElementById('detail-cta-q').textContent = `Hot take on "${keywords}"?`;
+    }
+
+    // Update URL without reload
+    history.pushState({ articleId: id }, '', `?article=${encodeURIComponent(id)}`);
+
+    // Update OG meta for sharing
+    setMeta(a);
+
+    // Inject JSON-LD for this article
+    const ld = {
+      '@context':    'https://schema.org',
+      '@type':       'Article',
+      headline:      a.headline || '',
+      description:   a.metaDescription || a.subheadline || '',
+      datePublished: a.publishedAt || new Date().toISOString(),
+      author:        { '@type': 'Organization', name: 'Sideline AI', url: 'https://fantakes.app' },
+      publisher:     { '@type': 'Organization', name: 'Sideline', url: 'https://fantakes.app', logo: { '@type': 'ImageObject', url: '/favicon.ico' } },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': location.href },
+      image:         `/api/og-image?type=article&title=${encodeURIComponent(a.headline)}&sport=${encodeURIComponent(a.sport || '')}`,
+    };
+    document.getElementById('ld-article').textContent = JSON.stringify(ld);
+
+    document.getElementById('list-view').style.display    = 'none';
+    document.getElementById('article-detail').style.display = '';
+    window.scrollTo(0, 0);
+  };
+
+  window.showList = function () {
+    document.getElementById('article-detail').style.display = 'none';
+    document.getElementById('list-view').style.display      = '';
+    history.pushState({}, '', '/blog.html');
+    resetMeta();
+  };
+
+  // ── Meta helpers ─────────────────────────────────────────────────────────
+  function setMeta(a) {
+    const title = `${a.headline} — Sideline`;
+    const desc  = a.metaDescription || a.subheadline || '';
+    const imgUrl= `/api/og-image?type=article&title=${encodeURIComponent(a.headline)}&sport=${encodeURIComponent(a.sport || '')}`;
+    const pageUrl= `https://fantakes.app/blog.html?article=${encodeURIComponent(a.id)}`;
+
+    document.getElementById('pg-title').textContent   = title;
+    document.title                                    = title;
+    document.getElementById('pg-desc').content        = desc;
+    document.getElementById('og-title').content       = title;
+    document.getElementById('og-desc').content        = desc;
+    document.getElementById('og-img').content         = imgUrl;
+    document.getElementById('og-url').content         = pageUrl;
+    document.getElementById('tw-title').content       = title;
+    document.getElementById('tw-img').content         = imgUrl;
+    document.getElementById('canonical').href         = pageUrl;
+  }
+
+  function resetMeta() {
+    const title = 'Sports News & Hot Takes — Sideline';
+    document.title                                    = title;
+    document.getElementById('pg-title').textContent   = title;
+    document.getElementById('og-title').content       = title;
+    document.getElementById('tw-title').content       = title;
+    document.getElementById('og-img').content         = '/api/og-image?type=site';
+    document.getElementById('tw-img').content         = '/api/og-image?type=site';
+    document.getElementById('og-url').content         = 'https://fantakes.app/blog.html';
+    document.getElementById('canonical').href         = 'https://fantakes.app/blog.html';
+    document.getElementById('ld-article').textContent = '';
+  }
+
+  // ── Fetch articles ────────────────────────────────────────────────────────
+  async function loadArticles() {
+    try {
+      const r = await fetch('/api/articles-store');
+      if (!r.ok) throw new Error(r.status);
+      _articles = await r.json();
+      if (!Array.isArray(_articles)) _articles = [];
+      renderList();
+
+      // If URL has ?article=id, open it directly
+      const params = new URLSearchParams(location.search);
+      const artId  = params.get('article');
+      if (artId) {
+        const found = _articles.find(a => a.id === artId);
+        if (found) openArticle({ preventDefault: () => {} }, artId);
+      }
+    } catch {
+      document.getElementById('articles-container').innerHTML =
+        '<div class="empty">Could not load articles. <a href="/" style="color:var(--red)">Go to Sideline →</a></div>';
+    }
+  }
+
+  // Handle back button
+  window.addEventListener('popstate', function (e) {
+    const params = new URLSearchParams(location.search);
+    const artId  = params.get('article');
+    if (artId) {
+      const found = _articles.find(a => a.id === artId);
+      if (found) { openArticle({ preventDefault: () => {} }, artId); return; }
+    }
+    showList();
+  });
+
+  loadArticles();
+})();
+</script>
+</body>
+</html>
