@@ -27,9 +27,11 @@
     }
   ],
   "crons": [
-    {
-      "path": "/api/agent-social",
-      "schedule": "*/15 * * * *"
-    }
+    { "path": "/api/agent-social",   "schedule": "*/15 * * * *" },
+    { "path": "/api/agent-breaking", "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-hunter",   "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-worldcup", "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-pulse",    "schedule": "*/30 * * * *" },
+    { "path": "/api/agent-rivals",   "schedule": "0 * * * *"    }
   ]
 }
