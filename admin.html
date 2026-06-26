@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sideline Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#FF3D3D;--red-dark:#C41E1E;
+  --bg:#0D1117;--surface:#161B22;--surface2:#1C2128;--surface3:#21262D;
+  --border:#30363D;--text:#F0EDE8;--muted:#8B949E;--faint:#484F58;
+  --green:#3FB950;--amber:#D29922;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:100vh;}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:360px;text-align:center;}
+.login-logo{font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;color:var(--red);letter-spacing:0.06em;margin-bottom:4px;}
+.login-sub{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:28px;letter-spacing:0.06em;}
+.login-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:#fff;font-family:'Space Mono',monospace;font-size:13px;outline:none;transition:border-color 0.15s;margin-bottom:12px;}
+.login-input:focus{border-color:var(--red);}
+.login-btn{width:100%;background:var(--red);color:#fff;font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:12px;border-radius:8px;border:none;cursor:pointer;transition:opacity 0.15s;}
+.login-btn:hover{opacity:0.88;}
+.login-error{font-family:'Space Mono',monospace;font-size:10px;color:var(--red);margin-top:10px;display:none;}
+
+/* ADMIN */
+#admin-screen{display:none;max-width:860px;margin:0 auto;padding:24px 20px;}
+.admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.admin-logo{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--red);}
+.admin-badge{font-family:'Space Mono',monospace;font-size:9px;background:rgba(255,61,61,0.12);border:1px solid rgba(255,61,61,0.3);color:var(--red);padding:3px 10px;border-radius:4px;letter-spacing:0.08em;}
+.logout-btn{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);background:none;border:1px solid var(--border);padding:6px 12px;border-radius:6px;cursor:pointer;transition:all 0.15s;}
+.logout-btn:hover{color:#fff;border-color:var(--faint);}
+
+/* GENERATOR */
+.section-title{font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.section-title::before{content:'';width:4px;height:14px;background:var(--red);border-radius:2px;display:inline-block;}
+.input-row{display:flex;gap:8px;margin-bottom:20px;}
+.tweet-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:#fff;font-family:'Space Mono',monospace;font-size:12px;outline:none;transition:border-color 0.15s;}
+.tweet-input:focus{border-color:var(--red);}
+.tweet-input::placeholder{color:var(--faint);}
+.generate-btn{background:var(--red);color:#fff;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:12px 22px;border-radius:8px;border:none;cursor:pointer;white-space:nowrap;transition:opacity 0.15s;}
+.generate-btn:hover:not(:disabled){opacity:0.88;}
+.generate-btn:disabled{opacity:0.45;cursor:default;}
+
+/* STATUS */
+.status-bar{font-family:'Space Mono',monospace;font-size:10px;padding:10px 14px;border-radius:8px;margin-bottom:16px;display:none;}
+.status-bar.loading{background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.3);color:var(--amber);}
+.status-bar.error{background:rgba(255,61,61,0.1);border:1px solid rgba(255,61,61,0.3);color:var(--red);}
+.status-bar.success{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:var(--green);}
+
+/* ARTICLE PREVIEW */
+#article-preview{display:none;margin-bottom:28px;}
+.preview-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:12px;}
+.preview-tag{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#fff;padding:3px 10px;border-radius:4px;display:inline-block;margin-bottom:10px;}
+.preview-sport{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-left:8px;}
+.preview-headline{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:#fff;line-height:1.2;margin-bottom:6px;}
+.preview-subheadline{font-family:'Inter',sans-serif;font-size:14px;color:var(--muted);margin-bottom:14px;}
+.preview-body{font-family:'Inter',sans-serif;font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;}
+.preview-meta{font-family:'Space Mono',monospace;font-size:9px;color:var(--faint);margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+.embed-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;overflow:hidden;}
+.embed-label{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:10px;letter-spacing:0.06em;text-transform:uppercase;}
+.embed-html{max-width:100%;overflow:hidden;}
+.embed-html iframe,.embed-html blockquote{max-width:100%!important;}
+.action-row{display:flex;gap:10px;}
+.publish-btn{flex:1;background:var(--green);color:#fff;font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:12px;border-radius:8px;border:none;cursor:pointer;transition:opacity 0.15s;}
+.publish-btn:hover{opacity:0.88;}
+.copy-btn{background:var(--surface2);color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;padding:12px 16px;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;}
+.copy-btn:hover{color:#fff;border-color:var(--faint);}
+.discard-btn{background:none;color:var(--muted);font-family:'Space Mono',monospace;font-size:10px;padding:12px 16px;border-radius:8px;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;}
+.discard-btn:hover{color:var(--red);border-color:rgba(255,61,61,0.4);}
+
+/* PUBLISHED LIST */
+#published-section{display:none;}
+.published-list{display:flex;flex-direction:column;gap:8px;margin-top:8px;}
+.pub-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.pub-item-info{flex:1;min-width:0;}
+.pub-item-headline{font-family:'Oswald',sans-serif;font-size:15px;font-weight:600;color:#fff;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pub-item-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+.pub-item-actions{display:flex;gap:6px;flex-shrink:0;}
+.pub-view-btn{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);padding:5px 10px;border-radius:5px;cursor:pointer;text-decoration:none;transition:all 0.15s;}
+.pub-view-btn:hover{color:#fff;}
+.pub-del-btn{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);background:none;border:1px solid rgba(255,61,61,0.3);padding:5px 10px;border-radius:5px;cursor:pointer;transition:all 0.15s;}
+.pub-del-btn:hover{background:rgba(255,61,61,0.1);}
+.empty-state{font-family:'Space Mono',monospace;font-size:10px;color:var(--faint);padding:16px 0;}
+
+.divider{border:none;border-top:1px solid var(--border);margin:28px 0;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">SIDELINE</div>
+    <div class="login-sub">ADMIN PANEL · RESTRICTED</div>
+    <input class="login-input" type="password" id="password-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    <button class="login-btn" onclick="tryLogin()">Enter</button>
+    <div class="login-error" id="login-error">Incorrect password.</div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin-screen">
+  <div class="admin-header">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="admin-logo">SIDELINE</div>
+      <span class="admin-badge">ADMIN</span>
+    </div>
+    <button class="logout-btn" onclick="logout()">Log out</button>
+  </div>
+
+  <!-- GENERATOR -->
+  <div class="section-title">Generate Article from X Post</div>
+  <div class="input-row">
+    <input class="tweet-input" id="tweet-url" type="url" placeholder="https://x.com/username/status/..." />
+    <button class="generate-btn" id="generate-btn" onclick="generateArticle()">Generate</button>
+  </div>
+
+  <div class="status-bar" id="status-bar"></div>
+
+  <!-- ARTICLE PREVIEW -->
+  <div id="article-preview">
+    <div class="preview-box">
+      <div>
+        <span class="preview-tag" id="preview-tag"></span>
+        <span class="preview-sport" id="preview-sport"></span>
+      </div>
+      <div class="preview-headline" id="preview-headline"></div>
+      <div class="preview-subheadline" id="preview-subheadline"></div>
+      <div class="preview-body" id="preview-body"></div>
+      <div class="preview-meta" id="preview-meta"></div>
+    </div>
+
+    <div class="embed-box" id="embed-box" style="display:none">
+      <div class="embed-label">Original X Post</div>
+      <div class="embed-html" id="embed-html"></div>
+    </div>
+
+    <div class="action-row">
+      <button class="publish-btn" onclick="publishArticle()">Publish to Feed</button>
+      <button class="copy-btn" onclick="copyJSON()">Copy JSON</button>
+      <button class="discard-btn" onclick="discardArticle()">Discard</button>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <!-- PUBLISHED LIST -->
+  <div id="published-section">
+    <div class="section-title">Published Articles</div>
+    <div class="published-list" id="published-list"></div>
+  </div>
+</div>
+
+<script>
+const PASSWORD = 'SIDELINE2024';
+const STORAGE_KEY = 'sideline_published_articles';
+let currentArticle = null;
+
+// ── AUTH ──────────────────────────────────────────────
+function tryLogin() {
+  const val = document.getElementById('password-input').value;
+  if (val === PASSWORD) {
+    sessionStorage.setItem('sl_auth', '1');
+    showAdmin();
+  } else {
+    const err = document.getElementById('login-error');
+    err.style.display = 'block';
+    document.getElementById('password-input').value = '';
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('sl_auth');
+  document.getElementById('admin-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('password-input').value = '';
+}
+
+function showAdmin() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('admin-screen').style.display = 'block';
+  renderPublished();
+}
+
+// ── STATUS ────────────────────────────────────────────
+function setStatus(msg, type) {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.className = `status-bar ${type}`;
+  bar.style.display = msg ? 'block' : 'none';
+}
+
+// ── GENERATE ──────────────────────────────────────────
+async function generateArticle() {
+  const url = document.getElementById('tweet-url').value.trim();
+  if (!url) return;
+
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  setStatus('Fetching post and generating article…', 'loading');
+  document.getElementById('article-preview').style.display = 'none';
+
+  try {
+    const res = await fetch('/api/agent-social-manual', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tweetUrl: url }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    currentArticle = await res.json();
+    setStatus('Article generated successfully.', 'success');
+    renderPreview(currentArticle);
+  } catch (err) {
+    setStatus(`Error: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── PREVIEW ───────────────────────────────────────────
+const TAG_COLORS = {
+  'Breaking': '#ef4444', 'Video': '#8b5cf6',
+  'Hot Take': '#f97316', 'Must See': '#10b981', 'Exclusive': '#3b82f6'
+};
+
+function renderPreview(article) {
+  const tagEl = document.getElementById('preview-tag');
+  tagEl.textContent = article.tag || '';
+  tagEl.style.background = TAG_COLORS[article.tag] || '#6b7280';
+
+  document.getElementById('preview-sport').textContent = article.sport ? `· ${article.sport}` : '';
+  document.getElementById('preview-headline').textContent = article.headline || '';
+  document.getElementById('preview-subheadline').textContent = article.subheadline || '';
+  document.getElementById('preview-body').textContent = article.body || '';
+  document.getElementById('preview-meta').textContent =
+    `@${article.sourceUsername} · ${new Date(article.publishedAt).toLocaleString()} · AI Generated`;
+
+  const embedBox = document.getElementById('embed-box');
+  if (article.embed) {
+    document.getElementById('embed-html').innerHTML = article.embed;
+    embedBox.style.display = 'block';
+    if (window.twttr?.widgets) window.twttr.widgets.load();
+    else loadTwitterScript();
+  } else {
+    embedBox.style.display = 'none';
+  }
+
+  document.getElementById('article-preview').style.display = 'block';
+}
+
+function loadTwitterScript() {
+  if (document.getElementById('twitter-wjs')) return;
+  const s = document.createElement('script');
+  s.id = 'twitter-wjs';
+  s.src = 'https://platform.twitter.com/widgets.js';
+  s.async = true;
+  document.head.appendChild(s);
+}
+
+// ── PUBLISH ───────────────────────────────────────────
+function publishArticle() {
+  if (!currentArticle) return;
+  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  if (!stored.find(a => a.id === currentArticle.id)) {
+    stored.unshift(currentArticle);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  }
+  setStatus(`Published: "${currentArticle.headline}"`, 'success');
+  renderPublished();
+  discardArticle();
+}
+
+function discardArticle() {
+  currentArticle = null;
+  document.getElementById('article-preview').style.display = 'none';
+  document.getElementById('tweet-url').value = '';
+  setStatus('', '');
+}
+
+function copyJSON() {
+  if (!currentArticle) return;
+  navigator.clipboard.writeText(JSON.stringify(currentArticle, null, 2))
+    .then(() => setStatus('JSON copied to clipboard.', 'success'))
+    .catch(() => setStatus('Copy failed — try manually.', 'error'));
+}
+
+// ── PUBLISHED LIST ────────────────────────────────────
+function renderPublished() {
+  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const section = document.getElementById('published-section');
+  const list = document.getElementById('published-list');
+
+  section.style.display = stored.length ? 'block' : 'none';
+
+  if (!stored.length) { list.innerHTML = ''; return; }
+
+  list.innerHTML = stored.map(a => `
+    <div class="pub-item">
+      <div class="pub-item-info">
+        <div class="pub-item-headline">${escHtml(a.headline)}</div>
+        <div class="pub-item-meta">${escHtml(a.sport || '')} · @${escHtml(a.sourceUsername)} · ${new Date(a.publishedAt).toLocaleString()}</div>
+      </div>
+      <div class="pub-item-actions">
+        <a class="pub-view-btn" href="${escHtml(a.sourceUrl)}" target="_blank" rel="noopener">View Post</a>
+        <button class="pub-del-btn" onclick="deleteArticle('${a.id}')">Remove</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteArticle(id) {
+  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(stored.filter(a => a.id !== id)));
+  renderPublished();
+}
+
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── INIT ──────────────────────────────────────────────
+if (sessionStorage.getItem('sl_auth') === '1') {
+  showAdmin();
+}
+</script>
+</body>
+</html>
