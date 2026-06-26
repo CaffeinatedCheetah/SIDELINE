@@ -25,5 +25,11 @@
         }
       ]
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/agent-social",
+      "schedule": "*/15 * * * *"
+    }
   ]
 }
