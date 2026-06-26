@@ -2,5 +2,8 @@
   "name": "sideline",
   "version": "1.0.0",
   "type": "module",
-  "description": "Sideline - Live Sports, Fan Takes & Trending"
+  "description": "Sideline - Live Sports, Fan Takes & Trending",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.106.0"
+  }
 }

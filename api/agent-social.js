@@ -3,7 +3,7 @@
 // Monitors athlete/celebrity X posts, generates embeds + AI-written articles
 // Runs on a cron trigger (every 15 minutes recommended)
 
-const Anthropic = require('@anthropic-ai/sdk');
+import Anthropic from '@anthropic-ai/sdk';
 
 // ============================================================
 // ATHLETE WATCHLIST
@@ -226,7 +226,7 @@ function isNewsworthy(post) {
 // MAIN HANDLER
 // This is what Vercel calls — treat as a cron endpoint
 // ============================================================
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   // Security: only allow cron calls or manual trigger with secret
   const authHeader = req.headers.authorization;
   const cronSecret = process.env.CRON_SECRET;
@@ -298,4 +298,4 @@ module.exports = async (req, res) => {
   console.log(`[agent-social] Done. Generated ${results.articlesGenerated} articles from ${results.scanned} posts scanned.`);
 
   return res.status(200).json(results);
-};
+}
