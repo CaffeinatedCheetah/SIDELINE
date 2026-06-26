@@ -157,7 +157,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 
 <script>
 const PASSWORD = 'SIDELINE2024';
-const STORAGE_KEY = 'sideline_published_articles';
 let currentArticle = null;
 
 // ── AUTH ──────────────────────────────────────────────
@@ -180,10 +179,10 @@ function logout() {
   document.getElementById('password-input').value = '';
 }
 
-function showAdmin() {
+async function showAdmin() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('admin-screen').style.display = 'block';
-  renderPublished();
+  await renderPublished();
 }
 
 // ── STATUS ────────────────────────────────────────────
@@ -267,16 +266,25 @@ function loadTwitterScript() {
 }
 
 // ── PUBLISH ───────────────────────────────────────────
-function publishArticle() {
+async function publishArticle() {
   if (!currentArticle) return;
-  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  if (!stored.find(a => a.id === currentArticle.id)) {
-    stored.unshift(currentArticle);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+  const btn = document.querySelector('.publish-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/articles-store', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentArticle),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    setStatus(`Published: "${currentArticle.headline}"`, 'success');
+    await renderPublished();
+    discardArticle();
+  } catch (err) {
+    setStatus(`Publish failed: ${err.message}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
   }
-  setStatus(`Published: "${currentArticle.headline}"`, 'success');
-  renderPublished();
-  discardArticle();
 }
 
 function discardArticle() {
@@ -294,33 +302,38 @@ function copyJSON() {
 }
 
 // ── PUBLISHED LIST ────────────────────────────────────
-function renderPublished() {
-  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+async function renderPublished() {
   const section = document.getElementById('published-section');
   const list = document.getElementById('published-list');
-
-  section.style.display = stored.length ? 'block' : 'none';
-
-  if (!stored.length) { list.innerHTML = ''; return; }
-
-  list.innerHTML = stored.map(a => `
-    <div class="pub-item">
-      <div class="pub-item-info">
-        <div class="pub-item-headline">${escHtml(a.headline)}</div>
-        <div class="pub-item-meta">${escHtml(a.sport || '')} · @${escHtml(a.sourceUsername)} · ${new Date(a.publishedAt).toLocaleString()}</div>
+  try {
+    const res = await fetch('/api/articles-store');
+    const articles = await res.json();
+    section.style.display = articles.length ? 'block' : 'none';
+    if (!articles.length) { list.innerHTML = ''; return; }
+    list.innerHTML = articles.map(a => `
+      <div class="pub-item">
+        <div class="pub-item-info">
+          <div class="pub-item-headline">${escHtml(a.headline)}</div>
+          <div class="pub-item-meta">${escHtml(a.sport || '')} · @${escHtml(a.sourceUsername)} · ${new Date(a.publishedAt).toLocaleString()}</div>
+        </div>
+        <div class="pub-item-actions">
+          <a class="pub-view-btn" href="${escHtml(a.sourceUrl)}" target="_blank" rel="noopener">View Post</a>
+          <button class="pub-del-btn" onclick="deleteArticle('${escHtml(a.id)}')">Remove</button>
+        </div>
       </div>
-      <div class="pub-item-actions">
-        <a class="pub-view-btn" href="${escHtml(a.sourceUrl)}" target="_blank" rel="noopener">View Post</a>
-        <button class="pub-del-btn" onclick="deleteArticle('${a.id}')">Remove</button>
-      </div>
-    </div>
-  `).join('');
+    `).join('');
+  } catch {
+    section.style.display = 'none';
+  }
 }
 
-function deleteArticle(id) {
-  const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(stored.filter(a => a.id !== id)));
-  renderPublished();
+async function deleteArticle(id) {
+  try {
+    await fetch(`/api/articles-store?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await renderPublished();
+  } catch (err) {
+    setStatus(`Delete failed: ${err.message}`, 'error');
+  }
 }
 
 function escHtml(str) {

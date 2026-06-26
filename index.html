@@ -2075,23 +2075,38 @@ function loadHomeContent() {
   if(newsEl) {
     newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading top stories...</div>';
     if(trendEl) trendEl.innerHTML = '';
-    fetchWithTimeout('/api/news?sport=home', 10000)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        var articles = d.articles || [];
-        if(!articles.length){
-          newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadHomeContent()')+'</div>';
-          return;
-        }
-        newsCache['home'] = articles;
-        newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
-        if(trendEl && articles.length > 5) {
-          trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
-        }
-      })
-      .catch(function(){
-        newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadHomeContent()')+'</div>';
-      });
+    Promise.allSettled([
+      fetchWithTimeout('/api/news?sport=home', 10000).then(function(r){return r.json();}),
+      fetchWithTimeout('/api/articles-store', 8000).then(function(r){return r.json();})
+    ]).then(function(results){
+      var articles = (results[0].status==='fulfilled') ? (results[0].value.articles||[]) : [];
+      var published = (results[1].status==='fulfilled' && Array.isArray(results[1].value)) ? results[1].value : [];
+      if(!articles.length && !published.length){
+        newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadHomeContent()')+'</div>';
+        return;
+      }
+      newsCache['home'] = articles;
+      var pubHtml = published.slice(0,3).map(function(a){
+        return newsCardHtml({
+          title: a.headline,
+          source: {name: '⚡ Sideline AI · @'+(a.sourceUsername||'')},
+          image: a.thumbnail||'',
+          urlToImage: a.thumbnail||'',
+          publishedAt: a.publishedAt,
+          url: a.sourceUrl||'#',
+          exclusive: true,
+        }, false);
+      }).join('');
+      var newsHtml = articles.length
+        ? newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('')
+        : '';
+      newsEl.innerHTML = pubHtml + newsHtml;
+      if(trendEl && articles.length > 5){
+        trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
+      }
+    }).catch(function(){
+      newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadHomeContent()')+'</div>';
+    });
   }
 
   /* ── VIDEOS: direct fetch, bypass cache ── */
@@ -2465,6 +2480,6 @@ setInterval(loadScout, 5 * 60 * 1000);
 
 })();
 
-<script src="/api/social-articles-frontend.js"></script></script>
+<script src="/api/social-articles-frontend.js"></script>
 </body>
 </html>
