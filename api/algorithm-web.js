@@ -4,36 +4,11 @@
 // Feed mix: breaking 30%, AI articles 25%, fan takes 20%, videos 15%, trending 10%
 
 import { checkRateLimit, getClientIP } from './_ratelimit.js';
+import { recencyScore, engagementScore, trendingScore, fromNews, fromVideos, fromAI } from './_score-utils.js';
 
 const WEIGHTS = { engagement: 0.40, recency: 0.25, personalization: 0.20, trending: 0.15 };
 const MIX     = { breaking: 0.30, ai: 0.25, takes: 0.20, video: 0.15, trending: 0.10 };
 const LIMIT   = 20;
-
-// ── Scoring helpers ────────────────────────────────────────────────────────
-
-function recencyScore(publishedAt) {
-  const h = (Date.now() - new Date(publishedAt || 0).getTime()) / 3_600_000;
-  if (h < 1)  return 1.0;
-  if (h < 6)  return 0.80;
-  if (h < 24) return 0.60;
-  if (h < 72) return 0.30;
-  return 0.10;
-}
-
-function engagementScore(item) {
-  if (item.breaking)         return 1.00;
-  if (item.trending)         return 0.80;
-  if (item.exclusive)        return 0.65;
-  if (item.type === 'video') return 0.65;
-  if (item.type === 'ai')    return 0.55;
-  return 0.40;
-}
-
-function trendingScore(item) {
-  if (item.breaking || item.tag === 'Breaking')   return 1.00;
-  if (item.trending  || item.tag === 'Hot Take')  return 0.75;
-  return 0.20;
-}
 
 function personalizationScore(item, sport) {
   if (!sport) return 0.50;
@@ -50,72 +25,16 @@ function score(item, sport) {
   );
 }
 
-// ── Normalizers ────────────────────────────────────────────────────────────
-
-function fromNews(articles) {
-  return articles.map(a => ({
-    id:          a.url || a.title,
-    type:        a.breaking ? 'breaking' : (a.trending ? 'trending' : 'news'),
-    title:       a.title,
-    summary:     '',
-    image:       a.image || a.urlToImage || '',
-    url:         a.url || '#',
-    sport:       a.sport || '',
-    source:      typeof a.source === 'object' ? a.source.name : (a.source || 'News'),
-    publishedAt: a.publishedAt,
-    breaking:    !!a.breaking,
-    trending:    !!a.trending,
-    exclusive:   !!a.exclusive,
-    tag:         a.breaking ? 'Breaking' : '',
-  }));
-}
-
-function fromVideos(videos) {
-  return videos.map(v => ({
-    id:          v.id || v.url,
-    type:        'video',
-    title:       v.title,
-    summary:     '',
-    image:       v.thumb || '',
-    url:         v.url || `https://www.youtube.com/watch?v=${v.id}`,
-    sport:       v.tag || '',
-    source:      v.channel || 'Video',
-    publishedAt: v.published || v.publishedAt || new Date().toISOString(),
-    tag:         'Video',
-  }));
-}
-
-function fromAI(articles) {
-  return articles.map(a => ({
-    id:          a.id,
-    type:        'ai',
-    title:       a.headline,
-    summary:     a.subheadline || '',
-    image:       a.thumbnail || '',
-    url:         a.sourceUrl || '#',
-    sport:       a.sport || '',
-    source:      `⚡ Sideline AI · @${a.sourceUsername || ''}`,
-    publishedAt: a.publishedAt,
-    embed:       a.embed || null,
-    tag:         a.tag || '',
-    trending:    a.tag === 'Breaking' || a.tag === 'Hot Take',
-    breaking:    a.tag === 'Breaking',
-    exclusive:   false,
-  }));
-}
-
-// ── Feed builder ───────────────────────────────────────────────────────────
-
 function buildFeed(scored, n) {
   const b = { breaking: [], ai: [], take: [], video: [], trending: [], other: [] };
 
   for (const item of scored) {
-    if (item.breaking)         b.breaking.push(item);
+    if (item.breaking)              b.breaking.push(item);
     else if (item.type === 'ai')    b.ai.push(item);
     else if (item.type === 'take')  b.take.push(item);
     else if (item.type === 'video') b.video.push(item);
-    else if (item.trending)    b.trending.push(item);
-    else                       b.other.push(item);
+    else if (item.trending)         b.trending.push(item);
+    else                            b.other.push(item);
   }
 
   const targets = {
@@ -139,8 +58,6 @@ function buildFeed(scored, n) {
 
   return selected.sort((a, b) => b._score - a._score).slice(0, n);
 }
-
-// ── Handler ────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   const ip = getClientIP(req);
