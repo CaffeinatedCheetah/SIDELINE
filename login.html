@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sign in — Sideline</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" href="data:,"/>
+<meta name="theme-color" content="#FF3D3D"/>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+<!--
+  SETUP REQUIRED:
+  1. Create a free account at https://dashboard.clerk.com
+  2. Create a new application (choose "Web application")
+  3. Copy the Publishable Key (starts with pk_test_ or pk_live_)
+  4. Add to Vercel: Settings → Environment Variables → CLERK_PUBLISHABLE_KEY
+  5. Replace 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER' in this file,
+     index.html, and onboarding.html with your actual key
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#FF3D3D;--bg:#0D1117;--surface:#161B22;--border:#30363D;
+  --text:#F0EDE8;--muted:#8B949E;--faint:#484F58;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100%;display:flex;flex-direction:column;}
+.page{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+.logo{font-family:'Oswald',sans-serif;font-weight:700;font-size:36px;letter-spacing:0.06em;color:var(--red);text-transform:uppercase;margin-bottom:6px;line-height:1;}
+.logo span{color:#fff;}
+.logo-sub{font-family:'Space Mono',monospace;font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:0.06em;margin-bottom:12px;}
+.tagline{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:36px;}
+.clerk-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:420px;}
+.not-configured{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:24px 0;line-height:1.8;}
+.guest-link{display:block;text-align:center;margin-top:20px;font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);text-decoration:none;letter-spacing:0.05em;transition:color .15s;}
+.guest-link:hover{color:var(--text);}
+footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-size:9px;color:var(--faint);border-top:1px solid var(--border);letter-spacing:0.05em;}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="logo">Side<span>line</span></div>
+  <div class="logo-sub">fantakes.app</div>
+  <div class="tagline">Personalize your sports experience</div>
+  <div class="clerk-box">
+    <div id="clerk-sign-in"></div>
+  </div>
+  <a href="/" class="guest-link">Continue as guest &rarr;</a>
+</div>
+
+<footer>SIDELINE &mdash; <strong style="color:var(--red)">fantakes.app</strong> &middot; All sports, all fans, all the time</footer>
+
+<script>
+(function() {
+  var CLERK_KEY = 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER';
+  var el = document.getElementById('clerk-sign-in');
+
+  if (!window.Clerk || !CLERK_KEY || CLERK_KEY.indexOf('PLACEHOLDER') !== -1) {
+    el.innerHTML = '<div class="not-configured">Sign-in is not yet configured.<br>See the setup comment in login.html.</div>';
+    return;
+  }
+
+  var clerk = new window.Clerk(CLERK_KEY);
+  clerk.load().then(function() {
+    if (clerk.user) {
+      return fetch('/api/user-prefs?userId=' + encodeURIComponent(clerk.user.id))
+        .then(function(r) { return r.ok ? r.json() : {}; })
+        .then(function(prefs) {
+          window.location.href = (prefs && prefs.onboarding_complete) ? '/' : '/onboarding.html';
+        });
+    }
+    clerk.mountSignIn(el, {
+      afterSignInUrl: '/onboarding.html',
+      afterSignUpUrl: '/onboarding.html',
+    });
+  }).catch(function(e) {
+    console.error('[Clerk]', e);
+    el.innerHTML = '<div class="not-configured">Could not load sign-in.<br>Check your Clerk key.</div>';
+  });
+})();
+</script>
+
+</body>
+</html>

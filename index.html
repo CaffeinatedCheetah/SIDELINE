@@ -484,6 +484,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .breaking-pill .pill-badge{margin-right:4px;}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
 </head>
 <body>
 
@@ -499,6 +500,11 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <button class="nav-link" onclick="navTo('trending',9)">Trending</button>
   </div>
   <div class="nav-right">
+    <button id="auth-login-btn" onclick="showLoginModal()" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;font-family:'Inter',sans-serif;">Sign in</button>
+    <div id="auth-user-menu" style="display:none;align-items:center;gap:10px;">
+      <div id="auth-user-avatar" onclick="showProfileModal()" style="width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;flex-shrink:0;">U</div>
+      <button onclick="showProfileModal()" style="background:none;border:0.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;">My feed</button>
+    </div>
     <input class="search" type="text" placeholder="Search players, teams..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch(this.value)"/>
     <button class="nav-cta" onclick="openTakeModal()">Post Take</button>
   </div>
@@ -2545,6 +2551,69 @@ window.subscribePush = function() {
     }).catch(function(){showToast('Could not enable push notifications');});
 };
 
+/* -- AUTH + PERSONALIZATION -- */
+function showLoginModal() { window.location.href = '/login.html'; }
+function showProfileModal() { window.location.href = '/onboarding.html'; }
+function filterFeedByTeam() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+async function loadUserPreferences(userId) {
+  try {
+    var r = await fetch('/api/user-prefs?userId=' + encodeURIComponent(userId));
+    if (!r.ok) return;
+    var prefs = await r.json();
+    if (!prefs || !prefs.onboarding_complete) return;
+    window.sidelineUserPrefs = prefs;
+    if (prefs.followed_teams && prefs.followed_teams.length) showMyTeamsSection(prefs.followed_teams);
+    if (prefs.favorite_sports && prefs.favorite_sports.length) showPersonalizedBanner(prefs.favorite_sports);
+  } catch(e) { console.warn('Could not load user prefs:', e); }
+}
+
+function showMyTeamsSection(teams) {
+  var section = document.getElementById('my-teams-section');
+  if (!section) {
+    section = document.createElement('div');
+    section.id = 'my-teams-section';
+    section.style.cssText = 'padding:12px 16px;border-bottom:0.5px solid var(--border);';
+    var anchor = document.querySelector('.ticker-wrap');
+    if (anchor) anchor.after(section);
+    else document.body.prepend(section);
+  }
+  section.innerHTML = '';
+  var lbl = document.createElement('div');
+  lbl.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--muted);margin-bottom:8px;font-family:Space Mono,monospace;text-transform:uppercase;';
+  lbl.textContent = 'MY TEAMS';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;';
+  teams.forEach(function(t) {
+    var chip = document.createElement('div');
+    chip.style.cssText = 'flex-shrink:0;display:flex;align-items:center;gap:6px;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;';
+    chip.onclick = function() { filterFeedByTeam(t.id); };
+    if (t.logo) {
+      var img = document.createElement('img');
+      img.src = t.logo; img.alt = ''; img.width = 20; img.height = 20;
+      img.style.objectFit = 'contain';
+      chip.appendChild(img);
+    }
+    var span = document.createElement('span');
+    span.style.cssText = 'font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;font-family:Oswald,sans-serif;';
+    span.textContent = t.abbreviation || t.name || '';
+    chip.appendChild(span);
+    row.appendChild(chip);
+  });
+  section.appendChild(lbl);
+  section.appendChild(row);
+}
+
+function showPersonalizedBanner(sports) {
+  var el = document.querySelector('#feed-title, .feed-title');
+  if (el && sports.length) el.textContent = 'Your feed';
+}
+
+window.showLoginModal = showLoginModal;
+window.showProfileModal = showProfileModal;
+window.filterFeedByTeam = filterFeedByTeam;
+window.loadUserPreferences = loadUserPreferences;
+
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
 setHTML('sb-live','<span class="empty">Loading live games...</span>');
@@ -2556,6 +2625,30 @@ setInterval(loadScout, 5 * 60 * 1000);
 
 })();
 
+</script>
+<script>
+/* Clerk auth init — replace placeholder with your actual publishable key */
+(function() {
+  var CLERK_KEY = 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER';
+  if (!window.Clerk || !CLERK_KEY || CLERK_KEY.indexOf('PLACEHOLDER') !== -1) return;
+  new window.Clerk(CLERK_KEY).load().then(function(clerk) {
+    var user = clerk.user;
+    var loginBtn  = document.getElementById('auth-login-btn');
+    var userMenu  = document.getElementById('auth-user-menu');
+    var userAvatar= document.getElementById('auth-user-avatar');
+    if (user) {
+      if (loginBtn)   loginBtn.style.display   = 'none';
+      if (userMenu)   userMenu.style.display    = 'flex';
+      if (userAvatar) userAvatar.textContent =
+        (user.firstName && user.firstName[0]) ||
+        (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
+      if (window.loadUserPreferences) window.loadUserPreferences(user.id);
+    } else {
+      if (loginBtn)  loginBtn.style.display  = 'block';
+      if (userMenu)  userMenu.style.display   = 'none';
+    }
+  }).catch(function() {});
+})();
 </script>
 </body>
 </html>

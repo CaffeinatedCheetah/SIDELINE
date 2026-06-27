@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://platform.twitter.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.googleadservices.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src https://www.youtube.com https://www.dailymotion.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net; connect-src 'self' https:; object-src 'none'; base-uri 'self';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://platform.twitter.com https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.googleadservices.com https://cdn.jsdelivr.net https://*.clerk.accounts.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; frame-src https://www.youtube.com https://www.dailymotion.com https://platform.twitter.com https://syndication.twitter.com https://*.googlesyndication.com https://*.doubleclick.net https://challenges.cloudflare.com https://*.clerk.accounts.dev; connect-src 'self' https:; object-src 'none'; base-uri 'self';"
         },
         {
           "key": "X-Content-Type-Options",
@@ -25,6 +25,10 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/login",       "destination": "/login.html"       },
+    { "source": "/onboarding",  "destination": "/onboarding.html"  }
   ],
   "crons": [
     { "path": "/api/agent-social",     "schedule": "*/30 * * * *" },

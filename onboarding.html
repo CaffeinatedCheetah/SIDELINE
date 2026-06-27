@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Set up your feed — Sideline</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" href="data:,"/>
+<meta name="theme-color" content="#FF3D3D"/>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+<!--
+  SETUP REQUIRED:
+  Replace 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER' below with your Clerk publishable key.
+  See login.html for full setup instructions.
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#FF3D3D;--bg:#0D1117;--surface:#161B22;--surface2:#1C2128;--border:#30363D;
+  --text:#F0EDE8;--muted:#8B949E;--faint:#484F58;--green:#3FB950;
+}
+html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100%;}
+
+/* PROGRESS */
+.progress-bar{position:fixed;top:0;left:0;right:0;background:#000;border-bottom:1px solid var(--border);padding:16px 20px;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.progress-logo{font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;color:var(--red);text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;}
+.progress-logo span{color:#fff;}
+.steps{display:flex;align-items:center;gap:8px;}
+.step-dot{width:28px;height:28px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s;}
+.step-dot.active{border-color:var(--red);color:var(--red);}
+.step-dot.done{border-color:var(--green);background:var(--green);color:#000;}
+.step-connector{width:24px;height:2px;background:var(--border);}
+.step-connector.done{background:var(--green);}
+
+/* MAIN */
+.main{padding-top:70px;max-width:640px;margin:0 auto;padding-bottom:100px;}
+.step{display:none;padding:32px 20px 0;}
+.step.active{display:block;}
+.step-header{margin-bottom:28px;}
+.step-h{font-family:'Oswald',sans-serif;font-size:28px;font-weight:700;color:#fff;margin-bottom:6px;}
+.step-sub{font-family:'Inter',sans-serif;font-size:14px;color:var(--muted);line-height:1.5;}
+
+/* SPORT GRID */
+.sport-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:24px;}
+@media(min-width:480px){.sport-grid{grid-template-columns:repeat(3,1fr);}}
+.sport-card{background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;position:relative;user-select:none;}
+.sport-card:hover{border-color:var(--muted);}
+.sport-card.selected{border-color:var(--red);background:rgba(255,61,61,0.08);}
+.sport-card .check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center;}
+.sport-card.selected .check{display:flex;}
+.sport-emoji{font-size:28px;margin-bottom:8px;display:block;}
+.sport-name{font-family:'Oswald',sans-serif;font-size:14px;font-weight:600;color:#fff;margin-bottom:3px;}
+.sport-sub{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+
+/* TEAM SEARCH */
+.search-box{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;color:var(--text);width:100%;outline:none;font-family:'Inter',sans-serif;margin-bottom:20px;}
+.search-box:focus{border-color:var(--red);}
+.teams-list{display:flex;flex-direction:column;gap:16px;}
+.sport-group-label{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.team-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+@media(min-width:480px){.team-cards{grid-template-columns:repeat(3,1fr);}}
+.team-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:all .15s;position:relative;user-select:none;}
+.team-card:hover{border-color:var(--muted);}
+.team-card.selected{border-color:var(--red);background:rgba(255,61,61,0.06);}
+.team-card .check{position:absolute;top:5px;right:5px;width:14px;height:14px;border-radius:50%;background:var(--red);color:#fff;font-size:8px;font-weight:700;display:none;align-items:center;justify-content:center;}
+.team-card.selected .check{display:flex;}
+.team-logo{width:28px;height:28px;object-fit:contain;flex-shrink:0;}
+.team-name{font-family:'Oswald',sans-serif;font-size:12px;font-weight:500;color:#fff;line-height:1.2;}
+.loading-teams{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);text-align:center;padding:24px;}
+
+/* BANNER GRID */
+.banner-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(min-width:480px){.banner-grid{grid-template-columns:repeat(3,1fr);}}
+.banner-card{border:2px solid var(--border);border-radius:14px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all .2s;position:relative;user-select:none;}
+.banner-card:hover{transform:translateY(-2px);}
+.banner-card.selected{border-width:3px;}
+.banner-card .check{position:absolute;top:8px;right:8px;width:18px;height:18px;border-radius:50%;background:var(--red);color:#fff;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center;}
+.banner-card.selected .check{display:flex;}
+.banner-logo{width:44px;height:44px;object-fit:contain;}
+.banner-name{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:#fff;text-align:center;}
+
+/* FOOTER ACTIONS */
+.step-actions{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(transparent,var(--bg) 30%);padding:24px 20px 28px;display:flex;gap:10px;justify-content:flex-end;max-width:640px;margin:0 auto;}
+.btn{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:11px 24px;border-radius:8px;border:none;cursor:pointer;transition:all .15s;}
+.btn-primary{background:var(--red);color:#fff;}
+.btn-primary:hover{background:#c41e1e;}
+.btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;}
+.btn-skip{background:none;border:1px solid var(--border);color:var(--muted);}
+.btn-skip:hover{color:var(--text);border-color:var(--muted);}
+</style>
+</head>
+<body>
+
+<!-- Progress bar -->
+<div class="progress-bar">
+  <div class="progress-logo">Side<span>line</span></div>
+  <div class="steps">
+    <div class="step-dot active" id="dot-1">1</div>
+    <div class="step-connector" id="conn-1"></div>
+    <div class="step-dot" id="dot-2">2</div>
+    <div class="step-connector" id="conn-2"></div>
+    <div class="step-dot" id="dot-3">3</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Step 1: Pick sports -->
+  <div class="step active" id="step-1">
+    <div class="step-header">
+      <div class="step-h">Which sports do you follow?</div>
+      <div class="step-sub">Pick as many as you want &mdash; your feed adapts.</div>
+    </div>
+    <div class="sport-grid" id="sport-grid"></div>
+  </div>
+
+  <!-- Step 2: Pick teams -->
+  <div class="step" id="step-2">
+    <div class="step-header">
+      <div class="step-h">Which teams do you support?</div>
+      <div class="step-sub">We&rsquo;ll prioritize their news, scores, and takes.</div>
+    </div>
+    <input class="search-box" id="team-search" type="text" placeholder="Search for a team..." oninput="filterTeams(this.value)"/>
+    <div class="teams-list" id="teams-list"><div class="loading-teams">Loading teams&hellip;</div></div>
+  </div>
+
+  <!-- Step 3: Pick banner team -->
+  <div class="step" id="step-3">
+    <div class="step-header">
+      <div class="step-h">Choose your banner team</div>
+      <div class="step-sub">This represents you on Sideline. Pick your #1 team.</div>
+    </div>
+    <div class="banner-grid" id="banner-grid"></div>
+  </div>
+
+</div>
+
+<!-- Bottom actions -->
+<div class="step-actions" id="step-actions">
+  <button class="btn btn-skip" id="btn-skip" onclick="skipStep()">Skip</button>
+  <button class="btn btn-primary" id="btn-next" onclick="nextStep()">Next &rarr;</button>
+</div>
+
+<script>
+(function() {
+
+var CLERK_KEY = 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER';
+
+var SPORTS = [
+  { id: 'nfl',     label: 'NFL',          sub: 'American Football', emoji: '🏈' },
+  { id: 'nba',     label: 'NBA',          sub: 'Basketball',        emoji: '🏀' },
+  { id: 'mlb',     label: 'MLB',          sub: 'Baseball',          emoji: '⚾' },
+  { id: 'nhl',     label: 'NHL',          sub: 'Hockey',            emoji: '🏒' },
+  { id: 'soccer',  label: 'Soccer',       sub: 'Global Football',   emoji: '⚽' },
+  { id: 'ufc',     label: 'UFC / MMA',    sub: 'Combat Sports',     emoji: '🥊' },
+  { id: 'f1',      label: 'Formula 1',    sub: 'Racing',            emoji: '🏎️' },
+  { id: 'rugby',   label: 'Rugby',        sub: 'Union & League',    emoji: '🏉' },
+  { id: 'college', label: 'College',      sub: 'CFB & CBB',         emoji: '🎓' },
+  { id: 'tennis',  label: 'Tennis',       sub: 'ATP / WTA',         emoji: '🎾' },
+];
+
+var ESPN_URLS = {
+  nfl:    'https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams',
+  nba:    'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams',
+  mlb:    'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams',
+  nhl:    'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams',
+  soccer: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/teams',
+};
+
+var F1_TEAMS = [
+  { id:'f1-redbull',   name:'Red Bull Racing',   abbreviation:'RBR', logo:'', color:'1e41ff', alternateColor:'cc1e4a' },
+  { id:'f1-ferrari',   name:'Ferrari',            abbreviation:'FER', logo:'', color:'dc0000', alternateColor:'ffffff' },
+  { id:'f1-mercedes',  name:'Mercedes',           abbreviation:'MER', logo:'', color:'00d2be', alternateColor:'ffffff' },
+  { id:'f1-mclaren',   name:'McLaren',            abbreviation:'MCL', logo:'', color:'ff8000', alternateColor:'ffffff' },
+  { id:'f1-aston',     name:'Aston Martin',       abbreviation:'AMR', logo:'', color:'006f62', alternateColor:'ffffff' },
+  { id:'f1-alpine',    name:'Alpine',             abbreviation:'ALP', logo:'', color:'0090ff', alternateColor:'ffffff' },
+  { id:'f1-williams',  name:'Williams',           abbreviation:'WIL', logo:'', color:'005aff', alternateColor:'ffffff' },
+  { id:'f1-haas',      name:'Haas F1',            abbreviation:'HAS', logo:'', color:'ffffff', alternateColor:'b6babd' },
+  { id:'f1-rb',        name:'Racing Bulls',       abbreviation:'RB',  logo:'', color:'1434cb', alternateColor:'ffffff' },
+  { id:'f1-sauber',    name:'Kick Sauber',        abbreviation:'SAU', logo:'', color:'52e252', alternateColor:'000000' },
+];
+
+var state = {
+  currentStep: 1,
+  selectedSports: [],
+  followedTeams: [],
+  bannerTeamId: null,
+  allTeams: {},    // { sportId: [teamObj, ...] }
+};
+
+var clerkInstance = null;
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+(async function init() {
+  renderSportGrid();
+
+  if (!window.Clerk || !CLERK_KEY || CLERK_KEY.indexOf('PLACEHOLDER') !== -1) {
+    return; // run as guest — prefs saved anonymously
+  }
+
+  try {
+    clerkInstance = new window.Clerk(CLERK_KEY);
+    await clerkInstance.load();
+    if (!clerkInstance.user) {
+      window.location.href = '/login.html';
+    }
+  } catch(e) {
+    console.warn('[Clerk]', e);
+  }
+})();
+
+// ── Step navigation ──────────────────────────────────────────────────────────
+
+window.nextStep = function() {
+  if (state.currentStep === 1) {
+    goToStep(2);
+    loadTeams();
+  } else if (state.currentStep === 2) {
+    goToStep(3);
+    renderBannerGrid();
+  } else if (state.currentStep === 3) {
+    saveAndFinish();
+  }
+};
+
+window.skipStep = function() {
+  if (state.currentStep === 1) {
+    state.selectedSports = [];
+    goToStep(2);
+    loadTeams();
+  } else if (state.currentStep === 2) {
+    state.followedTeams = [];
+    goToStep(3);
+    renderBannerGrid();
+  } else if (state.currentStep === 3) {
+    state.bannerTeamId = null;
+    saveAndFinish();
+  }
+};
+
+function goToStep(n) {
+  document.getElementById('step-' + state.currentStep).classList.remove('active');
+  state.currentStep = n;
+  document.getElementById('step-' + n).classList.add('active');
+
+  // Update progress dots
+  [1,2,3].forEach(function(i) {
+    var dot  = document.getElementById('dot-' + i);
+    var conn = document.getElementById('conn-' + i);
+    dot.classList.remove('active','done');
+    if (conn) conn.classList.remove('done');
+    if (i < n) { dot.classList.add('done'); if (conn) conn.classList.add('done'); }
+    if (i === n) dot.classList.add('active');
+  });
+
+  // Update action buttons
+  var btnNext = document.getElementById('btn-next');
+  var btnSkip = document.getElementById('btn-skip');
+  btnNext.textContent = n === 3 ? 'Finish ✓' : 'Next →';
+  btnSkip.style.display = n === 3 ? 'none' : '';
+}
+
+// ── Step 1 — Sport picker ────────────────────────────────────────────────────
+
+function renderSportGrid() {
+  var grid = document.getElementById('sport-grid');
+  grid.innerHTML = '';
+  SPORTS.forEach(function(s) {
+    var card = document.createElement('div');
+    card.className = 'sport-card';
+    card.dataset.id = s.id;
+    card.innerHTML =
+      '<div class="check">✓</div>' +
+      '<span class="sport-emoji">' + s.emoji + '</span>' +
+      '<div class="sport-name">' + s.label + '</div>' +
+      '<div class="sport-sub">' + s.sub + '</div>';
+    card.onclick = function() { toggleSport(s.id, card); };
+    grid.appendChild(card);
+  });
+}
+
+function toggleSport(id, card) {
+  var idx = state.selectedSports.indexOf(id);
+  if (idx === -1) {
+    state.selectedSports.push(id);
+    card.classList.add('selected');
+  } else {
+    state.selectedSports.splice(idx, 1);
+    card.classList.remove('selected');
+  }
+}
+
+// ── Step 2 — Team picker ─────────────────────────────────────────────────────
+
+var teamElements = []; // flat list for search filtering
+
+async function loadTeams() {
+  var list = document.getElementById('teams-list');
+  list.innerHTML = '<div class="loading-teams">Loading teams…</div>';
+  teamElements = [];
+
+  var sportsToLoad = state.selectedSports.length
+    ? state.selectedSports
+    : ['nfl','nba','soccer','mlb','nhl'];
+
+  var fetches = sportsToLoad.map(function(sport) {
+    if (sport === 'f1') return Promise.resolve({ sport: 'f1', teams: F1_TEAMS });
+    if (sport === 'ufc' || sport === 'rugby' || sport === 'college' || sport === 'tennis') return null;
+    var url = ESPN_URLS[sport];
+    if (!url) return null;
+    return fetch(url)
+      .then(function(r) { return r.json(); })
+      .then(function(d) { return { sport: sport, teams: parseESPNTeams(d, sport) }; })
+      .catch(function() { return null; });
+  }).filter(Boolean);
+
+  var results = await Promise.allSettled(fetches);
+  list.innerHTML = '';
+
+  results.forEach(function(res) {
+    if (res.status !== 'fulfilled' || !res.value || !res.value.teams.length) return;
+    var { sport, teams } = res.value;
+    state.allTeams[sport] = teams;
+
+    var sportMeta = SPORTS.find(function(s){ return s.id === sport; });
+    var label = sportMeta ? sportMeta.emoji + ' ' + sportMeta.label : sport.toUpperCase();
+
+    var group = document.createElement('div');
+    var groupLabel = document.createElement('div');
+    groupLabel.className = 'sport-group-label';
+    groupLabel.textContent = label;
+    group.appendChild(groupLabel);
+
+    var cards = document.createElement('div');
+    cards.className = 'team-cards';
+
+    teams.forEach(function(t) {
+      var card = document.createElement('div');
+      card.className = 'team-card';
+      card.dataset.name = (t.name + ' ' + (t.abbreviation || '')).toLowerCase();
+      card.innerHTML =
+        '<div class="check">✓</div>' +
+        (t.logo ? '<img class="team-logo" src="' + t.logo + '" alt="" onerror="this.remove()">' : '') +
+        '<div class="team-name">' + escHtml(t.name) + '</div>';
+      card.onclick = function() { toggleTeam(t, card); };
+      cards.appendChild(card);
+      teamElements.push(card);
+    });
+
+    group.appendChild(cards);
+    list.appendChild(group);
+  });
+
+  if (!list.children.length) {
+    list.innerHTML = '<div class="loading-teams">No team data available.<br>You can skip this step.</div>';
+  }
+}
+
+function parseESPNTeams(data, sport) {
+  try {
+    var teams = [];
+    var rawTeams = data.sports[0].leagues[0].teams;
+    rawTeams.forEach(function(entry) {
+      var t = entry.team;
+      teams.push({
+        id:           sport + '-' + t.id,
+        name:         t.displayName,
+        abbreviation: t.abbreviation,
+        sport:        sport,
+        logo:         (t.logos && t.logos[0]) ? t.logos[0].href : '',
+        color:        t.color || '',
+        alternateColor: t.alternateColor || '',
+      });
+    });
+    return teams;
+  } catch(e) { return []; }
+}
+
+function toggleTeam(t, card) {
+  var idx = state.followedTeams.findIndex(function(ft) { return ft.id === t.id; });
+  if (idx === -1) {
+    state.followedTeams.push(t);
+    card.classList.add('selected');
+  } else {
+    state.followedTeams.splice(idx, 1);
+    card.classList.remove('selected');
+  }
+}
+
+window.filterTeams = function(query) {
+  var q = query.toLowerCase().trim();
+  teamElements.forEach(function(el) {
+    el.style.display = (!q || el.dataset.name.includes(q)) ? '' : 'none';
+  });
+};
+
+// ── Step 3 — Banner team picker ──────────────────────────────────────────────
+
+function renderBannerGrid() {
+  var grid = document.getElementById('banner-grid');
+  grid.innerHTML = '';
+
+  if (!state.followedTeams.length) {
+    grid.innerHTML = '<p style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:20px 0;grid-column:1/-1">No teams followed yet. You can finish and update this later.</p>';
+    return;
+  }
+
+  state.followedTeams.forEach(function(t) {
+    var c1 = t.color ? '#' + t.color : '#1C2128';
+    var c2 = t.alternateColor ? '#' + t.alternateColor : '#30363D';
+    var card = document.createElement('div');
+    card.className = 'banner-card';
+    card.dataset.id = t.id;
+    card.style.cssText = 'background:linear-gradient(135deg,' + c1 + '33,' + c2 + '22);border-color:' + (t.color ? c1 : 'var(--border)') + ';border-left:3px solid ' + c1 + ';';
+    card.innerHTML =
+      '<div class="check">✓</div>' +
+      (t.logo ? '<img class="banner-logo" src="' + t.logo + '" alt="" onerror="this.remove()">' : '') +
+      '<div class="banner-name">' + escHtml(t.name) + '</div>';
+    card.onclick = function() { selectBannerTeam(t.id); };
+    grid.appendChild(card);
+  });
+}
+
+function selectBannerTeam(id) {
+  state.bannerTeamId = id;
+  document.querySelectorAll('.banner-card').forEach(function(c) {
+    c.classList.toggle('selected', c.dataset.id === id);
+  });
+}
+
+// ── Save & finish ────────────────────────────────────────────────────────────
+
+async function saveAndFinish() {
+  var btn = document.getElementById('btn-next');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  var userId = (clerkInstance && clerkInstance.user) ? clerkInstance.user.id : 'guest';
+
+  var payload = {
+    userId:           userId,
+    display_name:     clerkInstance && clerkInstance.user
+      ? (clerkInstance.user.firstName || (clerkInstance.user.emailAddresses && clerkInstance.user.emailAddresses[0] && clerkInstance.user.emailAddresses[0].emailAddress) || 'Fan')
+      : 'Guest',
+    favorite_sports:  state.selectedSports,
+    followed_teams:   state.followedTeams,
+    banner_team_id:   state.bannerTeamId,
+    feed_weights:     state.selectedSports.reduce(function(acc, s) { acc[s] = 1.5; return acc; }, {}),
+    onboarding_complete: true,
+  };
+
+  try {
+    var r = await fetch('/api/user-prefs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.ok) {
+      window.location.href = '/';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Finish ✓';
+      alert('Something went wrong. Please try again.');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Finish ✓';
+    alert('Could not save preferences. Please try again.');
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+})();
+</script>
+
+</body>
+</html>
