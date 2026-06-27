@@ -2175,11 +2175,11 @@ function loadWorldCup() {
   var grEl = document.getElementById('wc-groups');
   if(!scEl && !grEl) return;
 
-  fetchWithTimeout('/api/agent-worldcup', 10000)
-    .then(function(r){return r.json();})
-    .then(function(data){
-      /* Scores: show all games (live + recent + upcoming) */
-      if(scEl) {
+  /* Live scores — existing backend */
+  if(scEl) {
+    fetchWithTimeout('/api/agent-worldcup', 10000)
+      .then(function(r){return r.json();})
+      .then(function(data){
         var games = data.allGames || data.liveGames || [];
         if(!games.length){
           scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">'+(data.active?'No matches live right now':'Tournament updates coming soon')+'</span>';
@@ -2194,42 +2194,55 @@ function loadWorldCup() {
               '<div class="sc-status '+(isLive?'live-st':isFin?'final-st':'pre-st')+'">'+esc(statusText)+'</div></div>';
           }).join('');
         }
-        /* Propagate SCOUT note to banner when WC is active */
         if(data.active && data.scoutNote) {
           var noteEl = document.getElementById('scout-note');
           if(noteEl) noteEl.textContent = data.scoutNote;
           var banner = document.getElementById('scout-banner');
           if(banner) banner.style.borderBottomColor = 'rgba(255,215,0,0.4)';
         }
-      }
+      })
+      .catch(function(){
+        scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Check back for live scores</span>';
+      });
+  }
 
-      /* Groups/standings */
-      if(grEl) {
-        var groups = data.standings || [];
-        if(!groups.length){grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">No group data yet</span>';return;}
+  /* Group standings — ESPN public API */
+  if(grEl) {
+    fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/standings')
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var groups = data.children || [];
+        if(!groups.length){
+          grEl.innerHTML='<p style="color:#888;padding:1rem;text-align:center">No group data yet</p>';
+          return;
+        }
         grEl.innerHTML = groups.map(function(grp){
-          var name=grp.name||grp.group||'Group';
-          var teams=grp.teams||grp.standings||[];
+          var name = grp.name || 'Group';
+          var entries = (grp.standings && grp.standings.entries) || [];
           return '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(63,185,80,0.2);border-radius:10px;padding:10px">'+
             '<div style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;color:#3FB950;margin-bottom:6px">'+esc(name)+'</div>'+
-            teams.map(function(t,i){
-              var flag=t.flag||t.logo||t.crest||'';
+            entries.map(function(entry, i){
+              var team = entry.team || {};
+              var logo = (team.logos && team.logos[0] && team.logos[0].href) || '';
+              var teamName = team.displayName || team.name || '';
+              var stats = entry.stats || [];
+              var played = (stats.find(function(s){return s.name==='gamesPlayed';}) || {}).value;
+              var points = (stats.find(function(s){return s.name==='points';}) || {}).value;
               return '<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.06)">'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--faint);min-width:12px">'+(i+1)+'</span>'+
-                (flag?'<img src="'+esc(flag)+'" style="width:16px;height:12px;object-fit:cover" onerror="this.remove()"> ':'')+
-                '<span style="font-family:Oswald,sans-serif;font-size:12px;font-weight:500;color:#fff;flex:1">'+esc(t.name||t.team||'')+'</span>'+
+                (logo?'<img src="'+esc(logo)+'" style="width:16px;height:12px;object-fit:contain" onerror="this.remove()"> ':'')+
+                '<span style="font-family:Oswald,sans-serif;font-size:12px;font-weight:500;color:#fff;flex:1">'+esc(teamName)+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted)">'+
-                  (t.played!==undefined?t.played+' ':'')+(t.points!==undefined?'<strong style="color:#fff">'+t.points+'pts</strong>':'')+'</span>'+
+                  (played!==undefined?played+' ':'')+(points!==undefined?'<strong style="color:#fff">'+points+'pts</strong>':'')+'</span>'+
               '</div>';
             }).join('')+
           '</div>';
         }).join('');
-      }
-    })
-    .catch(function(){
-      if(scEl) scEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Check back for live scores</span>';
-      if(grEl) grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';
-    });
+      })
+      .catch(function(){
+        grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';
+      });
+  }
 }
 window.loadWorldCup = loadWorldCup;
 
