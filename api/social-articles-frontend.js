@@ -6,9 +6,9 @@ function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Allowlist-based sanitizer — strips everything except elements needed for Twitter blockquote embeds
-function sanitizeEmbed(html) {
-  if (!html) return '';
+// Allowlist-based sanitizer — returns a DOM node (never a string) to avoid innerHTML at the call site
+function sanitizeEmbedNode(html) {
+  if (!html) return null;
   const ALLOWED = {
     blockquote: ['class','data-theme','data-lang','data-dnt'],
     p:          ['lang','dir'],
@@ -39,7 +39,7 @@ function sanitizeEmbed(html) {
   }
   const wrap = document.createElement('div');
   doc.body.childNodes.forEach(c => { const n = walk(c); if (n) wrap.appendChild(n); });
-  return wrap.innerHTML;
+  return wrap.hasChildNodes() ? wrap : null;
 }
 
 // ============================================================
@@ -103,13 +103,10 @@ function renderSocialArticleCard(article) {
         <h2 class="article-headline">${escHtml(article.headline)}</h2>
         <p class="article-subheadline">${escHtml(article.subheadline)}</p>
 
-        <!-- X Embed (official Twitter embed) -->
+        <!-- X Embed (official Twitter embed) — populated via DOM after insertion, never via innerHTML -->
         ${article.embed ? `
-          <div class="x-embed-container">
-            ${sanitizeEmbed(article.embed)}
-          </div>
+          <div class="x-embed-container"></div>
         ` : `
-          <!-- Fallback if embed fails -->
           <a href="${escHtml(article.sourceUrl)}" target="_blank" rel="noopener" class="x-link-fallback">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -175,11 +172,23 @@ async function injectSocialArticles() {
   articles.forEach((article, index) => {
     const html = renderSocialArticleCard(article);
     const insertPosition = (index + 1) * 3; // every 3rd card
-    
+    let insertedCard = null;
+
     if (existingCards[insertPosition]) {
       existingCards[insertPosition].insertAdjacentHTML('beforebegin', html);
+      insertedCard = existingCards[insertPosition].previousElementSibling;
     } else {
       feedContainer.insertAdjacentHTML('beforeend', html);
+      insertedCard = feedContainer.lastElementChild;
+    }
+
+    // Inject sanitized embed via DOM (never via innerHTML / template string)
+    if (article.embed && insertedCard) {
+      const container = insertedCard.querySelector('.x-embed-container');
+      if (container) {
+        const node = sanitizeEmbedNode(article.embed);
+        if (node) container.appendChild(node);
+      }
     }
   });
 
