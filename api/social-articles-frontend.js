@@ -2,6 +2,46 @@
 // Drop this into your main index.html JavaScript section
 // Handles rendering AI-written articles that originated from X posts
 
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Allowlist-based sanitizer — strips everything except elements needed for Twitter blockquote embeds
+function sanitizeEmbed(html) {
+  if (!html) return '';
+  const ALLOWED = {
+    blockquote: ['class','data-theme','data-lang','data-dnt'],
+    p:          ['lang','dir'],
+    a:          ['href','target','rel'],
+    br:         [],
+    span:       [],
+  };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  function walk(node) {
+    if (node.nodeType === 3) return document.createTextNode(node.textContent);
+    if (node.nodeType !== 1) return null;
+    const tag = node.tagName.toLowerCase();
+    const allowedAttrs = ALLOWED[tag];
+    if (!allowedAttrs) return null;
+    const el = document.createElement(tag);
+    for (const attr of allowedAttrs) {
+      if (node.hasAttribute(attr)) {
+        const val = node.getAttribute(attr);
+        if (attr === 'href' && !/^https?:\/\//i.test(val)) continue;
+        el.setAttribute(attr, val);
+      }
+    }
+    for (const child of node.childNodes) {
+      const c = walk(child);
+      if (c) el.appendChild(c);
+    }
+    return el;
+  }
+  const wrap = document.createElement('div');
+  doc.body.childNodes.forEach(c => { const n = walk(c); if (n) wrap.appendChild(n); });
+  return wrap.innerHTML;
+}
+
 // ============================================================
 // FETCH SOCIAL ARTICLES FROM THE AGENT
 // Call this alongside your existing news/video fetches
@@ -43,34 +83,34 @@ function renderSocialArticleCard(article) {
             onerror="this.src='https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png'"
           />
           <div class="source-info">
-            <span class="athlete-name">${article.embedAuthor}</span>
+            <span class="athlete-name">${escHtml(article.embedAuthor)}</span>
             <span class="source-platform">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
-              @${article.sourceUsername}
+              @${escHtml(article.sourceUsername)}
             </span>
           </div>
         </div>
         <div class="card-meta">
-          <span class="tag-badge" style="background: ${tagColor}">${article.tag}</span>
-          <span class="time-ago">${timeAgo}</span>
+          <span class="tag-badge" style="background: ${tagColor}">${escHtml(article.tag)}</span>
+          <span class="time-ago">${escHtml(timeAgo)}</span>
         </div>
       </div>
 
       <!-- Article Content -->
       <div class="card-body">
-        <h2 class="article-headline">${article.headline}</h2>
-        <p class="article-subheadline">${article.subheadline}</p>
-        
+        <h2 class="article-headline">${escHtml(article.headline)}</h2>
+        <p class="article-subheadline">${escHtml(article.subheadline)}</p>
+
         <!-- X Embed (official Twitter embed) -->
         ${article.embed ? `
           <div class="x-embed-container">
-            ${article.embed}
+            ${sanitizeEmbed(article.embed)}
           </div>
         ` : `
           <!-- Fallback if embed fails -->
-          <a href="${article.sourceUrl}" target="_blank" rel="noopener" class="x-link-fallback">
+          <a href="${escHtml(article.sourceUrl)}" target="_blank" rel="noopener" class="x-link-fallback">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
             </svg>
@@ -80,7 +120,7 @@ function renderSocialArticleCard(article) {
 
         <!-- AI-written article body -->
         <div class="article-body">
-          ${article.body.split('\n').filter(p => p.trim()).map(p => `<p>${p}</p>`).join('')}
+          ${article.body.split('\n').filter(p => p.trim()).map(p => `<p>${escHtml(p)}</p>`).join('')}
         </div>
       </div>
 
@@ -90,13 +130,13 @@ function renderSocialArticleCard(article) {
           ⚡ Sideline AI
         </span>
         <div class="card-actions">
-          <button class="btn-fire" onclick="voteOnArticle('${article.id}', 'fire')">
+          <button class="btn-fire" onclick="voteOnArticle(${JSON.stringify(article.id)}, 'fire')">
             🔥 <span class="vote-count">0</span>
           </button>
-          <button class="btn-ice" onclick="voteOnArticle('${article.id}', 'ice')">
+          <button class="btn-ice" onclick="voteOnArticle(${JSON.stringify(article.id)}, 'ice')">
             🧊 <span class="vote-count">0</span>
           </button>
-          <button class="btn-share" onclick="shareArticle('${article.id}', '${article.headline.replace(/'/g, "\\'")}')">
+          <button class="btn-share" onclick="shareArticle(${JSON.stringify(article.id)}, ${JSON.stringify(article.headline)})">
             Share
           </button>
         </div>

@@ -178,27 +178,80 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 </div>
 
 <script>
-const PASSWORD = 'SIDELINE2024';
 let currentArticle = null;
 
+function getToken() { return sessionStorage.getItem('sl_token') || ''; }
+
 // ── AUTH ──────────────────────────────────────────────
-function tryLogin() {
-  const val = document.getElementById('password-input').value;
-  if (val === PASSWORD) {
-    sessionStorage.setItem('sl_auth', '1');
+async function tryLogin() {
+  const password = document.getElementById('password-input').value;
+  if (!password) return;
+  const btn = document.querySelector('.login-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/admin-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (!res.ok) throw new Error('bad');
+    const { token } = await res.json();
+    sessionStorage.setItem('sl_token', token);
     showAdmin();
-  } else {
+  } catch {
     const err = document.getElementById('login-error');
     err.style.display = 'block';
     document.getElementById('password-input').value = '';
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
 function logout() {
-  sessionStorage.removeItem('sl_auth');
+  sessionStorage.removeItem('sl_token');
   document.getElementById('admin-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('password-input').value = '';
+}
+
+// ── SAFE EMBED ────────────────────────────────────────
+// Allowlist-based sanitizer — only permits elements needed for Twitter blockquote embeds
+function safeEmbed(html) {
+  if (!html) return null;
+  const ALLOWED = {
+    blockquote: ['class', 'data-theme', 'data-lang', 'data-dnt'],
+    p:          ['lang', 'dir'],
+    a:          ['href', 'target', 'rel'],
+    br:         [],
+    span:       [],
+  };
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  function walk(node) {
+    if (node.nodeType === 3) return document.createTextNode(node.textContent);
+    if (node.nodeType !== 1) return null;
+    const tag = node.tagName.toLowerCase();
+    const allowedAttrs = ALLOWED[tag];
+    if (!allowedAttrs) return null;
+    const el = document.createElement(tag);
+    for (const attr of allowedAttrs) {
+      if (node.hasAttribute(attr)) {
+        const val = node.getAttribute(attr);
+        if (attr === 'href' && !/^https?:\/\//i.test(val)) continue;
+        el.setAttribute(attr, val);
+      }
+    }
+    for (const child of node.childNodes) {
+      const c = walk(child);
+      if (c) el.appendChild(c);
+    }
+    return el;
+  }
+  const container = document.createElement('div');
+  doc.body.childNodes.forEach(child => {
+    const cleaned = walk(child);
+    if (cleaned) container.appendChild(cleaned);
+  });
+  return container;
 }
 
 // ── STATUS ────────────────────────────────────────────
@@ -222,7 +275,10 @@ async function generateArticle() {
   try {
     const res = await fetch('/api/agent-social-manual', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`,
+      },
       body: JSON.stringify({ tweetUrl: url }),
     });
 
@@ -261,7 +317,10 @@ function renderPreview(article) {
 
   const embedBox = document.getElementById('embed-box');
   if (article.embed) {
-    document.getElementById('embed-html').innerHTML = article.embed;
+    const embedEl = document.getElementById('embed-html');
+    embedEl.innerHTML = '';
+    const sanitized = safeEmbed(article.embed);
+    if (sanitized) embedEl.appendChild(sanitized);
     embedBox.style.display = 'block';
     if (window.twttr?.widgets) window.twttr.widgets.load();
     else loadTwitterScript();
@@ -289,7 +348,10 @@ async function publishArticle() {
   try {
     const res = await fetch('/api/articles-store', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${getToken()}`,
+      },
       body: JSON.stringify(currentArticle),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -334,7 +396,7 @@ async function renderPublished() {
         </div>
         <div class="pub-item-actions">
           <a class="pub-view-btn" href="${escHtml(a.sourceUrl)}" target="_blank" rel="noopener">View Post</a>
-          <button class="pub-del-btn" onclick="deleteArticle('${escHtml(a.id)}')">Remove</button>
+          <button class="pub-del-btn" onclick="deleteArticle(${JSON.stringify(a.id)})">Remove</button>
         </div>
       </div>
     `).join('');
@@ -345,7 +407,10 @@ async function renderPublished() {
 
 async function deleteArticle(id) {
   try {
-    await fetch(`/api/articles-store?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    await fetch(`/api/articles-store?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
     await renderPublished();
   } catch (err) {
     setStatus(`Delete failed: ${err.message}`, 'error');
@@ -402,14 +467,16 @@ async function loadGrowth() {
 
 async function triggerAgent(name) {
   const st = document.getElementById('growth-status');
-  st.textContent = `Triggering ${name}…`; st.className='status-bar loading'; st.style.display='block';
+  st.textContent = `Triggering ${escHtml(name)}…`; st.className='status-bar loading'; st.style.display='block';
   try {
-    const r = await fetch(`/api/${name}?force=1`);
+    const r = await fetch(`/api/${encodeURIComponent(name)}?force=1`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
     const d = await r.json().catch(()=>({}));
-    st.textContent = `${name}: ${JSON.stringify(d).slice(0,200)}`; st.className='status-bar success';
+    st.textContent = `${escHtml(name)}: ${JSON.stringify(d).slice(0,200)}`; st.className='status-bar success';
     await loadGrowth();
   } catch(e) {
-    st.textContent = `Error: ${e.message}`; st.className='status-bar error';
+    st.textContent = `Error: ${escHtml(e.message)}`; st.className='status-bar error';
   }
 }
 
@@ -421,7 +488,7 @@ async function showAdmin() {
 }
 
 // ── INIT ──────────────────────────────────────────────
-if (sessionStorage.getItem('sl_auth') === '1') {
+if (sessionStorage.getItem('sl_token')) {
   showAdmin();
 }
 </script>
