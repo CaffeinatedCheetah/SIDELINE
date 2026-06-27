@@ -10,11 +10,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
-<!--
-  SETUP REQUIRED:
-  Replace 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER' below with your Clerk publishable key.
-  See login.html for full setup instructions.
--->
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -146,8 +141,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,s
 <script>
 (function() {
 
-var CLERK_KEY = 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER';
-
 var SPORTS = [
   { id: 'nfl',     label: 'NFL',          sub: 'American Football', emoji: '🏈' },
   { id: 'nba',     label: 'NBA',          sub: 'Basketball',        emoji: '🏀' },
@@ -197,12 +190,11 @@ var clerkInstance = null;
 (async function init() {
   renderSportGrid();
 
-  if (!window.Clerk || !CLERK_KEY || CLERK_KEY.indexOf('PLACEHOLDER') !== -1) {
-    return; // run as guest — prefs saved anonymously
-  }
-
   try {
-    clerkInstance = new window.Clerk(CLERK_KEY);
+    const res = await fetch('/api/config');
+    const { clerkKey } = await res.json();
+    if (!clerkKey || !window.Clerk) return;
+    clerkInstance = new window.Clerk(clerkKey);
     await clerkInstance.load();
     if (!clerkInstance.user) {
       window.location.href = '/login.html';

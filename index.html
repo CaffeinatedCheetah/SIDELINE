@@ -2627,28 +2627,29 @@ setInterval(loadScout, 5 * 60 * 1000);
 
 </script>
 <script>
-/* Clerk auth init — replace placeholder with your actual publishable key */
-(function() {
-  var CLERK_KEY = 'YOUR_CLERK_PUBLISHABLE_KEY_PLACEHOLDER';
-  if (!window.Clerk || !CLERK_KEY || CLERK_KEY.indexOf('PLACEHOLDER') !== -1) return;
-  new window.Clerk(CLERK_KEY).load().then(function(clerk) {
-    var user = clerk.user;
-    var loginBtn  = document.getElementById('auth-login-btn');
-    var userMenu  = document.getElementById('auth-user-menu');
-    var userAvatar= document.getElementById('auth-user-avatar');
-    if (user) {
-      if (loginBtn)   loginBtn.style.display   = 'none';
-      if (userMenu)   userMenu.style.display    = 'flex';
-      if (userAvatar) userAvatar.textContent =
-        (user.firstName && user.firstName[0]) ||
-        (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
-      if (window.loadUserPreferences) window.loadUserPreferences(user.id);
-    } else {
-      if (loginBtn)  loginBtn.style.display  = 'block';
-      if (userMenu)  userMenu.style.display   = 'none';
-    }
-  }).catch(function() {});
-})();
+async function initClerk() {
+  const res = await fetch('/api/config');
+  const { clerkKey } = await res.json();
+  if (!clerkKey || !window.Clerk) return;
+  const clerk = new window.Clerk(clerkKey);
+  await clerk.load();
+  const user      = clerk.user;
+  const loginBtn  = document.getElementById('auth-login-btn');
+  const userMenu  = document.getElementById('auth-user-menu');
+  const userAvatar= document.getElementById('auth-user-avatar');
+  if (user) {
+    if (loginBtn)   loginBtn.style.display  = 'none';
+    if (userMenu)   userMenu.style.display   = 'flex';
+    if (userAvatar) userAvatar.textContent =
+      (user.firstName && user.firstName[0]) ||
+      (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
+    if (window.loadUserPreferences) window.loadUserPreferences(user.id);
+  } else {
+    if (loginBtn)  loginBtn.style.display  = 'block';
+    if (userMenu)  userMenu.style.display   = 'none';
+  }
+}
+initClerk();
 </script>
 </body>
 </html>
