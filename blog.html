@@ -9,13 +9,14 @@
   <meta property="og:site_name" content="Sideline">
   <meta property="og:title" id="og-title" content="Sports News & Hot Takes — Sideline">
   <meta property="og:description" id="og-desc" content="Breaking sports news, expert analysis, and hot fan takes. Drop your take on Sideline.">
-  <meta property="og:image" id="og-img" content="/api/og-image?type=site">
-  <meta property="og:url" id="og-url" content="https://fantakes.app/blog.html">
+  <meta property="og:image" id="og-img" content="https://www.fantakes.app/api/og-image?type=site">
+  <meta property="og:url" id="og-url" content="https://www.fantakes.app/blog.html">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:site" content="@sidelineapp">
   <meta name="twitter:title" id="tw-title" content="Sports News & Hot Takes — Sideline">
-  <meta name="twitter:image" id="tw-img" content="/api/og-image?type=site">
-  <link rel="canonical" id="canonical" href="https://fantakes.app/blog.html">
+  <meta name="twitter:image" id="tw-img" content="https://www.fantakes.app/api/og-image?type=site">
+  <link rel="canonical" id="canonical" href="https://www.fantakes.app/blog.html">
+  <script>if(!location.hostname.endsWith('fantakes.app')){var _m=document.createElement('meta');_m.name='robots';_m.content='noindex,nofollow';document.head.appendChild(_m);}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -23,8 +24,8 @@
     "@context":"https://schema.org",
     "@type":"BreadcrumbList",
     "itemListElement":[
-      {"@type":"ListItem","position":1,"name":"Sideline","item":"https://fantakes.app"},
-      {"@type":"ListItem","position":2,"name":"Blog","item":"https://fantakes.app/blog.html"}
+      {"@type":"ListItem","position":1,"name":"Sideline","item":"https://www.fantakes.app"},
+      {"@type":"ListItem","position":2,"name":"Blog","item":"https://www.fantakes.app/blog.html"}
     ]
   }</script>
   <script id="ld-article" type="application/ld+json"></script>
@@ -153,7 +154,7 @@
 <footer>
   <a href="/">SIDELINE</a> &nbsp;·&nbsp; <a href="/blog.html">BLOG</a> &nbsp;·&nbsp;
   <a href="/#takes">FAN TAKES</a> &nbsp;·&nbsp; <a href="/#scores">SCORES</a>
-  &nbsp;&nbsp;|&nbsp;&nbsp; © 2025 FANTAKES.APP
+  &nbsp;&nbsp;|&nbsp;&nbsp; &copy; <span id="footer-year"></span> SIDELINE
 </footer>
 
 <script>
@@ -275,8 +276,8 @@
   function setMeta(a) {
     const title = `${a.headline} — Sideline`;
     const desc  = a.metaDescription || a.subheadline || '';
-    const imgUrl= `/api/og-image?type=article&title=${encodeURIComponent(a.headline)}&sport=${encodeURIComponent(a.sport || '')}`;
-    const pageUrl= `https://fantakes.app/blog.html?article=${encodeURIComponent(a.id)}`;
+    const imgUrl= `https://www.fantakes.app/api/og-image?type=article&title=${encodeURIComponent(a.headline)}&sport=${encodeURIComponent(a.sport || '')}`;
+    const pageUrl= `https://www.fantakes.app/blog.html?article=${encodeURIComponent(a.id)}`;
 
     document.getElementById('pg-title').textContent   = title;
     document.title                                    = title;
@@ -296,10 +297,10 @@
     document.getElementById('pg-title').textContent   = title;
     document.getElementById('og-title').content       = title;
     document.getElementById('tw-title').content       = title;
-    document.getElementById('og-img').content         = '/api/og-image?type=site';
-    document.getElementById('tw-img').content         = '/api/og-image?type=site';
-    document.getElementById('og-url').content         = 'https://fantakes.app/blog.html';
-    document.getElementById('canonical').href         = 'https://fantakes.app/blog.html';
+    document.getElementById('og-img').content         = 'https://www.fantakes.app/api/og-image?type=site';
+    document.getElementById('tw-img').content         = 'https://www.fantakes.app/api/og-image?type=site';
+    document.getElementById('og-url').content         = 'https://www.fantakes.app/blog.html';
+    document.getElementById('canonical').href         = 'https://www.fantakes.app/blog.html';
     document.getElementById('ld-article').textContent = '';
   }
 
@@ -337,6 +338,7 @@
   });
 
   loadArticles();
+  document.getElementById('footer-year').textContent = new Date().getFullYear();
 })();
 </script>
 </body>

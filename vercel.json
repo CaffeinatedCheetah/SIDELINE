@@ -26,9 +26,6 @@
       ]
     }
   ],
-  "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
-  ],
   "crons": [
     { "path": "/api/agent-social",     "schedule": "*/30 * * * *" },
     { "path": "/api/agent-breaking",   "schedule": "*/5 * * * *"  },

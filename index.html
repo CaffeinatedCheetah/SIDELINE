@@ -8,20 +8,21 @@
 <link rel="icon" href="data:,"/>
 <meta name="apple-mobile-web-app-title" content="Sideline"/>
 <meta name="theme-color" content="#FF3D3D"/>
-<title>FanTakes — Live Sports Debate | fantakes.app</title>
+<title>Sideline — Live Sports, Fan Takes &amp; Trending</title>
 <meta name="description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates and trending highlights. NBA, NFL, Soccer, UFC, F1 and more.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Sideline">
 <meta property="og:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
 <meta property="og:description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates. All sports, all fans.">
-<meta property="og:image" content="https://fantakes.app/api/og-image?type=site">
-<meta property="og:url" content="https://fantakes.app">
+<meta property="og:image" content="https://www.fantakes.app/api/og-image?type=site">
+<meta property="og:url" content="https://www.fantakes.app">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@sidelineapp">
 <meta name="twitter:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
-<meta name="twitter:image" content="https://fantakes.app/api/og-image?type=site">
-<link rel="canonical" href="https://fantakes.app">
+<meta name="twitter:image" content="https://www.fantakes.app/api/og-image?type=site">
+<link rel="canonical" href="https://www.fantakes.app">
 <link rel="manifest" href="/manifest.json">
+<script>if(!location.hostname.endsWith('fantakes.app')){var _m=document.createElement('meta');_m.name='robots';_m.content='noindex,nofollow';document.head.appendChild(_m);}</script>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -748,7 +749,8 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
   <!-- SIDEBAR -->
   <div class="sidebar">
-    <div class="ad-slot"><div class="ad-label">Advertisement</div><div class="ad-text">Your ad here</div></div>
+    <!-- AD SLOT: remove display:none when AdSense/Ezoic approved and script added -->
+    <div class="ad-slot" style="display:none"><div class="ad-label">Advertisement</div><div class="ad-text">Your ad here</div></div>
 
     <div class="sec"><div class="sec-title">⚡ Live Now</div></div>
     <div id="sb-live"><span class="empty">Fetching live games...</span></div>
@@ -1301,13 +1303,13 @@ window.pickScoreDate = function(daysAgo, btn) {
   d.setDate(d.getDate() - daysAgo);
   var m = d.getMonth()+1, dy = d.getDate();
   var ds = d.getFullYear().toString() + (m<10?'0':'')+m + (dy<10?'0':'')+dy;
-  fetch('/api/scores?date='+ds)
+  fetchWithTimeout('/api/scores?date='+ds, 10000)
     .then(function(r){return r.json();})
     .then(function(data){
       allScoreGames = data.games || [];
       renderAllScores();
     })
-    .catch(function(){ setHTML('all-scores','<span class="empty">Could not load scores — try again</span>'); });
+    .catch(function(){ setHTML('all-scores', errHTML('Could not load scores', 'pickScoreDate('+daysAgo+',null)')); });
 };
 
 /* ── FAN TAKES INTERACTIONS ── */
