@@ -507,6 +507,29 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
 /* FEED SECTION */
 .feed-section{padding:0 16px;}
+
+/* AUTH MODAL */
+#auth-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.76);align-items:center;justify-content:center;padding:20px;}
+#auth-modal.open{display:flex;}
+#auth-card{background:var(--surface2);border:0.5px solid var(--border2);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:360px;max-height:90vh;overflow-y:auto;position:relative;}
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-size:10px;font-weight:600;color:var(--text2);font-family:'Space Mono',monospace;letter-spacing:.04em;margin-bottom:6px;text-transform:uppercase;}
+.auth-field input,.auth-field select{width:100%;background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--text);font-family:'Space Mono',monospace;outline:none;transition:border-color .2s;}
+.auth-field input::placeholder{color:var(--text3);}
+.auth-field input:focus,.auth-field select:focus{border-color:var(--red);}
+.auth-field select{appearance:none;-webkit-appearance:none;background-color:var(--surface);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.auth-submit-btn{width:100%;background:var(--red);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px;font-size:12px;font-weight:700;font-family:'Space Mono',monospace;cursor:pointer;letter-spacing:.04em;margin-top:4px;transition:opacity .2s;}
+.auth-submit-btn:hover{opacity:.88;}
+.auth-toggle-btn{flex:1;background:none;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:600;font-family:'Space Mono',monospace;cursor:pointer;color:var(--text3);transition:all .2s;}
+.auth-toggle-btn.active{background:var(--surface2);color:var(--text);}
+.auth-error{font-size:10px;color:var(--red);font-family:'Space Mono',monospace;margin-bottom:12px;display:none;background:var(--red-dim);padding:8px 10px;border-radius:6px;line-height:1.5;}
+.auth-guest-link{display:block;text-align:center;font-size:10px;color:var(--text3);font-family:'Space Mono',monospace;margin-top:14px;cursor:pointer;text-decoration:none;letter-spacing:.03em;}
+.auth-guest-link:hover{color:var(--text2);}
+.ob-sport-chip,.ob-team-chip{display:flex;align-items:center;gap:8px;background:var(--surface);border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--text);font-family:'Space Mono',monospace;-webkit-tap-highlight-color:transparent;}
+.ob-sport-chip.selected,.ob-team-chip.selected{border-color:var(--red);background:var(--red-dim);color:#fff;}
+.ob-step-dots{display:flex;justify-content:center;gap:6px;margin-bottom:20px;}
+.ob-step-dot{width:6px;height:6px;border-radius:50%;background:var(--border2);}
+.ob-step-dot.active{background:var(--red);}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
@@ -520,9 +543,9 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     <span id="streak-count" style="font-size:11px;font-weight:600;color:#FF8C00">0</span>
     <span style="font-size:10px;color:var(--text3)">day streak</span>
   </div>
-  <button id="auth-login-btn" onclick="window.location.href='/login.html'" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer">Sign in</button>
+  <button id="auth-login-btn" onclick="openAuthModal('signin')" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer">Sign in</button>
   <div id="auth-user-menu" style="display:none;align-items:center;gap:8px">
-    <div id="auth-user-avatar" onclick="window.location.href='/onboarding.html'" style="width:30px;height:30px;border-radius:50%;background:#1a3a6e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;cursor:pointer;border:1.5px solid var(--red)">U</div>
+    <div id="auth-user-avatar" onclick="showUserDropdown()" style="width:30px;height:30px;border-radius:50%;background:#1a3a6e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;cursor:pointer;border:1.5px solid var(--red)">U</div>
   </div>
 </nav>
 
@@ -2989,9 +3012,243 @@ function updateStreak(prefs) {
   if (newStreak >= 2) { badge.style.display = 'flex'; count.textContent = String(newStreak); }
 }
 
-/* -- AUTH + PERSONALIZATION -- */
-function showLoginModal() { window.location.href = '/login.html'; }
-function showProfileModal() { window.location.href = '/onboarding.html'; }
+/* -- AUTH MODAL + PERSONALIZATION -- */
+var _obSelectedSports = [];
+var _obSelectedTeams  = [];
+var _pendingUser      = null;
+
+var OB_SPORTS_LIST = [
+  {key:'NFL',emoji:'🏈',label:'NFL'},{key:'NBA',emoji:'🏀',label:'NBA'},
+  {key:'MLB',emoji:'⚾',label:'MLB'},{key:'NHL',emoji:'🏒',label:'NHL'},
+  {key:'Soccer',emoji:'⚽',label:'Soccer'},{key:'Rugby',emoji:'🏉',label:'Rugby'},
+  {key:'Combat',emoji:'🥊',label:'Combat'},{key:'Racing',emoji:'🏎',label:'Racing'},
+];
+
+var OB_TEAMS = {
+  NFL:    [{id:'cowboys',name:'Cowboys',sport:'NFL',emoji:'⭐'},{id:'chiefs',name:'Chiefs',sport:'NFL',emoji:'🔴'},{id:'eagles',name:'Eagles',sport:'NFL',emoji:'🦅'},{id:'patriots',name:'Patriots',sport:'NFL',emoji:'🏈'},{id:'49ers',name:'49ers',sport:'NFL',emoji:'🌉'}],
+  NBA:    [{id:'lakers',name:'Lakers',sport:'NBA',emoji:'💛'},{id:'celtics',name:'Celtics',sport:'NBA',emoji:'☘️'},{id:'warriors',name:'Warriors',sport:'NBA',emoji:'💙'},{id:'bulls',name:'Bulls',sport:'NBA',emoji:'🐂'},{id:'heat',name:'Heat',sport:'NBA',emoji:'🔥'}],
+  MLB:    [{id:'yankees',name:'Yankees',sport:'MLB',emoji:'⚾'},{id:'dodgers',name:'Dodgers',sport:'MLB',emoji:'🔵'},{id:'redsox',name:'Red Sox',sport:'MLB',emoji:'🧦'},{id:'cubs',name:'Cubs',sport:'MLB',emoji:'🐻'},{id:'astros',name:'Astros',sport:'MLB',emoji:'🌠'}],
+  NHL:    [{id:'leafs',name:'Maple Leafs',sport:'NHL',emoji:'🍁'},{id:'rangers',name:'Rangers',sport:'NHL',emoji:'🗽'},{id:'bruins',name:'Bruins',sport:'NHL',emoji:'🐻'},{id:'hawks',name:'Blackhawks',sport:'NHL',emoji:'🦅'},{id:'pens',name:'Penguins',sport:'NHL',emoji:'🐧'}],
+  Soccer: [{id:'mufc',name:'Man United',sport:'Soccer',emoji:'🔴'},{id:'barca',name:'Barcelona',sport:'Soccer',emoji:'🔵'},{id:'real',name:'Real Madrid',sport:'Soccer',emoji:'👑'},{id:'liverpool',name:'Liverpool',sport:'Soccer',emoji:'🏆'},{id:'arsenal',name:'Arsenal',sport:'Soccer',emoji:'🔴'}],
+  Rugby:  [{id:'allblacks',name:'All Blacks',sport:'Rugby',emoji:'⚫'},{id:'boks',name:'Springboks',sport:'Rugby',emoji:'🟢'},{id:'wallabies',name:'Wallabies',sport:'Rugby',emoji:'🦘'},{id:'englandrugby',name:'England',sport:'Rugby',emoji:'🌹'},{id:'ireland',name:'Ireland',sport:'Rugby',emoji:'☘️'}],
+  Combat: [{id:'ufc',name:'UFC',sport:'Combat',emoji:'🥊'},{id:'boxing',name:'Boxing',sport:'Combat',emoji:'🥋'}],
+  Racing: [{id:'ferrari',name:'Ferrari',sport:'Racing',emoji:'🔴'},{id:'redbull',name:'Red Bull',sport:'Racing',emoji:'🐂'},{id:'mercedes',name:'Mercedes',sport:'Racing',emoji:'⬛'},{id:'mclaren',name:'McLaren',sport:'Racing',emoji:'🟠'},{id:'aston',name:'Aston Martin',sport:'Racing',emoji:'🟢'}],
+};
+
+function openAuthModal(mode) {
+  var modal = document.getElementById('auth-modal');
+  if (!modal) return;
+  modal.classList.add('open');
+  setAuthMode(mode || 'signin');
+  document.getElementById('auth-view').style.display   = 'block';
+  document.getElementById('ob-sports-view').style.display = 'none';
+  document.getElementById('ob-teams-view').style.display  = 'none';
+  document.getElementById('ob-done-view').style.display   = 'none';
+}
+
+function closeAuthModal() {
+  var modal = document.getElementById('auth-modal');
+  if (modal) modal.classList.remove('open');
+}
+
+function setAuthMode(mode) {
+  var si  = document.getElementById('auth-signin-form');
+  var su  = document.getElementById('auth-signup-form');
+  var tsi = document.getElementById('auth-tab-signin');
+  var tsu = document.getElementById('auth-tab-signup');
+  if (si)  si.style.display  = mode === 'signin' ? 'block' : 'none';
+  if (su)  su.style.display  = mode === 'signup' ? 'block' : 'none';
+  if (tsi) tsi.classList.toggle('active', mode === 'signin');
+  if (tsu) tsu.classList.toggle('active', mode === 'signup');
+  clearAuthError();
+}
+
+function showAuthError(id, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearAuthError() {
+  ['auth-error-si','auth-error-su'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) { el.textContent = ''; el.style.display = 'none'; }
+  });
+}
+
+function handleSignIn(e) {
+  e.preventDefault();
+  var email    = (document.getElementById('si-email').value || '').trim().toLowerCase();
+  var password = document.getElementById('si-password').value || '';
+  var users    = JSON.parse(localStorage.getItem('sl_users') || '[]');
+  var match    = users.find(function(u) { return u.email === email && u.password === password; });
+  if (!match) { showAuthError('auth-error-si', 'Incorrect email or password.'); return; }
+  var prefs = JSON.parse(localStorage.getItem('sl_user_' + email) || 'null') || {
+    username: match.username, email: match.email,
+    favorite_sports: match.favorite_sports || [],
+    followed_teams:  match.followed_teams  || [],
+    onboarding_complete: true
+  };
+  localStorage.setItem('sl_user', JSON.stringify(prefs));
+  applyUserSession(prefs);
+  closeAuthModal();
+}
+
+function handleSignUp(e) {
+  e.preventDefault();
+  var username = (document.getElementById('su-username').value || '').trim();
+  var email    = (document.getElementById('su-email').value || '').trim().toLowerCase();
+  var password = document.getElementById('su-password').value || '';
+  var sport    = document.getElementById('su-sport').value || '';
+  if (!username || !email || !password) { showAuthError('auth-error-su', 'All fields are required.'); return; }
+  if (password.length < 6) { showAuthError('auth-error-su', 'Password must be at least 6 characters.'); return; }
+  var users = JSON.parse(localStorage.getItem('sl_users') || '[]');
+  if (users.find(function(u) { return u.email === email; })) { showAuthError('auth-error-su', 'Email already registered — sign in instead.'); return; }
+  var newUser = { username: username, email: email, password: password, favorite_sports: sport ? [sport] : [], followed_teams: [], onboarding_complete: false };
+  users.push(newUser);
+  localStorage.setItem('sl_users', JSON.stringify(users));
+  _pendingUser = newUser;
+  _obSelectedSports = sport ? [sport] : [];
+  _obSelectedTeams  = [];
+  startOnboarding();
+}
+
+function startOnboarding() {
+  document.getElementById('auth-view').style.display      = 'none';
+  document.getElementById('ob-sports-view').style.display = 'block';
+  renderObSports();
+}
+
+function renderObSports() {
+  var grid = document.getElementById('ob-sports-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  OB_SPORTS_LIST.forEach(function(s) {
+    var chip = document.createElement('div');
+    chip.className = 'ob-sport-chip' + (_obSelectedSports.indexOf(s.key) >= 0 ? ' selected' : '');
+    chip.innerHTML = '<span style="font-size:18px">' + s.emoji + '</span><span>' + s.label + '</span>';
+    chip.onclick = function() {
+      var idx = _obSelectedSports.indexOf(s.key);
+      if (idx >= 0) _obSelectedSports.splice(idx, 1); else _obSelectedSports.push(s.key);
+      chip.classList.toggle('selected', _obSelectedSports.indexOf(s.key) >= 0);
+    };
+    grid.appendChild(chip);
+  });
+}
+
+function goToTeamsPick() {
+  if (_obSelectedSports.length === 0) _obSelectedSports = ['NFL'];
+  document.getElementById('ob-sports-view').style.display = 'none';
+  document.getElementById('ob-teams-view').style.display  = 'block';
+  renderObTeams();
+}
+
+function renderObTeams() {
+  var list = document.getElementById('ob-teams-list');
+  if (!list) return;
+  list.innerHTML = '';
+  _obSelectedSports.forEach(function(sport) {
+    var teams = OB_TEAMS[sport] || [];
+    if (!teams.length) return;
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--muted);font-family:Space Mono,monospace;text-transform:uppercase;padding:4px 0 6px';
+    hdr.textContent = sport;
+    list.appendChild(hdr);
+    teams.forEach(function(t) {
+      var chip = document.createElement('div');
+      var sel  = _obSelectedTeams.some(function(x) { return x.id === t.id; });
+      chip.className = 'ob-team-chip' + (sel ? ' selected' : '');
+      chip.innerHTML = '<span style="font-size:16px">' + t.emoji + '</span><span>' + t.name + '</span>';
+      chip.onclick = function() {
+        var idx = _obSelectedTeams.findIndex(function(x) { return x.id === t.id; });
+        if (idx >= 0) { _obSelectedTeams.splice(idx, 1); chip.classList.remove('selected'); }
+        else          { _obSelectedTeams.push(t);        chip.classList.add('selected'); }
+      };
+      list.appendChild(chip);
+    });
+  });
+}
+
+function completeOnboarding() {
+  var user = _pendingUser;
+  if (!user) return;
+  user.favorite_sports     = _obSelectedSports.slice();
+  user.followed_teams      = _obSelectedTeams.slice();
+  user.onboarding_complete = true;
+  var users = JSON.parse(localStorage.getItem('sl_users') || '[]');
+  var idx   = users.findIndex(function(u) { return u.email === user.email; });
+  if (idx >= 0) users[idx] = user; else users.push(user);
+  localStorage.setItem('sl_users', JSON.stringify(users));
+  localStorage.setItem('sl_user', JSON.stringify(user));
+  localStorage.setItem('sl_user_' + user.email, JSON.stringify(user));
+  applyUserSession(user);
+  document.getElementById('ob-teams-view').style.display = 'none';
+  document.getElementById('ob-done-view').style.display  = 'block';
+  var names = _obSelectedTeams.map(function(t) { return t.emoji + ' ' + t.name; }).slice(0, 4).join(', ');
+  var extra = _obSelectedTeams.length > 4 ? ' +' + (_obSelectedTeams.length - 4) + ' more' : '';
+  var msg   = document.getElementById('ob-done-msg');
+  if (msg) msg.textContent = names ? 'Following: ' + names + extra : 'Your personalized feed is ready.';
+  _pendingUser = null;
+}
+
+function applyUserSession(prefs) {
+  window.sidelineUserPrefs = prefs;
+  var loginBtn = document.getElementById('auth-login-btn');
+  var userMenu = document.getElementById('auth-user-menu');
+  var avatar   = document.getElementById('auth-user-avatar');
+  if (loginBtn) loginBtn.style.display = 'none';
+  if (userMenu) userMenu.style.display = 'flex';
+  if (avatar)   avatar.textContent     = ((prefs.username || prefs.email || 'U')[0]).toUpperCase();
+  if (window.setForYouTab) window.setForYouTab(true);
+  if (prefs.followed_teams && prefs.followed_teams.length) {
+    showMyTeamsSection(prefs.followed_teams);
+    renderStoryRings(prefs.followed_teams, []);
+    renderForYouFeed(window.allArticlesCache || []);
+    loadRivalryData(prefs.followed_teams);
+    updateStreak(prefs);
+    pickHeroGame(window.scoresCache || [], prefs);
+  }
+  if (prefs.favorite_sports && prefs.favorite_sports.length) showPersonalizedBanner(prefs.favorite_sports);
+}
+
+function showUserDropdown() {
+  var existing = document.getElementById('user-dropdown-menu');
+  if (existing) { existing.remove(); return; }
+  var prefs = window.sidelineUserPrefs || {};
+  var dd    = document.createElement('div');
+  dd.id     = 'user-dropdown-menu';
+  dd.style.cssText = 'position:fixed;top:52px;right:12px;background:var(--surface2);border:0.5px solid var(--border2);border-radius:10px;padding:6px;z-index:500;min-width:170px;box-shadow:0 8px 24px rgba(0,0,0,.7);';
+  dd.innerHTML = '<div style="padding:8px 10px 10px;border-bottom:0.5px solid var(--border);margin-bottom:4px">' +
+    '<div style="font-size:10px;font-weight:700;color:var(--text);font-family:Space Mono,monospace">@' + esc(prefs.username || prefs.email || 'user') + '</div>' +
+    (prefs.email ? '<div style="font-size:9px;color:var(--text3);font-family:Space Mono,monospace;margin-top:2px">' + esc(prefs.email) + '</div>' : '') +
+    '</div>' +
+    '<button onclick="handleSignOut()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--red);font-family:Space Mono,monospace;font-size:10px;padding:8px 10px;cursor:pointer;border-radius:6px;letter-spacing:.02em">Sign out</button>';
+  document.body.appendChild(dd);
+  setTimeout(function() {
+    function closeDD(ev) {
+      if (!dd.contains(ev.target) && ev.target.id !== 'auth-user-avatar') {
+        dd.remove(); document.removeEventListener('click', closeDD);
+      }
+    }
+    document.addEventListener('click', closeDD);
+  }, 10);
+}
+
+function handleSignOut() {
+  localStorage.removeItem('sl_user');
+  window.sidelineUserPrefs = null;
+  var loginBtn = document.getElementById('auth-login-btn');
+  var userMenu = document.getElementById('auth-user-menu');
+  if (loginBtn) loginBtn.style.display = 'block';
+  if (userMenu) userMenu.style.display = 'none';
+  var dd = document.getElementById('user-dropdown-menu');
+  if (dd) dd.remove();
+  if (window.setForYouTab) window.setForYouTab(false);
+}
+
+function showLoginModal()  { openAuthModal('signin'); }
+function showProfileModal(){ showUserDropdown(); }
 function filterFeedByTeam() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
 async function loadUserPreferences(userId) {
@@ -3060,6 +3317,16 @@ window.showLoginModal = showLoginModal;
 window.showProfileModal = showProfileModal;
 window.filterFeedByTeam = filterFeedByTeam;
 window.loadUserPreferences = loadUserPreferences;
+window.openAuthModal   = openAuthModal;
+window.closeAuthModal  = closeAuthModal;
+window.setAuthMode     = setAuthMode;
+window.handleSignIn    = handleSignIn;
+window.handleSignUp    = handleSignUp;
+window.goToTeamsPick   = goToTeamsPick;
+window.completeOnboarding = completeOnboarding;
+window.handleSignOut   = handleSignOut;
+window.showUserDropdown = showUserDropdown;
+window.applyUserSession = applyUserSession;
 window.getSportColor = getSportColor;
 window.renderStoryRings = renderStoryRings;
 window.renderForYouFeed = renderForYouFeed;
@@ -3077,28 +3344,145 @@ setInterval(loadScout, 5 * 60 * 1000);
 })();
 
 </script>
+<!-- AUTH MODAL -->
+<div id="auth-modal" onclick="if(event.target===this)closeAuthModal()">
+  <div id="auth-card">
+    <button onclick="closeAuthModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;line-height:1;padding:4px 6px;">✕</button>
+
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:-.02em">Side<b style="color:var(--red)">line</b></div>
+    </div>
+
+    <!-- AUTH VIEW -->
+    <div id="auth-view">
+      <div style="display:flex;background:var(--surface);border-radius:10px;padding:3px;margin-bottom:22px">
+        <button id="auth-tab-signin" class="auth-toggle-btn active" onclick="setAuthMode('signin')">Sign In</button>
+        <button id="auth-tab-signup" class="auth-toggle-btn" onclick="setAuthMode('signup')">Create Account</button>
+      </div>
+
+      <form id="auth-signin-form" onsubmit="handleSignIn(event)">
+        <div class="auth-field">
+          <label>Email</label>
+          <input type="email" id="si-email" placeholder="your@email.com" autocomplete="email" required>
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <input type="password" id="si-password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <div id="auth-error-si" class="auth-error"></div>
+        <button type="submit" class="auth-submit-btn">Sign In →</button>
+        <a href="#" class="auth-guest-link" onclick="closeAuthModal();return false">Continue as guest →</a>
+      </form>
+
+      <form id="auth-signup-form" onsubmit="handleSignUp(event)" style="display:none">
+        <div class="auth-field">
+          <label>Username</label>
+          <input type="text" id="su-username" placeholder="yourhandle" autocomplete="username" required>
+        </div>
+        <div class="auth-field">
+          <label>Email</label>
+          <input type="email" id="su-email" placeholder="your@email.com" autocomplete="email" required>
+        </div>
+        <div class="auth-field">
+          <label>Password</label>
+          <input type="password" id="su-password" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+        <div class="auth-field">
+          <label>Favorite Sport</label>
+          <select id="su-sport">
+            <option value="">Pick a sport...</option>
+            <option value="NFL">🏈 NFL</option>
+            <option value="NBA">🏀 NBA</option>
+            <option value="MLB">⚾ MLB</option>
+            <option value="NHL">🏒 NHL</option>
+            <option value="Soccer">⚽ Soccer</option>
+            <option value="Rugby">🏉 Rugby</option>
+            <option value="Combat">🥊 Combat</option>
+            <option value="Racing">🏎 Racing</option>
+          </select>
+        </div>
+        <div id="auth-error-su" class="auth-error"></div>
+        <button type="submit" class="auth-submit-btn">Create Account →</button>
+        <a href="#" class="auth-guest-link" onclick="closeAuthModal();return false">Continue as guest →</a>
+      </form>
+    </div>
+
+    <!-- ONBOARDING STEP 1: Sports -->
+    <div id="ob-sports-view" style="display:none">
+      <div class="ob-step-dots"><div class="ob-step-dot active"></div><div class="ob-step-dot"></div><div class="ob-step-dot"></div></div>
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Pick your sports</div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace">Choose all that apply</div>
+      </div>
+      <div id="ob-sports-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:22px"></div>
+      <button class="auth-submit-btn" onclick="goToTeamsPick()">Next →</button>
+    </div>
+
+    <!-- ONBOARDING STEP 2: Teams -->
+    <div id="ob-teams-view" style="display:none">
+      <div class="ob-step-dots"><div class="ob-step-dot"></div><div class="ob-step-dot active"></div><div class="ob-step-dot"></div></div>
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Your teams</div>
+        <div style="font-size:10px;color:var(--text3);font-family:'Space Mono',monospace">Select your favorites</div>
+      </div>
+      <div id="ob-teams-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;max-height:280px;overflow-y:auto;padding-right:2px"></div>
+      <button class="auth-submit-btn" onclick="completeOnboarding()">Finish →</button>
+    </div>
+
+    <!-- ONBOARDING STEP 3: Done -->
+    <div id="ob-done-view" style="display:none">
+      <div style="text-align:center;padding:24px 0">
+        <div style="font-size:52px;margin-bottom:16px">🏆</div>
+        <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:8px">You're all set!</div>
+        <div id="ob-done-msg" style="font-size:11px;color:var(--text2);font-family:'Space Mono',monospace;margin-bottom:24px;line-height:1.7">Your personalized feed is ready.</div>
+        <button class="auth-submit-btn" onclick="closeAuthModal()">Let's go →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 async function initClerk() {
-  const res = await fetch('/api/config');
-  const { clerkKey } = await res.json();
-  if (!clerkKey || !window.Clerk) return;
-  const clerk = new window.Clerk(clerkKey);
-  await clerk.load();
-  const user      = clerk.user;
-  const loginBtn  = document.getElementById('auth-login-btn');
-  const userMenu  = document.getElementById('auth-user-menu');
-  const userAvatar= document.getElementById('auth-user-avatar');
-  if (user) {
-    if (loginBtn)   loginBtn.style.display  = 'none';
-    if (userMenu)   userMenu.style.display   = 'flex';
-    if (userAvatar) userAvatar.textContent =
-      (user.firstName && user.firstName[0]) ||
-      (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
-    if (window.loadUserPreferences) window.loadUserPreferences(user.id);
-    if (window.setForYouTab) window.setForYouTab(true);
-  } else {
-    if (loginBtn)  loginBtn.style.display  = 'block';
-    if (userMenu)  userMenu.style.display   = 'none';
+  // Fast path: restore localStorage session immediately
+  try {
+    var stored = localStorage.getItem('sl_user');
+    if (stored) {
+      var lsPrefs = JSON.parse(stored);
+      if (lsPrefs && lsPrefs.email && window.applyUserSession) {
+        window.applyUserSession(lsPrefs);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  // Fallback: Clerk-based session
+  try {
+    const res = await fetch('/api/config');
+    const { clerkKey } = await res.json();
+    if (!clerkKey || !window.Clerk) {
+      if (window.setForYouTab) window.setForYouTab(false);
+      return;
+    }
+    const clerk = new window.Clerk(clerkKey);
+    await clerk.load();
+    const user      = clerk.user;
+    const loginBtn  = document.getElementById('auth-login-btn');
+    const userMenu  = document.getElementById('auth-user-menu');
+    const userAvatar= document.getElementById('auth-user-avatar');
+    if (user) {
+      if (loginBtn)    loginBtn.style.display   = 'none';
+      if (userMenu)    userMenu.style.display    = 'flex';
+      if (userAvatar)  userAvatar.textContent    =
+        (user.firstName && user.firstName[0]) ||
+        (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
+      if (window.loadUserPreferences) window.loadUserPreferences(user.id);
+      if (window.setForYouTab) window.setForYouTab(true);
+    } else {
+      if (loginBtn)   loginBtn.style.display  = 'block';
+      if (userMenu)   userMenu.style.display   = 'none';
+      if (window.setForYouTab) window.setForYouTab(false);
+    }
+  } catch(e) {
     if (window.setForYouTab) window.setForYouTab(false);
   }
 }
