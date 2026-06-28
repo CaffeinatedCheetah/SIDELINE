@@ -585,8 +585,8 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 <div class="breaking-rail" id="breaking-rail" style="display:none"></div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('foryou',this)">✨ For you</button>
-  <button class="tab" onclick="showTab('home',this)">🏠 Home</button>
+  <button id="foryou-tab" class="tab" style="display:none" onclick="showTab('foryou',this)">✨ For you</button>
+  <button class="tab active" onclick="showTab('home',this)">🏠 Home</button>
   <button class="tab" onclick="showTab('american',this)">🏈 American</button>
   <button class="tab" onclick="showTab('soccer',this)">⚽ Soccer</button>
   <button class="tab" onclick="showTab('rugby',this)">🏉 Rugby</button>
@@ -602,7 +602,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
   <div class="feed">
 
     <!-- FOR YOU -->
-    <div class="page active" id="page-foryou">
+    <div class="page" id="page-foryou">
       <div id="for-you-feed" style="padding:10px 0">
         <div style="padding:40px 16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Sign in and follow teams to get your personalized feed ✨</div>
       </div>
@@ -612,7 +612,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
     </div>
 
     <!-- HOME -->
-    <div class="page" id="page-home">
+    <div class="page active" id="page-home">
 
       <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more" onclick="navTo('allscores',9)">See all</button></div>
       <div class="rail" id="rail-home"></div>
@@ -2752,6 +2752,34 @@ window.subscribePush = function() {
     }).catch(function(){showToast('Could not enable push notifications');});
 };
 
+/* -- FOR YOU TAB VISIBILITY -- */
+function setForYouTab(visible) {
+  var tab = document.getElementById('foryou-tab');
+  if (!tab) return;
+  if (visible) {
+    tab.style.display = '';
+    document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    tab.classList.add('active');
+    var page = document.getElementById('page-foryou');
+    if (page) page.classList.add('active');
+    renderForYouFeed(window.allArticlesCache || []);
+  } else {
+    var wasActive = tab.classList.contains('active');
+    tab.style.display = 'none';
+    tab.classList.remove('active');
+    if (wasActive) {
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+      var homeTab = document.querySelector('.tab[onclick*="\'home\'"]');
+      var homePage = document.getElementById('page-home');
+      if (homeTab) homeTab.classList.add('active');
+      if (homePage) { homePage.classList.add('active'); loadHomeContent(); }
+    }
+  }
+}
+window.setForYouTab = setForYouTab;
+
 /* -- PHASE 2: PERSONALIZED FEED + REDESIGN -- */
 
 function getSportColor(sport) {
@@ -3067,9 +3095,11 @@ async function initClerk() {
       (user.firstName && user.firstName[0]) ||
       (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
     if (window.loadUserPreferences) window.loadUserPreferences(user.id);
+    if (window.setForYouTab) window.setForYouTab(true);
   } else {
     if (loginBtn)  loginBtn.style.display  = 'block';
     if (userMenu)  userMenu.style.display   = 'none';
+    if (window.setForYouTab) window.setForYouTab(false);
   }
 }
 initClerk();
