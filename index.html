@@ -25,14 +25,19 @@
 <script>if(!location.hostname.endsWith('fantakes.app')){var _m=document.createElement('meta');_m.name='robots';_m.content='noindex,nofollow';document.head.appendChild(_m);}</script>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
-  --red:#FF3D3D;--red-dark:#C41E1E;
-  --bg:#0D1117;--surface:#161B22;--surface2:#1C2128;--surface3:#21262D;
-  --border:#30363D;--text:#F0EDE8;--muted:#8B949E;--faint:#484F58;
+  --bg:#0d0d0d;--surface:#111111;--surface2:#1a1a1a;--surface3:#21262D;
+  --border:#1e1e1e;--border2:#2a2a2a;
+  --text:#dddddd;--text2:#888888;--text3:#444444;
+  --red:#FF3D3D;--red-dark:#C41E1E;--red-dim:rgba(255,61,61,0.15);
+  --blue-dim:rgba(24,95,165,0.4);
+  --radius:14px;--radius-sm:10px;
+  --muted:#888888;--faint:#444444;
   --green:#3FB950;--amber:#D29922;
 }
-html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;min-height:100%;}
+html{scroll-behavior:smooth;}
+html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100%;}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px;}
@@ -482,41 +487,93 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .breaking-pill.tier-alert{color:#ff9f0a;background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);}
 .breaking-pill.tier-alert:hover{background:rgba(255,159,10,0.2);}
 .breaking-pill .pill-badge{margin-right:4px;}
+
+/* PHASE 2 — UPDATED TAB STYLES */
+.tab{font-family:'Oswald',sans-serif;font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:10px 14px;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:1.5px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .15s;flex:1;text-align:center;}
+.tab.active{color:#fff;border-bottom-color:var(--red);}
+.tab:hover{color:#fff;}
+
+/* HERO CARD */
+#hero-card{background:linear-gradient(135deg,#1a0000 0%,#111 60%,#001428 100%);border:0.5px solid var(--border2);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden;}
+#hero-card .hero-scores{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+#hero-card .hero-team{text-align:center;flex:1;}
+#hero-card .hero-score-num{font-size:38px;font-weight:700;font-family:'Space Mono',monospace;color:#fff;line-height:1;}
+#hero-card .hero-team-name{font-size:12px;font-weight:600;color:var(--text2);margin-top:4px;}
+
+/* STORY RINGS */
+#stories-section{display:none;}
+#stories-row::-webkit-scrollbar{display:none;}
+#stories-row{scrollbar-width:none;}
+
+/* FEED SECTION */
+.feed-section{padding:0 16px;}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
 </head>
 <body>
 
-<nav class="nav">
-  <div class="logo" style="display:flex;flex-direction:column;line-height:1;gap:3px">
-    <div>Side<span>line</span></div>
-    <div style="font-family:'Space Mono',monospace;font-size:9px;font-weight:400;color:rgba(255,255,255,0.45);text-transform:lowercase;letter-spacing:0.04em">fantakes.app</div>
+<nav id="main-nav" style="background:var(--bg);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border);position:sticky;top:0;z-index:100;">
+  <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:-.02em;margin-right:auto">Side<b style="color:var(--red)">line</b></div>
+  <div id="streak-badge" style="display:none;align-items:center;gap:4px;background:var(--surface2);border-radius:20px;padding:4px 10px;cursor:pointer">
+    <span style="font-size:12px">🔥</span>
+    <span id="streak-count" style="font-size:11px;font-weight:600;color:#FF8C00">0</span>
+    <span style="font-size:10px;color:var(--text3)">day streak</span>
   </div>
-  <div class="nav-links">
-    <button class="nav-link" onclick="navTo('allscores',8)">Scores</button>
-    <button class="nav-link" onclick="navTo('videos',7)">Videos</button>
-    <button class="nav-link" onclick="navTo('takes',6)">Fan Takes</button>
-    <button class="nav-link" onclick="navTo('trending',9)">Trending</button>
-  </div>
-  <div class="nav-right">
-    <button id="auth-login-btn" onclick="showLoginModal()" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;font-family:'Inter',sans-serif;">Sign in</button>
-    <div id="auth-user-menu" style="display:none;align-items:center;gap:10px;">
-      <div id="auth-user-avatar" onclick="showProfileModal()" style="width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none;flex-shrink:0;">U</div>
-      <button onclick="showProfileModal()" style="background:none;border:0.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text);cursor:pointer;font-family:'Inter',sans-serif;">My feed</button>
-    </div>
-    <input class="search" type="text" placeholder="Search players, teams..." oninput="handleSearch(this.value)" onkeydown="if(event.key==='Enter')doSearch(this.value)"/>
-    <button class="nav-cta" onclick="openTakeModal()">Post Take</button>
+  <button id="auth-login-btn" onclick="window.location.href='/login.html'" style="background:var(--red);color:#fff;border:none;border-radius:20px;padding:6px 16px;font-size:12px;font-weight:600;cursor:pointer">Sign in</button>
+  <div id="auth-user-menu" style="display:none;align-items:center;gap:8px">
+    <div id="auth-user-avatar" onclick="window.location.href='/onboarding.html'" style="width:30px;height:30px;border-radius:50%;background:#1a3a6e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;cursor:pointer;border:1.5px solid var(--red)">U</div>
   </div>
 </nav>
 
-<div class="ticker-wrap">
-  <div class="ticker" id="ticker">
-    <span class="tick-label">Live</span>
-    <span class="tick-item"><span class="tick-dot"></span>Loading live scores...</span>
-    <span class="tick-label">Live</span>
-    <span class="tick-item"><span class="tick-dot"></span>Loading live scores...</span>
+<div id="breaking-ticker" style="background:var(--red);padding:6px 16px;display:flex;align-items:center;gap:10px;overflow:hidden;">
+  <div style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#fff;opacity:.7;white-space:nowrap;flex-shrink:0">NOW</div>
+  <div style="overflow:hidden;flex:1">
+    <div id="ticker-text" style="font-size:11px;color:#fff;white-space:nowrap;animation:tickerScroll 30s linear infinite">Loading live updates...</div>
   </div>
+</div>
+<style>
+@keyframes tickerScroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
+</style>
+
+<!-- HERO LIVE CARD -->
+<div id="hero-section" style="padding:10px 12px;display:none">
+  <div id="hero-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--red)">⚡ LIVE NOW</div>
+      <div id="hero-your-pill" style="display:none;font-size:9px;background:var(--red-dim);color:var(--red);padding:2px 8px;border-radius:20px;font-weight:600">Your team</div>
+    </div>
+    <div class="hero-scores">
+      <div class="hero-team">
+        <div id="hero-home-score" class="hero-score-num">0</div>
+        <div id="hero-home-team" class="hero-team-name">Home</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);padding:0 12px">vs</div>
+      <div class="hero-team">
+        <div id="hero-away-score" class="hero-score-num">0</div>
+        <div id="hero-away-team" class="hero-team-name">Away</div>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div id="hero-heat-pct" style="font-size:10px;color:var(--text2)">50% home</div>
+        <div id="hero-status" style="font-size:10px;color:var(--red)">Live</div>
+      </div>
+      <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden">
+        <div id="hero-heat-bar" style="height:100%;width:50%;background:var(--red);border-radius:2px;transition:width .4s ease"></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="hero-btn-fire" onclick="showTab('allscores',document.querySelectorAll('.tab')[9])" style="flex:1;background:var(--red-dim);border:0.5px solid var(--red);color:var(--red);border-radius:var(--radius-sm);padding:9px;font-size:11px;font-weight:600;cursor:pointer">Home win</button>
+      <button id="hero-btn-ice" onclick="showTab('allscores',document.querySelectorAll('.tab')[9])" style="flex:1;background:var(--blue-dim);border:0.5px solid #185fa5;color:#5ba3e0;border-radius:var(--radius-sm);padding:9px;font-size:11px;font-weight:600;cursor:pointer">Away win</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORY RINGS -->
+<div id="stories-section" style="padding:10px 16px;border-bottom:0.5px solid var(--border)">
+  <div style="font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--text3);margin-bottom:10px">YOUR TEAMS</div>
+  <div id="stories-row" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px"></div>
 </div>
 
 <div class="scout-banner" id="scout-banner">
@@ -528,7 +585,8 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 <div class="breaking-rail" id="breaking-rail" style="display:none"></div>
 
 <div class="tabs">
-  <button class="tab active" onclick="showTab('home',this)">🏠 Home</button>
+  <button class="tab active" onclick="showTab('foryou',this)">✨ For you</button>
+  <button class="tab" onclick="showTab('home',this)">🏠 Home</button>
   <button class="tab" onclick="showTab('american',this)">🏈 American</button>
   <button class="tab" onclick="showTab('soccer',this)">⚽ Soccer</button>
   <button class="tab" onclick="showTab('rugby',this)">🏉 Rugby</button>
@@ -543,35 +601,45 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 <div class="layout">
   <div class="feed">
 
-    <!-- HOME -->
-    <div class="page active" id="page-home">
+    <!-- FOR YOU -->
+    <div class="page active" id="page-foryou">
+      <div id="for-you-feed" style="padding:10px 0">
+        <div style="padding:40px 16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Sign in and follow teams to get your personalized feed ✨</div>
+      </div>
+      <div id="rivalry-section" style="display:none;padding:0 16px 10px">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);padding:12px 0 8px">RIVALRIES</div>
+      </div>
+    </div>
 
-      <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more" onclick="navTo('allscores',8)">See all</button></div>
+    <!-- HOME -->
+    <div class="page" id="page-home">
+
+      <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more" onclick="navTo('allscores',9)">See all</button></div>
       <div class="rail" id="rail-home"></div>
 
-      <div class="sec"><div class="sec-title">🔥 Trending Now</div><button class="sec-more" onclick="navTo('trending',9)">More</button></div>
+      <div class="sec"><div class="sec-title">🔥 Trending Now</div><button class="sec-more" onclick="navTo('trending',10)">More</button></div>
       <div class="content-grid" id="trending-cards"></div>
 
       <div class="sec"><div class="sec-title">🌍 All Sports</div></div>
       <div class="sport-grid">
-        <div class="sport-tile" onclick="showTab('american',document.querySelectorAll('.tab')[1])"><span class="sport-tile-icon">🏈</span><div class="sport-tile-name">American</div><div class="sport-tile-sub">NFL · NBA · MLB · NHL · WNBA</div></div>
-        <div class="sport-tile" onclick="showTab('soccer',document.querySelectorAll('.tab')[2])"><span class="sport-tile-icon">⚽</span><div class="sport-tile-name">Soccer</div><div class="sport-tile-sub">EPL · La Liga · UCL · MLS</div></div>
-        <div class="sport-tile" onclick="showTab('rugby',document.querySelectorAll('.tab')[3])"><span class="sport-tile-icon">🏉</span><div class="sport-tile-name">Rugby</div><div class="sport-tile-sub">Union · League · Six Nations</div></div>
-        <div class="sport-tile" onclick="showTab('combat',document.querySelectorAll('.tab')[4])"><span class="sport-tile-icon">🥊</span><div class="sport-tile-name">Combat</div><div class="sport-tile-sub">UFC · Boxing · MMA</div></div>
-        <div class="sport-tile" onclick="showTab('racing',document.querySelectorAll('.tab')[5])"><span class="sport-tile-icon">🏎</span><div class="sport-tile-name">Racing</div><div class="sport-tile-sub">F1 · NASCAR · IndyCar</div></div>
-        <div class="sport-tile" onclick="showTab('takes',document.querySelectorAll('.tab')[6])"><span class="sport-tile-icon">🎙</span><div class="sport-tile-name">Fan Takes</div><div class="sport-tile-sub">Record · Clap Back · Go viral</div></div>
-        <div class="sport-tile" onclick="showTab('videos',document.querySelectorAll('.tab')[7])"><span class="sport-tile-icon">▶</span><div class="sport-tile-name">Videos</div><div class="sport-tile-sub">Highlights · Viral clips</div></div>
-        <div class="sport-tile" onclick="showTab('allscores',document.querySelectorAll('.tab')[8])"><span class="sport-tile-icon">📊</span><div class="sport-tile-name">All Scores</div><div class="sport-tile-sub">Every game · Every league</div></div>
-        <div class="sport-tile" onclick="showTab('trending',document.querySelectorAll('.tab')[9])" style="border-color:rgba(255,61,61,0.4);background:linear-gradient(135deg,rgba(255,61,61,0.08),transparent)"><span class="sport-tile-icon">🔥</span><div class="sport-tile-name" style="color:var(--red)">Trending</div><div class="sport-tile-sub">Hot takes · Breaking · Highlights</div></div>
+        <div class="sport-tile" onclick="navTo('american',2)"><span class="sport-tile-icon">🏈</span><div class="sport-tile-name">American</div><div class="sport-tile-sub">NFL · NBA · MLB · NHL · WNBA</div></div>
+        <div class="sport-tile" onclick="navTo('soccer',3)"><span class="sport-tile-icon">⚽</span><div class="sport-tile-name">Soccer</div><div class="sport-tile-sub">EPL · La Liga · UCL · MLS</div></div>
+        <div class="sport-tile" onclick="navTo('rugby',4)"><span class="sport-tile-icon">🏉</span><div class="sport-tile-name">Rugby</div><div class="sport-tile-sub">Union · League · Six Nations</div></div>
+        <div class="sport-tile" onclick="navTo('combat',5)"><span class="sport-tile-icon">🥊</span><div class="sport-tile-name">Combat</div><div class="sport-tile-sub">UFC · Boxing · MMA</div></div>
+        <div class="sport-tile" onclick="navTo('racing',6)"><span class="sport-tile-icon">🏎</span><div class="sport-tile-name">Racing</div><div class="sport-tile-sub">F1 · NASCAR · IndyCar</div></div>
+        <div class="sport-tile" onclick="navTo('takes',7)"><span class="sport-tile-icon">🎙</span><div class="sport-tile-name">Fan Takes</div><div class="sport-tile-sub">Record · Clap Back · Go viral</div></div>
+        <div class="sport-tile" onclick="navTo('videos',8)"><span class="sport-tile-icon">▶</span><div class="sport-tile-name">Videos</div><div class="sport-tile-sub">Highlights · Viral clips</div></div>
+        <div class="sport-tile" onclick="navTo('allscores',9)"><span class="sport-tile-icon">📊</span><div class="sport-tile-name">All Scores</div><div class="sport-tile-sub">Every game · Every league</div></div>
+        <div class="sport-tile" onclick="navTo('trending',10)" style="border-color:rgba(255,61,61,0.4);background:linear-gradient(135deg,rgba(255,61,61,0.08),transparent)"><span class="sport-tile-icon">🔥</span><div class="sport-tile-name" style="color:var(--red)">Trending</div><div class="sport-tile-sub">Hot takes · Breaking · Highlights</div></div>
       </div>
 
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more" onclick="navTo('trending',9)">More news</button></div>
+      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more" onclick="navTo('trending',10)">More news</button></div>
       <div class="content-grid" id="home-news"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top stories...</div></div>
 
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Trending Videos</div><button class="sec-more" onclick="showTab('videos',document.querySelectorAll('.tab')[7])">See all</button></div>
+      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Trending Videos</div><button class="sec-more" onclick="navTo('videos',8)">See all</button></div>
       <div class="vid-grid" id="home-vids"></div>
 
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Top Fan Takes</div><button class="sec-more" onclick="showTab('takes',document.querySelectorAll('.tab')[6])">All takes →</button></div>
+      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Top Fan Takes</div><button class="sec-more" onclick="navTo('takes',7)">All takes →</button></div>
       <div id="home-takes"></div>
     </div>
 
@@ -735,19 +803,19 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
       <div class="sec">
         <div class="sec-title">🔥 Hottest Takes Right Now</div>
-        <button class="sec-more" onclick="showTab('takes',document.querySelectorAll('.tab')[6])">All Takes →</button>
+        <button class="sec-more" onclick="navTo('takes',7)">All Takes →</button>
       </div>
       <div id="trending-takes" style="margin-bottom:28px"></div>
 
       <div class="sec">
         <div class="sec-title">⚡ Breaking News</div>
-        <button class="sec-more" onclick="showTab('american',document.querySelectorAll('.tab')[1])">More →</button>
+        <button class="sec-more" onclick="navTo('american',2)">More →</button>
       </div>
       <div class="content-grid" id="trending-news" style="margin-bottom:28px"></div>
 
       <div class="sec">
         <div class="sec-title">▶ Must-Watch Highlights</div>
-        <button class="sec-more" onclick="showTab('videos',document.querySelectorAll('.tab')[7])">All Videos →</button>
+        <button class="sec-more" onclick="navTo('videos',8)">All Videos →</button>
       </div>
       <div class="vid-grid" id="trending-vids"></div>
     </div>
@@ -1186,15 +1254,9 @@ function renderScores() {
       '<div class="sb-meta">'+esc(g.label)+' · '+meta+'</div></div>';
   }).join('')||'<span class="empty">No live games right now</span>');
 
-  var liveItems=live.slice(0,10).map(function(g){
-    return '<span class="tick-item"><span class="tick-dot"></span>'+esc(g.label)+': '+esc(g.away.name)+' '+esc(String(g.away.score))+' - '+esc(g.home.name)+' '+esc(String(g.home.score))+(g.detail?' · '+esc(g.detail):'')+'</span>';
-  }).join('');
-  if(liveItems){
-    var lbl='<span class="tick-label">Live</span>';
-    setHTML('ticker', lbl+liveItems+lbl+liveItems);
-  } else {
-    setHTML('ticker','<span class="tick-label">Sideline</span><span class="tick-item">'+allGames.length+' games today across all sports - check back for live scores</span><span class="tick-label">Sideline</span><span class="tick-item">'+allGames.length+' games today across all sports - check back for live scores</span>');
-  }
+  updateTicker(live.length ? live : allGames.slice(0, 10));
+  window.scoresCache = allGames;
+  if (window.sidelineUserPrefs) pickHeroGame(allGames, window.sidelineUserPrefs);
 }
 
 /* ── NEWS -- YOUR SERVER ONLY ── */
@@ -1823,10 +1885,11 @@ window.submitTake=function(){
   fetch('/api/takes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(newTake)}).catch(function(){});
   closeTakeModal();
   refreshTakesUI();
-  showTab('takes',document.querySelectorAll('.tab')[6]);
+  showTab('takes',document.querySelectorAll('.tab')[7]);
 };
 
 function loadTabContent(tab) {
+  if(tab==='foryou')    { renderForYouFeed(window.allArticlesCache || []); return; }
   if(tab==='home')      { loadHomeContent(); return; }
   if(tab==='videos')    { loadVideoTab(vidFilter); return; }
   if(tab==='trending')  { loadTrendingTab(); return; }
@@ -1841,7 +1904,7 @@ function trendingTakeRow(t, rank) {
   var fp=total?Math.round(fires/total*100):50;
   var voted=takeVotes[t.id];
   var rankColor = rank===1?'var(--red)':rank===2?'#FF8C00':rank===3?'#D29922':'var(--border)';
-  return '<div class="take-card2" data-take-id="'+t.id+'" style="cursor:pointer" onclick="showTab(\'takes\',document.querySelectorAll(\'.tab\')[6])">'+
+  return '<div class="take-card2" data-take-id="'+t.id+'" style="cursor:pointer" onclick="navTo(\'takes\',7)">'+
     '<div class="take-inner" style="display:flex;gap:14px;align-items:flex-start">'+
     '<div style="font-family:Oswald,sans-serif;font-size:42px;font-weight:700;color:'+rankColor+';min-width:46px;text-align:center;line-height:1;padding-top:2px">#'+rank+'</div>'+
     '<div style="flex:1;min-width:0">'+
@@ -2142,6 +2205,8 @@ function loadHomeContent() {
           };
         }
         newsCache['home'] = items.map(toCard);
+        window.allArticlesCache = newsCache['home'];
+        renderForYouFeed(newsCache['home']);
         newsEl.innerHTML = newsCardHtml(toCard(items[0]),true) + items.slice(1,5).map(function(i){return newsCardHtml(toCard(i),false);}).join('');
         if(trendEl && items.length>5){
           trendEl.innerHTML = items.slice(5,9).map(function(i){return newsCardHtml(toCard(i),false);}).join('');
@@ -2354,7 +2419,8 @@ refreshTakesUI();
 
 /* ── NAV HELPER ─────────────────────────────────────────────────────── */
 function navTo(id, tabIdx) {
-  showTab(id, document.querySelectorAll('.tab')[tabIdx]);
+  var tab = document.querySelector('.tab[onclick*="\''+id+'\'"]') || document.querySelectorAll('.tab')[tabIdx];
+  showTab(id, tab);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 window.navTo = navTo;
@@ -2411,7 +2477,7 @@ window.doSearch = function(q) {
   q = (q||'').trim().toLowerCase();
   if(!q) return;
   searchQuery = q;
-  navTo('takes', 6);
+  navTo('takes', 7);
   setTimeout(refreshTakesUI, 50);
 };
 
@@ -2505,7 +2571,7 @@ function loadScout() {
 window.openDebate = function(question) {
   var input = document.getElementById('take-input');
   if (input && question) {
-    showTab('takes', document.querySelectorAll('.tab')[6]);
+    navTo('takes', 7);
     setTimeout(function() { openTakeModal(); }, 100);
     setTimeout(function() {
       var inp = document.getElementById('take-input');
@@ -2551,6 +2617,215 @@ window.subscribePush = function() {
     }).catch(function(){showToast('Could not enable push notifications');});
 };
 
+/* -- PHASE 2: PERSONALIZED FEED + REDESIGN -- */
+
+function getSportColor(sport) {
+  var s = (sport || '').toLowerCase();
+  if (/nfl|american/.test(s)) return '#4F86A6';
+  if (/nba|basketball/.test(s)) return '#C65334';
+  if (/mlb|baseball/.test(s)) return '#3FB950';
+  if (/nhl|hockey/.test(s)) return '#58A6FF';
+  if (/soccer|football|epl|world.cup/.test(s)) return '#3FB950';
+  if (/ufc|boxing|combat|mma/.test(s)) return '#FF3D3D';
+  if (/f1|racing|formula/.test(s)) return '#D29922';
+  if (/rugby/.test(s)) return '#8AB4F8';
+  return 'var(--border2)';
+}
+
+function updateTicker(games) {
+  var el = document.getElementById('ticker-text');
+  if (!el || !games || !games.length) return;
+  var items = games.slice(0, 12).map(function(g) {
+    return esc(g.label||'') + ': ' + esc(g.away.name) + ' ' + esc(String(g.away.score)) + '–' + esc(String(g.home.score)) + ' ' + esc(g.home.name) + (g.detail ? ' · ' + esc(g.detail) : '');
+  }).join('  ·  ');
+  var doubled = items + '  ·  ' + items;
+  el.textContent = doubled;
+}
+
+function renderArticleCard(article) {
+  var sportColor = getSportColor(article.sport || article.league || detectSportKey(article));
+  var isYourTeam = window.sidelineUserPrefs &&
+    window.sidelineUserPrefs.followed_teams &&
+    window.sidelineUserPrefs.followed_teams.some(function(t) {
+      return article.title && article.title.toLowerCase().includes(t.name.toLowerCase());
+    });
+  var yourTeamBadge = isYourTeam
+    ? '<span style="font-size:9px;background:var(--red-dim);color:var(--red);padding:2px 7px;border-radius:20px;font-weight:600;margin-left:auto;flex-shrink:0">Your team</span>'
+    : '';
+  var src = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
+  var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
+  var url = article.url || '#';
+  var onclick = url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
+  return '<div style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;min-height:44px"'+onclick+'>'+
+    '<div style="display:flex;gap:10px;align-items:flex-start">'+
+      '<div style="width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;min-height:52px;background:'+sportColor+'"></div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">'+
+          '<span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);font-family:Space Mono,monospace">'+esc(src.toUpperCase())+'</span>'+
+          yourTeamBadge+
+        '</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px">'+esc(article.title||'')+'</div>'+
+        '<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--text3)">'+esc(time)+'</div>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function renderForYouFeed(articles) {
+  var el = document.getElementById('for-you-feed');
+  if (!el) return;
+  if (!articles || !articles.length) {
+    el.innerHTML = '<div style="padding:40px 16px;text-align:center;font-family:Space Mono,monospace;font-size:10px;color:var(--text3)">Sign in and follow teams to get your personalized feed ✨</div>';
+    return;
+  }
+  var prefs = window.sidelineUserPrefs;
+  var sorted = articles.slice();
+  if (prefs && prefs.followed_teams && prefs.followed_teams.length) {
+    var teamNames = prefs.followed_teams.map(function(t) { return t.name.toLowerCase(); });
+    sorted.sort(function(a, b) {
+      var aM = teamNames.some(function(n) { return (a.title||'').toLowerCase().includes(n); }) ? 1 : 0;
+      var bM = teamNames.some(function(n) { return (b.title||'').toLowerCase().includes(n); }) ? 1 : 0;
+      return bM - aM;
+    });
+  }
+  el.innerHTML = '<div style="padding:0 16px">' + sorted.slice(0, 20).map(renderArticleCard).join('') + '</div>';
+}
+
+function renderStoryRings(teams, liveTeamIds) {
+  var row = document.getElementById('stories-row');
+  var section = document.getElementById('stories-section');
+  if (!row) return;
+  if (!teams || !teams.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  if (section) section.style.display = 'block';
+  row.innerHTML = teams.slice(0, 8).map(function(team) {
+    var isLive = liveTeamIds && liveTeamIds.indexOf(team.id) > -1;
+    var borderColor = isLive ? 'var(--red)' : 'var(--border2)';
+    var sport = (team.sport || '').toLowerCase();
+    var tabId = /nfl|nba|mlb|nhl|wnba/.test(sport) ? 'american' : /soccer|epl/.test(sport) ? 'soccer' : /rugby/.test(sport) ? 'rugby' : /ufc|boxing/.test(sport) ? 'combat' : /f1|racing/.test(sport) ? 'racing' : 'home';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;cursor:pointer;min-width:44px" onclick="navTo(\''+tabId+'\',1)">'+
+      '<div style="width:52px;height:52px;border-radius:50%;border:2px solid '+borderColor+';display:flex;align-items:center;justify-content:center;background:var(--surface2);overflow:hidden;flex-shrink:0">'+
+        (team.logo ? '<img src="'+esc(team.logo)+'" style="width:36px;height:36px;object-fit:contain" onerror="this.style.display=\'none\'">' : '<span style="font-size:22px">'+(team.emoji||'🏆')+'</span>')+
+      '</div>'+
+      '<div style="font-size:9px;font-weight:600;color:var(--text2);white-space:nowrap;font-family:Space Mono,monospace">'+esc(team.abbreviation||team.name||'')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function loadRivalryData(teams) {
+  var section = document.getElementById('rivalry-section');
+  if (!section || !teams || !teams.length) return;
+  var rivalries = {
+    'lakers': { rival:'Celtics', rivalEmoji:'☘️', seriesRecord:'Lakers lead 10-8 Finals series', sport:'NBA' },
+    'celtics': { rival:'Lakers', rivalEmoji:'💛', seriesRecord:'Lakers lead 10-8 Finals series', sport:'NBA' },
+    'patriots': { rival:'Jets', rivalEmoji:'🛩', seriesRecord:'Patriots lead 66-55', sport:'NFL' },
+    'cowboys': { rival:'Eagles', rivalEmoji:'🦅', seriesRecord:'Cowboys lead 70-56', sport:'NFL' },
+    'yankees': { rival:'Red Sox', rivalEmoji:'🧦', seriesRecord:'Yankees lead 1,208-981', sport:'MLB' },
+    'dodgers': { rival:'Giants', rivalEmoji:'🏟️', seriesRecord:'Giants lead all-time series', sport:'MLB' },
+    'maple leafs': { rival:'Canadiens', rivalEmoji:'🔵', seriesRecord:'Historic Battle of Ontario', sport:'NHL' },
+    'rangers': { rival:'Islanders', rivalEmoji:'🏒', seriesRecord:'Rangers lead 89-64-14', sport:'NHL' },
+    'barcelona': { rival:'Real Madrid', rivalEmoji:'👑', seriesRecord:'Real Madrid lead El Clásico 100-96', sport:'Soccer' },
+    'manchester united': { rival:'Man City', rivalEmoji:'🔵', seriesRecord:'Man Utd lead all-time 81-57', sport:'Soccer' },
+    'arsenal': { rival:'Tottenham', rivalEmoji:'⚪', seriesRecord:'Arsenal lead North London Derby', sport:'Soccer' },
+    'liverpool': { rival:'Everton', rivalEmoji:'🔵', seriesRecord:'Liverpool lead Merseyside Derby', sport:'Soccer' }
+  };
+  var cards = '';
+  teams.slice(0, 3).forEach(function(team) {
+    var key = (team.name || '').toLowerCase();
+    var riv = null;
+    Object.keys(rivalries).forEach(function(k) { if (key.includes(k)) riv = rivalries[k]; });
+    if (!riv) return;
+    cards += '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px;cursor:pointer">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+        '<div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);font-family:Space Mono,monospace">'+esc(riv.sport)+' RIVALRY</div>'+
+        '<div style="font-size:9px;color:var(--red);font-weight:600;background:var(--red-dim);padding:2px 8px;border-radius:20px">Series</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'+
+        '<div style="display:flex;flex-direction:column;gap:3px">'+
+          '<div style="font-size:22px">'+(team.emoji||'🏆')+'</div>'+
+          '<div style="font-size:12px;font-weight:600;color:#fff;font-family:Oswald,sans-serif">'+esc(team.abbreviation||team.name)+'</div>'+
+        '</div>'+
+        '<div style="font-size:10px;color:var(--text3)">vs</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">'+
+          '<div style="font-size:22px">'+esc(riv.rivalEmoji)+'</div>'+
+          '<div style="font-size:12px;font-weight:600;color:#fff;font-family:Oswald,sans-serif">'+esc(riv.rival)+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="font-size:10px;color:var(--text3);font-family:Space Mono,monospace">'+esc(riv.seriesRecord)+'</div>'+
+    '</div>';
+  });
+  var rivalHeader = section.querySelector('div');
+  if (rivalHeader) rivalHeader.after ? section.innerHTML = '<div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);padding:12px 0 8px;font-family:Space Mono,monospace">RIVALRIES</div>' + cards : section.innerHTML = cards;
+  else section.innerHTML = cards;
+  section.style.display = cards ? 'block' : 'none';
+}
+
+function showHeroCard(game, isYourTeam) {
+  var section = document.getElementById('hero-section');
+  if (!section || !game) return;
+  var homeTeam = game.home ? game.home.name : '';
+  var awayTeam = game.away ? game.away.name : '';
+  var homeScore = game.home ? game.home.score : 0;
+  var awayScore = game.away ? game.away.score : 0;
+  var status = game.detail || 'LIVE';
+  var el = function(id) { return document.getElementById(id); };
+  if (el('hero-home-team')) el('hero-home-team').textContent = homeTeam;
+  if (el('hero-away-team')) el('hero-away-team').textContent = awayTeam;
+  if (el('hero-home-score')) el('hero-home-score').textContent = String(homeScore);
+  if (el('hero-away-score')) el('hero-away-score').textContent = String(awayScore);
+  if (el('hero-status')) el('hero-status').textContent = status;
+  if (el('hero-btn-fire')) el('hero-btn-fire').textContent = homeTeam + ' win';
+  if (el('hero-btn-ice')) el('hero-btn-ice').textContent = awayTeam + ' win';
+  if (el('hero-your-pill')) el('hero-your-pill').style.display = isYourTeam ? 'block' : 'none';
+  var hS = parseInt(homeScore) || 0, aS = parseInt(awayScore) || 0;
+  var tot = hS + aS || 1, pct = Math.round((hS / tot) * 100);
+  if (el('hero-heat-pct')) el('hero-heat-pct').textContent = pct + '% ' + homeTeam;
+  if (el('hero-heat-bar')) el('hero-heat-bar').style.width = pct + '%';
+  if (hS > aS) { if (el('hero-home-score')) el('hero-home-score').style.color = 'var(--red)'; if (el('hero-away-score')) el('hero-away-score').style.color = '#555'; }
+  else if (aS > hS) { if (el('hero-away-score')) el('hero-away-score').style.color = 'var(--red)'; if (el('hero-home-score')) el('hero-home-score').style.color = '#555'; }
+  else { if (el('hero-home-score')) el('hero-home-score').style.color = '#fff'; if (el('hero-away-score')) el('hero-away-score').style.color = '#fff'; }
+  section.style.display = 'block';
+}
+
+function pickHeroGame(scores, userPrefs) {
+  if (!scores || !scores.length) return null;
+  var liveGames = scores.filter(function(g) { return g.state === 'in'; });
+  if (!liveGames.length) return null;
+  if (userPrefs && userPrefs.followed_teams && userPrefs.followed_teams.length) {
+    var teamNames = userPrefs.followed_teams.map(function(t) { return t.name.toLowerCase(); });
+    var yourGame = null;
+    liveGames.forEach(function(g) {
+      if (!yourGame && teamNames.some(function(n) {
+        return (g.home && g.home.name || '').toLowerCase().includes(n) ||
+               (g.away && g.away.name || '').toLowerCase().includes(n);
+      })) yourGame = g;
+    });
+    if (yourGame) { showHeroCard(yourGame, true); return yourGame; }
+  }
+  showHeroCard(liveGames[0], false);
+  return liveGames[0];
+}
+
+function updateStreak(prefs) {
+  var badge = document.getElementById('streak-badge');
+  var count = document.getElementById('streak-count');
+  if (!badge || !count) return;
+  var today = new Date().toDateString();
+  var lastVisit = localStorage.getItem('sl_last_visit');
+  var streak = parseInt(localStorage.getItem('sl_streak') || '0');
+  var newStreak = streak;
+  if (lastVisit !== today) {
+    var yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    newStreak = (lastVisit === yesterday.toDateString()) ? streak + 1 : 1;
+    localStorage.setItem('sl_last_visit', today);
+    localStorage.setItem('sl_streak', String(newStreak));
+  }
+  if (newStreak >= 2) { badge.style.display = 'flex'; count.textContent = String(newStreak); }
+}
+
 /* -- AUTH + PERSONALIZATION -- */
 function showLoginModal() { window.location.href = '/login.html'; }
 function showProfileModal() { window.location.href = '/onboarding.html'; }
@@ -2563,7 +2838,16 @@ async function loadUserPreferences(userId) {
     var prefs = await r.json();
     if (!prefs || !prefs.onboarding_complete) return;
     window.sidelineUserPrefs = prefs;
-    if (prefs.followed_teams && prefs.followed_teams.length) showMyTeamsSection(prefs.followed_teams);
+    if (prefs.followed_teams && prefs.followed_teams.length) {
+      showMyTeamsSection(prefs.followed_teams);
+      renderStoryRings(prefs.followed_teams, []);
+      renderForYouFeed(window.allArticlesCache || []);
+      loadRivalryData(prefs.followed_teams);
+      updateStreak(prefs);
+      pickHeroGame(window.scoresCache || [], prefs);
+    } else {
+      renderStoryRings([], []);
+    }
     if (prefs.favorite_sports && prefs.favorite_sports.length) showPersonalizedBanner(prefs.favorite_sports);
   } catch(e) { console.warn('Could not load user prefs:', e); }
 }
@@ -2574,7 +2858,7 @@ function showMyTeamsSection(teams) {
     section = document.createElement('div');
     section.id = 'my-teams-section';
     section.style.cssText = 'padding:12px 16px;border-bottom:0.5px solid var(--border);';
-    var anchor = document.querySelector('.ticker-wrap');
+    var anchor = document.getElementById('breaking-ticker') || document.querySelector('.ticker-wrap');
     if (anchor) anchor.after(section);
     else document.body.prepend(section);
   }
@@ -2613,6 +2897,10 @@ window.showLoginModal = showLoginModal;
 window.showProfileModal = showProfileModal;
 window.filterFeedByTeam = filterFeedByTeam;
 window.loadUserPreferences = loadUserPreferences;
+window.getSportColor = getSportColor;
+window.renderStoryRings = renderStoryRings;
+window.renderForYouFeed = renderForYouFeed;
+window.updateTicker = updateTicker;
 
 /* -- KICK OFF -- */
 setHTML('rail-home','<span class="empty">Loading scores...</span>');
