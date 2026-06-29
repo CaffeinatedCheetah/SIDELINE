@@ -532,7 +532,6 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .ob-step-dot.active{background:var(--red);}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
 </head>
 <body>
 
@@ -1458,6 +1457,7 @@ function newsCardHtml(article, featured) {
   var sportKey = detectSportKey(article);
   var seed = title + (article.url || '') + src;
   var img = article.image || article.urlToImage || pickSportImg(sportKey, seed);
+  var fallback = pickSportImg(sportKey, 'sport_fallback_v1');
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
 
@@ -1471,7 +1471,7 @@ function newsCardHtml(article, featured) {
   var onclick = url && url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
   return '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
     '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';this.parentNode.style.background=\'var(--surface2)\'">'+
+      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(fallback)+'\'">'+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
         (badges ? '<div style="margin-bottom:5px">'+badges+'</div>' : '')+
@@ -3505,8 +3505,7 @@ setInterval(loadScout, 5 * 60 * 1000);
 </div>
 
 <script>
-async function initClerk() {
-  // Fast path: restore localStorage session immediately
+(function initAuth() {
   try {
     var stored = localStorage.getItem('sl_user');
     if (stored) {
@@ -3517,39 +3516,8 @@ async function initClerk() {
       }
     }
   } catch(e) {}
-
-  // Fallback: Clerk-based session
-  try {
-    const res = await fetch('/api/config');
-    const { clerkKey } = await res.json();
-    if (!clerkKey || !window.Clerk) {
-      if (window.setForYouTab) window.setForYouTab(false);
-      return;
-    }
-    const clerk = new window.Clerk(clerkKey);
-    await clerk.load();
-    const user      = clerk.user;
-    const loginBtn  = document.getElementById('auth-login-btn');
-    const userMenu  = document.getElementById('auth-user-menu');
-    const userAvatar= document.getElementById('auth-user-avatar');
-    if (user) {
-      if (loginBtn)    loginBtn.style.display   = 'none';
-      if (userMenu)    userMenu.style.display    = 'flex';
-      if (userAvatar)  userAvatar.textContent    =
-        (user.firstName && user.firstName[0]) ||
-        (user.emailAddresses && user.emailAddresses[0] && user.emailAddresses[0].emailAddress[0]) || 'U';
-      if (window.loadUserPreferences) window.loadUserPreferences(user.id);
-      if (window.setForYouTab) window.setForYouTab(true);
-    } else {
-      if (loginBtn)   loginBtn.style.display  = 'block';
-      if (userMenu)   userMenu.style.display   = 'none';
-      if (window.setForYouTab) window.setForYouTab(false);
-    }
-  } catch(e) {
-    if (window.setForYouTab) window.setForYouTab(false);
-  }
-}
-initClerk();
+  if (window.setForYouTab) window.setForYouTab(false);
+})();
 </script>
 </body>
 </html>
