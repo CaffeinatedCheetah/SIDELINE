@@ -23,7 +23,7 @@
 <link rel="canonical" href="https://www.fantakes.app">
 <link rel="manifest" href="/manifest.json">
 <script>if(!location.hostname.endsWith('fantakes.app')){var _m=document.createElement('meta');_m.name='robots';_m.content='noindex,nofollow';document.head.appendChild(_m);}</script>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&family=Rajdhani:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -112,14 +112,14 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
 .score-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;min-width:140px;flex-shrink:0;cursor:pointer;transition:all 0.15s;}
 .score-card:hover{border-color:var(--red);transform:translateY(-2px);}
 .score-card.live{border-color:var(--red);background:#1a0808;}
-.sc-lg{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.08em;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.sc-lg{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;opacity:0.7;}
 .sc-live-badge{background:var(--red);color:#fff;font-size:7px;padding:1px 5px;border-radius:3px;letter-spacing:0.05em;animation:pulse 1.4s ease-in-out infinite;}
 .sc-row{display:flex;align-items:center;justify-content:space-between;padding:3px 0;}
 .sc-team{display:flex;align-items:center;gap:5px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;color:#fff;}
 .sc-team img{width:16px;height:16px;object-fit:contain;}
 .sc-score{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:#fff;}
 .sc-score.dim{color:var(--faint);}
-.sc-status{font-family:'Space Mono',monospace;font-size:8px;margin-top:6px;}
+.sc-status{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;margin-top:6px;}
 .live-st{color:var(--red);}
 .final-st{color:var(--muted);}
 .pre-st{color:var(--muted);}
@@ -151,7 +151,7 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
 .sport-tile:hover::before{opacity:1;}
 .sport-tile-icon{font-size:26px;margin-bottom:7px;display:block;}
 .sport-tile-name{font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:#fff;margin-bottom:3px;}
-.sport-tile-sub{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);line-height:1.5;}
+.sport-tile-sub{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:0.7;line-height:1.5;}
 
 /* TRENDING - Magazine style */
 .trend-card{display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;transition:all 0.15s;}
@@ -256,17 +256,17 @@ html,body{background:var(--bg);color:var(--text);font-family:-apple-system,Blink
 .sb-row{display:flex;justify-content:space-between;padding:3px 0;}
 .sb-name{font-family:'Oswald',sans-serif;font-size:12px;font-weight:500;color:#fff;}
 .sb-score{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#fff;}
-.sb-meta{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;}
+.sb-meta{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:0.7;margin-top:4px;}
 .live-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--red);margin-right:3px;animation:pulse 1.4s infinite;}
 .hot-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:border-color 0.15s;}
 .hot-card:hover{border-color:var(--red);}
-.hot-label{font-family:'Space Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+.hot-label{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1px;opacity:0.7;margin-bottom:3px;}
 .hot-title{font-family:'Oswald',sans-serif;font-size:13px;font-weight:500;line-height:1.3;color:#fff;}
-.hot-stat{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:3px;}
+.hot-stat{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;color:var(--muted);opacity:0.7;margin-top:3px;}
 .sport-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
 .sport-row:last-child{border-bottom:none;}
 .sport-row-left{display:flex;align-items:center;gap:8px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:600;color:#fff;}
-.sport-row-status{font-family:'Space Mono',monospace;font-size:8px;}
+.sport-row-status{font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;}
 .status-live{color:var(--green);}
 .status-active{color:var(--amber);}
 .status-off{color:var(--muted);}
@@ -667,7 +667,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
     <!-- AMERICAN -->
     <div class="page" id="page-american">
-      <div class="sec"><div class="sec-title">🏈 American Sports</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">NFL · NBA · MLB · NHL · WNBA</span></div>
+      <div class="sec"><div class="sec-title">🏈 American Sports</div><span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;color:var(--muted)">NFL · NBA · MLB · NHL · WNBA</span></div>
       <div class="rail" id="rail-american"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
       <div class="content-grid" id="news-american"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
@@ -679,7 +679,7 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 
     <!-- SOCCER -->
     <div class="page" id="page-soccer">
-      <div class="sec"><div class="sec-title">⚽ Soccer</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">EPL · La Liga · UCL · MLS · Bundesliga</span></div>
+      <div class="sec"><div class="sec-title">⚽ Soccer</div><span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;color:var(--muted)">EPL · La Liga · UCL · MLS · Bundesliga</span></div>
       <!-- WORLD CUP 2026 LIVE SECTION -->
       <div style="background:linear-gradient(135deg,#001a00 0%,#0d1117 60%,#1a0d00 100%);border:1px solid rgba(63,185,80,0.4);border-radius:16px;padding:16px;margin-bottom:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1542,9 +1542,10 @@ function newsCardHtml(article, featured) {
   var url = article.url || '#';
 
   var badges = '';
-  if (article.breaking)  badges += '<span style="background:var(--red);color:#fff;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">⚡ BREAKING</span>';
-  if (article.trending)  badges += '<span style="background:rgba(255,61,61,0.2);color:var(--red);font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🔥 Everywhere Right Now</span>';
-  if (article.exclusive) badges += '<span style="background:rgba(63,185,80,0.15);color:#3FB950;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">🌍 Only on Sideline</span>';
+  var rajMeta = "font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase";
+  if (article.breaking)  badges += '<span style="background:var(--red);color:#fff;'+rajMeta+';padding:2px 6px;border-radius:3px;margin-right:4px">⚡ BREAKING</span>';
+  if (article.trending)  badges += '<span style="background:rgba(255,61,61,0.2);color:var(--red);'+rajMeta+';padding:2px 6px;border-radius:3px;margin-right:4px">🔥 Trending</span>';
+  if (article.exclusive) badges += '<span style="background:rgba(63,185,80,0.15);color:#3FB950;'+rajMeta+';padding:2px 6px;border-radius:3px;margin-right:4px">🌍 Sideline</span>';
 
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
@@ -1555,12 +1556,12 @@ function newsCardHtml(article, featured) {
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
         (badges ? '<div style="margin-bottom:5px">'+badges+'</div>' : '')+
-        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px">'+esc(src)+'</div>' : '')+
+        (featured ? '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.7);opacity:0.7;margin-bottom:6px">'+esc(src)+'</div>' : '')+
         '<div style="font-family:Oswald,sans-serif;font-size:'+titleSize+';font-weight:'+(featured?'700':'600')+';color:#fff;line-height:1.25;margin-bottom:4px">'+esc(title)+'</div>'+
-        (featured ? '<div style="font-family:Space Mono,monospace;font-size:9px;color:rgba(255,255,255,0.5)">'+esc(time)+'</div>' : '')+
+        (featured ? '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.5);opacity:0.7">'+esc(time)+'</div>' : '')+
       '</div>'+
     '</div>'+
-    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">'+esc(src)+' · '+esc(time)+(badges?' · '+badges:'')+'</div></div>' : '')+
+    (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:0.7">'+esc(src)+' · '+esc(time)+(badges?' · '+badges:'')+'</div></div>' : '')+
   '</div>';
 }
 
@@ -2976,11 +2977,11 @@ function renderArticleCard(article) {
       '<div style="width:3px;border-radius:2px;flex-shrink:0;align-self:stretch;min-height:52px;background:'+sportColor+'"></div>'+
       '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;flex-wrap:wrap">'+
-          '<span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);font-family:Space Mono,monospace">'+esc(src.toUpperCase())+'</span>'+
+          '<span style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text3);opacity:0.7">'+esc(src)+'</span>'+
           yourTeamBadge+
         '</div>'+
         '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px">'+esc(decodeHTML(article.title||''))+'</div>'+
-        '<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--text3)">'+esc(time)+'</div>'+
+        '<div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--text3);opacity:0.7">'+esc(time)+'</div>'+
       '</div>'+
     '</div>'+
   '</div>';
