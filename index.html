@@ -1294,39 +1294,119 @@ function showTab(id, btn) {
 }
 window.showTab = showTab;
 
-/* ── SCORES -- YOUR SERVER ONLY ── */
+/* ── SCORES — direct ESPN parallel fetch ── */
+var SCORE_LEAGUES = [
+  { sport:'football',   league:'nfl',            label:'NFL',       cat:'american' },
+  { sport:'basketball', league:'nba',            label:'NBA',       cat:'american' },
+  { sport:'baseball',   league:'mlb',            label:'MLB',       cat:'american' },
+  { sport:'hockey',     league:'nhl',            label:'NHL',       cat:'american' },
+  { sport:'basketball', league:'wnba',           label:'WNBA',      cat:'american' },
+  { sport:'soccer',     league:'fifa.world',     label:'World Cup', cat:'soccer'   },
+  { sport:'soccer',     league:'eng.1',          label:'EPL',       cat:'soccer'   },
+  { sport:'soccer',     league:'usa.1',          label:'MLS',       cat:'soccer'   },
+  { sport:'soccer',     league:'esp.1',          label:'La Liga',   cat:'soccer'   },
+  { sport:'soccer',     league:'uefa.champions', label:'UCL',       cat:'soccer'   },
+];
+
+function parseESPNScoreboard(data, label, cat) {
+  return (data.events || []).map(function(ev) {
+    var comp = ev.competitions && ev.competitions[0];
+    if (!comp) return null;
+    var competitors = comp.competitors || [];
+    var home = competitors.filter(function(c){return c.homeAway==='home';})[0];
+    var away = competitors.filter(function(c){return c.homeAway==='away';})[0];
+    if (!home || !away) return null;
+    var statusType = (comp.status && comp.status.type) || {};
+    var links = ev.links || [];
+    var gcLink = links.filter(function(l){return l.rel && l.rel.indexOf('gamecast')!==-1;})[0];
+    var gameUrl = (gcLink && gcLink.href) || (links[0] && links[0].href) || '';
+    return {
+      state:  statusType.state  || 'pre',
+      detail: statusType.detail || '',
+      cat:    cat,
+      label:  label,
+      date:   comp.date || ev.date || '',
+      url:    gameUrl,
+      home: {
+        name:   (home.team && (home.team.abbreviation || home.team.name)) || '',
+        score:  home.score != null ? home.score : 0,
+        logo:   (home.team && home.team.logo) || '',
+        winner: !!home.winner,
+      },
+      away: {
+        name:   (away.team && (away.team.abbreviation || away.team.name)) || '',
+        score:  away.score != null ? away.score : 0,
+        logo:   (away.team && away.team.logo) || '',
+        winner: !!away.winner,
+      },
+    };
+  }).filter(Boolean);
+}
+
 function loadScores() {
-  fetchWithTimeout('/api/scores', 10000)
-    .then(function(r){ return r.json(); })
-    .then(function(d) {
-      if(d.games && d.games.length) {
-        console.log('[Sideline] Scores loaded:', d.games.length, 'games,', d.games.filter(function(g){return g.state==='in';}).length, 'live');
-        allGames = d.games;
-        scoreRetries = 0;
-        renderScores();
-      } else {
-        console.warn('[Sideline] Scores API returned empty games, retrying...');
-        retryScores();
-      }
-    })
-    .catch(function(e) { console.error('[Sideline] Scores fetch error:', e); retryScores(); });
+  var ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/';
+  var promises = SCORE_LEAGUES.map(function(lg) {
+    return fetchWithTimeout(ESPN_BASE + lg.sport + '/' + lg.league + '/scoreboard', 10000)
+      .then(function(r){ return r.json(); })
+      .then(function(d){ return parseESPNScoreboard(d, lg.label, lg.cat); })
+      .catch(function(e){ console.warn('[Sideline] ESPN fetch failed for', lg.label, e.message); return []; });
+  });
+
+  Promise.all(promises).then(function(results) {
+    var merged = [];
+    results.forEach(function(arr){ merged = merged.concat(arr); });
+
+    var now = Date.now();
+    var THREE_H = 3 * 60 * 60 * 1000;
+    var TWO_H   = 2 * 60 * 60 * 1000;
+    var games = merged.filter(function(g) {
+      if (g.state === 'in') return true;
+      var t = g.date ? new Date(g.date).getTime() : 0;
+      if (!t || isNaN(t)) return g.state !== 'pre';
+      if (g.state === 'post') return now - t < THREE_H;
+      if (g.state === 'pre')  return t - now < TWO_H && t > now;
+      return false;
+    });
+
+    games.sort(function(a, b) {
+      var ap = a.state==='in' ? 2 : a.state==='pre' ? 1 : 0;
+      var bp = b.state==='in' ? 2 : b.state==='pre' ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      var at = a.date ? new Date(a.date).getTime() : 0;
+      var bt = b.date ? new Date(b.date).getTime() : 0;
+      return a.state === 'pre' ? at - bt : bt - at;
+    });
+
+    if (games.length) {
+      var liveCount = games.filter(function(g){return g.state==='in';}).length;
+      console.log('[Sideline] Scores loaded:', games.length, 'games,', liveCount, 'live');
+      allGames = games;
+      scoreRetries = 0;
+      window.scoresCache = games;
+      renderScores();
+    } else {
+      retryScores();
+    }
+  });
 }
 
 function retryScores() {
   scoreRetries++;
-  // Set ticker fallback immediately on first retry so it never stays on "Loading"
   var tickEl = document.getElementById('ticker-text');
-  if(tickEl && tickEl.textContent.indexOf('Loading') !== -1) {
+  if (tickEl) {
     var msg = 'No live games right now · fantakes.app · Scores refresh every 30s';
     tickEl.textContent = msg + '  ·  ' + msg;
-    console.log('[Sideline] Ticker fallback set');
   }
-  if(scoreRetries <= 3) {
-    setTimeout(loadScores, 5000 * scoreRetries);
+  if (scoreRetries < 3) {
+    console.warn('[Sideline] No games found, retry', scoreRetries, 'of 3');
+    setTimeout(loadScores, 8000 * scoreRetries);
   } else {
+    console.warn('[Sideline] Max retries reached — checking again in 60s');
     scoreRetries = 0;
-    setHTML('rail-home','<span class="empty">Scores temporarily unavailable - will retry shortly</span>');
-    setTimeout(loadScores, 30000);
+    setHTML('rail-home', '<span class="empty">No live games right now</span>');
+    updateTicker([]);
+    pickHeroGame([], null);
+    setTimeout(loadScores, 60000);
   }
 }
 
