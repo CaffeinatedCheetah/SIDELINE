@@ -1258,8 +1258,18 @@ var scoreRetries = 0;
 
 /* ── UTILS ── */
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function decodeHTML(s){try{var t=document.createElement('textarea');t.innerHTML=String(s||'');return t.value;}catch(e){return String(s||'');}}
 function fmtTime(d){try{return new Date(d).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
-function timeAgo(d){var t=new Date(d).getTime();if(!t||isNaN(t))return '';var mins=Math.max(0,Math.round((Date.now()-t)/60000));if(mins<1)return 'just now';if(mins<60)return mins+'m ago';if(mins<1440)return Math.round(mins/60)+'h ago';return Math.round(mins/1440)+'d ago';}
+function timeAgo(d){
+  if(!d)return '';
+  var t=(typeof d==='number'&&d<1e10)?d*1000:new Date(d).getTime();
+  if(!t||isNaN(t))return '';
+  var mins=Math.max(0,Math.round((Date.now()-t)/60000));
+  if(mins<1)return 'just now';
+  if(mins<60)return mins+'m ago';
+  if(mins<1440)return Math.round(mins/60)+'h ago';
+  return Math.round(mins/1440)+'d ago';
+}
 
 function fetchWithTimeout(url,ms){
   var ctrl=window.AbortController?new AbortController():null;
@@ -1291,18 +1301,27 @@ function loadScores() {
     .then(function(r){ return r.json(); })
     .then(function(d) {
       if(d.games && d.games.length) {
+        console.log('[Sideline] Scores loaded:', d.games.length, 'games,', d.games.filter(function(g){return g.state==='in';}).length, 'live');
         allGames = d.games;
         scoreRetries = 0;
         renderScores();
       } else {
+        console.warn('[Sideline] Scores API returned empty games, retrying...');
         retryScores();
       }
     })
-    .catch(function() { retryScores(); });
+    .catch(function(e) { console.error('[Sideline] Scores fetch error:', e); retryScores(); });
 }
 
 function retryScores() {
   scoreRetries++;
+  // Set ticker fallback immediately on first retry so it never stays on "Loading"
+  var tickEl = document.getElementById('ticker-text');
+  if(tickEl && tickEl.textContent.indexOf('Loading') !== -1) {
+    var msg = 'No live games right now · fantakes.app · Scores refresh every 30s';
+    tickEl.textContent = msg + '  ·  ' + msg;
+    console.log('[Sideline] Ticker fallback set');
+  }
   if(scoreRetries <= 3) {
     setTimeout(loadScores, 5000 * scoreRetries);
   } else {
@@ -1401,8 +1420,9 @@ function renderScores() {
   }).join('')||'<span class="empty">No live games right now</span>');
 
   updateTicker(live.length ? live : allGames.slice(0, 10));
+  console.log('[Sideline] Ticker updated,', live.length, 'live games');
   window.scoresCache = allGames;
-  if (window.sidelineUserPrefs) pickHeroGame(allGames, window.sidelineUserPrefs);
+  pickHeroGame(allGames, window.sidelineUserPrefs || null);
 }
 
 /* ── NEWS -- YOUR SERVER ONLY ── */
@@ -1433,14 +1453,13 @@ function detectSportKey(article) {
 }
 
 function newsCardHtml(article, featured) {
-  var title = article.title || '';
+  var title = decodeHTML(article.title || '');
   var src = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
   var sportKey = detectSportKey(article);
-  var seed = title + (article.url || '');
+  var seed = title + (article.url || '') + src;
   var img = article.image || article.urlToImage || pickSportImg(sportKey, seed);
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
-  var fallback = pickSportImg(sportKey, seed + '_fb');
 
   var badges = '';
   if (article.breaking)  badges += '<span style="background:var(--red);color:#fff;font-family:Space Mono,monospace;font-size:8px;padding:2px 6px;border-radius:3px;letter-spacing:0.05em;margin-right:4px">⚡ BREAKING</span>';
@@ -1452,7 +1471,7 @@ function newsCardHtml(article, featured) {
   var onclick = url && url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
   return '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
     '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(fallback)+'\'">'+
+      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.style.display=\'none\';this.parentNode.style.background=\'var(--surface2)\'">'+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
         (badges ? '<div style="margin-bottom:5px">'+badges+'</div>' : '')+
@@ -2329,15 +2348,28 @@ function loadHomeContent() {
   if(newsEl) {
     newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading top stories...</div>';
     if(trendEl) trendEl.innerHTML = '';
-    fetchWithTimeout('/api/algorithm-web?sport=home', 12000)
+
+    function renderHomeArticles(articles) {
+      if(!articles.length){
+        newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadHomeContent()')+'</div>';
+        return;
+      }
+      newsCache['home'] = articles;
+      window.allArticlesCache = articles;
+      renderForYouFeed(articles);
+      newsEl.innerHTML = newsCardHtml(articles[0],true) + articles.slice(1,5).map(function(a){return newsCardHtml(a,false);}).join('');
+      if(trendEl && articles.length>5){
+        trendEl.innerHTML = articles.slice(5,9).map(function(a){return newsCardHtml(a,false);}).join('');
+      }
+      console.log('[Sideline] Home news rendered:', articles.length, 'articles');
+    }
+
+    fetchWithTimeout('/api/algorithm-web?sport=home', 10000)
       .then(function(r){return r.json();})
       .then(function(d){
         var items = (d.feed||[]).filter(function(i){return i.type!=='video';});
-        if(!items.length){
-          newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadHomeContent()')+'</div>';
-          return;
-        }
-        function toCard(item){
+        if(!items.length) throw new Error('empty feed');
+        var articles = items.map(function(item){
           return {
             title: item.title,
             source: {name: item.source||'News'},
@@ -2349,17 +2381,17 @@ function loadHomeContent() {
             trending: !!item.trending,
             exclusive: item.type==='ai',
           };
-        }
-        newsCache['home'] = items.map(toCard);
-        window.allArticlesCache = newsCache['home'];
-        renderForYouFeed(newsCache['home']);
-        newsEl.innerHTML = newsCardHtml(toCard(items[0]),true) + items.slice(1,5).map(function(i){return newsCardHtml(toCard(i),false);}).join('');
-        if(trendEl && items.length>5){
-          trendEl.innerHTML = items.slice(5,9).map(function(i){return newsCardHtml(toCard(i),false);}).join('');
-        }
+        });
+        renderHomeArticles(articles);
       })
       .catch(function(){
-        newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadHomeContent()')+'</div>';
+        console.warn('[Sideline] algorithm-web failed, falling back to /api/news');
+        fetchWithTimeout('/api/news?sport=home', 10000)
+          .then(function(r){return r.json();})
+          .then(function(d){ renderHomeArticles(d.articles||[]); })
+          .catch(function(){
+            newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadHomeContent()')+'</div>';
+          });
       });
   }
 
@@ -2425,51 +2457,59 @@ function loadWorldCup() {
 
   /* Group standings — ESPN v2 API */
   if(grEl) {
-    fetch('https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings')
+    fetchWithTimeout('https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings', 10000)
       .then(function(r){return r.json();})
       .then(function(data){
-        var groups = data.children || data.standings && [data.standings] || [];
+        var groups = (data.children && data.children.length) ? data.children
+          : (data.standings && data.standings.groups && data.standings.groups.length) ? data.standings.groups
+          : (data.standings && data.standings.entries && data.standings.entries.length) ? [data.standings]
+          : [];
         if(!groups.length){
           grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Group data coming soon</span>';
           return;
         }
+        console.log('[Sideline] WC Groups loaded:', groups.length, 'groups');
         grEl.innerHTML = groups.map(function(grp){
           var name = grp.name || grp.abbreviation || 'Group';
           var entries = (grp.standings && grp.standings.entries) || grp.entries || [];
           return '<div style="background:rgba(0,0,0,0.3);border:1px solid rgba(63,185,80,0.2);border-radius:10px;padding:10px">'+
             '<div style="font-family:Oswald,sans-serif;font-size:11px;font-weight:700;color:#3FB950;margin-bottom:8px;letter-spacing:.06em">'+esc(name)+'</div>'+
-            '<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:2px 6px;font-family:Space Mono,monospace;font-size:8px;color:var(--text3);padding-bottom:4px;border-bottom:1px solid rgba(63,185,80,0.1);margin-bottom:4px">'+
-              '<span></span><span>P</span><span>W</span><span>D</span><span>L</span><span>Pts</span></div>'+
+            '<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto auto;gap:2px 6px;font-family:Space Mono,monospace;font-size:8px;color:var(--text3);padding-bottom:4px;border-bottom:1px solid rgba(63,185,80,0.1);margin-bottom:4px">'+
+              '<span></span><span>W</span><span>D</span><span>L</span><span>GD</span><span>Pts</span></div>'+
             entries.slice(0,4).map(function(entry, i){
               var team = entry.team || {};
               var logo = (team.logos && team.logos[0] && team.logos[0].href) || '';
               var teamName = team.shortDisplayName || team.displayName || team.name || '';
               var stats = entry.stats || [];
-              function stat(n){var s=stats.find(function(x){return x.name===n||x.shortDisplayName===n||x.abbreviation===n;}); return s!=null?s.displayValue||s.value:'–';}
+              function stat(n){var s=stats.find(function(x){return x.name===n||x.shortDisplayName===n||x.abbreviation===n;}); return s!=null?(s.displayValue!=null?s.displayValue:String(s.value)):'–';}
               var pts = stat('points')||stat('pts');
               var wins = stat('wins')||stat('w');
               var draws = stat('ties')||stat('draws')||stat('d');
               var losses = stat('losses')||stat('l');
-              var played = stat('gamesPlayed')||stat('GP');
+              var gd = stat('pointDifferential')||stat('goalDifference')||stat('goalsDifference')||stat('GD')||'–';
               var isTop2 = i < 2;
-              return '<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:2px 6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center'+(isTop2?';background:rgba(63,185,80,0.04);border-radius:4px':'')+'">'+
+              var gdNum = parseInt(gd);
+              var gdStr = isNaN(gdNum) ? '–' : (gdNum > 0 ? '+' + gdNum : String(gdNum));
+              var gdColor = gdNum > 0 ? '#3FB950' : gdNum < 0 ? 'var(--red)' : 'var(--text3)';
+              return '<div style="display:grid;grid-template-columns:1fr auto auto auto auto auto auto;gap:2px 6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);align-items:center'+(isTop2?';background:rgba(63,185,80,0.04);border-radius:4px':'')+'">'+
                 '<div style="display:flex;align-items:center;gap:5px;min-width:0">'+
                   '<span style="font-family:Space Mono,monospace;font-size:7px;color:var(--text3);min-width:10px">'+(i+1)+'</span>'+
                   (logo?'<img src="'+esc(logo)+'" style="width:14px;height:10px;object-fit:contain" onerror="this.remove()">':'')+
                   '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:'+(isTop2?'700':'500')+';color:'+(isTop2?'#fff':'var(--text2)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(teamName)+'</span>'+
                 '</div>'+
-                '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--text3)">'+esc(String(played))+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:#3FB950">'+esc(String(wins))+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--text2)">'+esc(String(draws))+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--text3)">'+esc(String(losses))+'</span>'+
+                '<span style="font-family:Space Mono,monospace;font-size:8px;color:'+gdColor+'">'+esc(gdStr)+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:9px;font-weight:700;color:'+(isTop2?'#3FB950':'#fff')+'">'+esc(String(pts))+'</span>'+
               '</div>';
             }).join('')+
           '</div>';
         }).join('');
       })
-      .catch(function(){
-        grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Groups loading...</span>';
+      .catch(function(e){
+        console.error('[Sideline] WC Groups fetch failed:', e);
+        grEl.innerHTML='<span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Group data unavailable — check back soon</span>';
       });
   }
 }
@@ -2479,33 +2519,42 @@ function loadSportTab(tab) {
   /* World Cup live section on Soccer tab */
   if(tab === 'soccer') loadWorldCup();
 
-  /* news — direct fetch */
+  /* news — serve from cache if available, else fetch */
   var newsEl = document.getElementById('news-'+tab);
   if(newsEl) {
-    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading stories...</div>';
-    fetchWithTimeout('/api/news?sport='+tab, 10000)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        var articles = d.articles||[];
-        if(!articles.length){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadSportTab(\''+tab+'\')')+'</div>';return;}
-        newsCache[tab]=articles;
-        newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
-      })
-      .catch(function(){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadSportTab(\''+tab+'\')')+'</div>';});
+    if(newsCache[tab] && newsCache[tab].length) {
+      newsEl.innerHTML=newsCardHtml(newsCache[tab][0],true)+newsCache[tab].slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
+    } else {
+      newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading stories...</div>';
+      fetchWithTimeout('/api/news?sport='+tab, 10000)
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var articles = d.articles||[];
+          if(!articles.length){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadSportTab(\''+tab+'\')')+'</div>';return;}
+          newsCache[tab]=articles;
+          newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
+          console.log('[Sideline]', tab, 'news loaded:', articles.length, 'articles');
+        })
+        .catch(function(){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadSportTab(\''+tab+'\')')+'</div>';});
+    }
   }
-  /* videos — direct fetch */
+  /* videos — serve from cache if available, else fetch */
   var vidEl = document.getElementById('vids-'+tab);
   if(vidEl) {
-    vidEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading videos...</div>';
-    fetchWithTimeout('/api/videos?sport='+tab, 10000)
-      .then(function(r){return r.json();})
-      .then(function(d){
-        var vids=d.videos||[];
-        if(!vids.length){vidEl.innerHTML=errHTML('No videos right now','loadSportTab(\''+tab+'\')',true);return;}
-        videoCache[tab]=vids;
-        vidEl.innerHTML='<div class="vid-grid">'+vids.slice(0,6).map(vidCardHtml).join('')+'</div>';
-      })
-      .catch(function(){vidEl.innerHTML=errHTML('Could not load videos','loadSportTab(\''+tab+'\')',true);});
+    if(videoCache[tab] && videoCache[tab].length) {
+      vidEl.innerHTML='<div class="vid-grid">'+videoCache[tab].slice(0,6).map(vidCardHtml).join('')+'</div>';
+    } else {
+      vidEl.innerHTML='<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading videos...</div>';
+      fetchWithTimeout('/api/videos?sport='+tab, 10000)
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var vids=d.videos||[];
+          if(!vids.length){vidEl.innerHTML=errHTML('No videos right now','loadSportTab(\''+tab+'\')',true);return;}
+          videoCache[tab]=vids;
+          vidEl.innerHTML='<div class="vid-grid">'+vids.slice(0,6).map(vidCardHtml).join('')+'</div>';
+        })
+        .catch(function(){vidEl.innerHTML=errHTML('Could not load videos','loadSportTab(\''+tab+'\')',true);});
+    }
   }
   /* takes: filter by sports for this tab */
   var takesEl = document.getElementById('takes-'+tab);
@@ -2850,7 +2899,7 @@ function renderArticleCard(article) {
           '<span style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);font-family:Space Mono,monospace">'+esc(src.toUpperCase())+'</span>'+
           yourTeamBadge+
         '</div>'+
-        '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px">'+esc(article.title||'')+'</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:15px;font-weight:600;color:#fff;line-height:1.3;margin-bottom:4px">'+esc(decodeHTML(article.title||''))+'</div>'+
         '<div style="font-family:Space Mono,monospace;font-size:10px;color:var(--text3)">'+esc(time)+'</div>'+
       '</div>'+
     '</div>'+
@@ -2988,10 +3037,24 @@ function pickHeroGame(scores, userPrefs) {
                (g.away && g.away.name || '').toLowerCase().includes(n);
       })) yourGame = g;
     });
-    if (yourGame) { showHeroCard(yourGame, true); return yourGame; }
+    if (yourGame) {
+      console.log('[Sideline] Hero: your team game', yourGame.away.name, 'vs', yourGame.home.name);
+      showHeroCard(yourGame, true);
+      return yourGame;
+    }
   }
-  showHeroCard(liveGames[0], false);
-  return liveGames[0];
+  // Pick most exciting: closest score first, then most scoring
+  var best = liveGames.slice().sort(function(a, b) {
+    var aDiff = Math.abs((parseInt(a.home.score)||0) - (parseInt(a.away.score)||0));
+    var bDiff = Math.abs((parseInt(b.home.score)||0) - (parseInt(b.away.score)||0));
+    if (aDiff !== bDiff) return aDiff - bDiff;
+    var aTotal = (parseInt(a.home.score)||0) + (parseInt(a.away.score)||0);
+    var bTotal = (parseInt(b.home.score)||0) + (parseInt(b.away.score)||0);
+    return bTotal - aTotal;
+  })[0];
+  console.log('[Sideline] Hero: most exciting live game', best.away.name, best.away.score, '–', best.home.score, best.home.name);
+  showHeroCard(best, false);
+  return best;
 }
 
 function updateStreak(prefs) {

@@ -291,7 +291,7 @@ export default async function handler(req, res) {
                   : sport === 'racing'  ? IMG_POOLS.racing
                   : IMG_POOLS.american;
   for (const a of deduped) {
-    if (a.image && imgCount[a.image] > 2) {
+    if (a.image && imgCount[a.image] > 1) {
       a.image = pickImg(sportPool, a.title + a.url + a.publishedAt);
     }
   }
