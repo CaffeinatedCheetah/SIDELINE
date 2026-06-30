@@ -1384,6 +1384,14 @@ function loadScores() {
       scoreRetries = 0;
       window.scoresCache = games;
       renderScores();
+    } else if (merged.length) {
+      // APIs responded but no live/recent/upcoming-soon games — don't retry
+      scoreRetries = 0;
+      allGames = [];
+      window.scoresCache = [];
+      setHTML('rail-home', '<span class="empty">No live games right now</span>');
+      updateTicker([]);
+      pickHeroGame([], null);
     } else {
       retryScores();
     }
@@ -1394,19 +1402,19 @@ function retryScores() {
   scoreRetries++;
   var tickEl = document.getElementById('ticker-text');
   if (tickEl) {
-    var msg = 'No live games right now · fantakes.app · Scores refresh every 30s';
+    var msg = 'No live games right now · Sideline · Scores refresh every 30s';
     tickEl.textContent = msg + '  ·  ' + msg;
   }
   if (scoreRetries < 3) {
     console.warn('[Sideline] No games found, retry', scoreRetries, 'of 3');
     setTimeout(loadScores, 8000 * scoreRetries);
   } else {
-    console.warn('[Sideline] Max retries reached — checking again in 60s');
+    console.warn('[Sideline] Max retries reached — showing empty state');
     scoreRetries = 0;
     setHTML('rail-home', '<span class="empty">No live games right now</span>');
+    window.scoresCache = [];
     updateTicker([]);
     pickHeroGame([], null);
-    setTimeout(loadScores, 60000);
   }
 }
 
