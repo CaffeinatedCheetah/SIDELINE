@@ -468,7 +468,8 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .post-take-btn{background:var(--red);color:#fff;border:none;font-family:'Oswald',sans-serif;font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:11px 28px;border-radius:10px;cursor:pointer;transition:opacity 0.15s;}
 .post-take-btn:hover{opacity:0.9;}
 
-/* SCOUT AI BANNER */
+/* SCOUT AI BANNER — hidden from public; logic still runs in background */
+#scout-banner,#scout-debate-prompts{display:none!important;}
 .scout-banner{background:linear-gradient(90deg,#0a0e1a 0%,#0d1117 40%,#0a1a0a 100%);border-bottom:1px solid rgba(63,185,80,0.25);padding:7px 20px;display:flex;align-items:center;gap:8px;min-height:34px;position:relative;overflow:hidden;}
 .scout-banner::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(63,185,80,0.04),transparent 60%);pointer-events:none;}
 .scout-badge{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);background:rgba(63,185,80,0.12);border:1px solid rgba(63,185,80,0.35);border-radius:4px;padding:2px 7px;flex-shrink:0;white-space:nowrap;}
@@ -3674,6 +3675,160 @@ setInterval(loadScout, 5 * 60 * 1000);
     }
   } catch(e) {}
   if (window.setForYouTab) window.setForYouTab(false);
+})();
+
+/* ── ADMIN PANEL ── */
+(function() {
+  var ADMIN_PW = 'sideline2026';
+
+  function renderAdminPanel() {
+    var el = document.createElement('div');
+    el.id = 'admin-panel';
+    el.style.cssText = 'display:none;position:fixed;inset:0;z-index:9800;background:var(--bg);overflow-y:auto';
+    el.innerHTML =
+      '<div id="admin-gate" style="display:flex;align-items:center;justify-content:center;min-height:100vh">'+
+        '<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:320px">'+
+          '<div style="font-family:Oswald,sans-serif;font-size:24px;font-weight:700;color:#fff;margin-bottom:4px">SIDELINE <span style="color:var(--red)">ADMIN</span></div>'+
+          '<div style="font-family:\'Space Mono\',monospace;font-size:10px;color:var(--muted);margin-bottom:24px">fantakes.app · internal</div>'+
+          '<input id="admin-pw-input" type="password" placeholder="Password" onkeydown="if(event.key===\'Enter\')window.checkAdminPw()" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:#fff;font-family:\'Space Mono\',monospace;font-size:12px;outline:none;margin-bottom:10px;box-sizing:border-box">'+
+          '<button onclick="window.checkAdminPw()" style="width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;padding:11px;font-family:Oswald,sans-serif;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:.04em">ENTER</button>'+
+          '<div id="admin-pw-error" style="display:none;font-family:\'Space Mono\',monospace;font-size:10px;color:var(--red);margin-top:8px;text-align:center">Incorrect password</div>'+
+        '</div>'+
+      '</div>'+
+      '<div id="admin-dash" style="display:none;padding:20px;max-width:920px;margin:0 auto">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)">'+
+          '<div>'+
+            '<div style="font-family:Oswald,sans-serif;font-size:28px;font-weight:700;color:#fff">SIDELINE <span style="color:var(--red)">ADMIN</span></div>'+
+            '<div id="admin-ts" style="font-family:\'Space Mono\',monospace;font-size:9px;color:var(--muted)"></div>'+
+          '</div>'+
+          '<button onclick="window.closeAdmin()" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-family:\'Space Mono\',monospace;font-size:10px;cursor:pointer">✕ Close</button>'+
+        '</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">⚡ SITE HEALTH</div>'+
+        '<div id="admin-health" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:28px"></div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">📌 TAKES — PIN TO HOMEPAGE</div>'+
+        '<div id="admin-takes" style="margin-bottom:28px;font-family:\'Space Mono\',monospace;font-size:10px;color:var(--muted)">Loading...</div>'+
+        '<div style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">🤖 SCOUT FEED</div>'+
+        '<div id="admin-scout-feed" style="font-family:\'Space Mono\',monospace;font-size:10px;color:var(--muted)">Loading...</div>'+
+      '</div>';
+    document.body.appendChild(el);
+  }
+
+  function loadAdminDash() {
+    var ts = document.getElementById('admin-ts');
+    if (ts) ts.textContent = new Date().toLocaleString();
+
+    var health = document.getElementById('admin-health');
+    if (health) {
+      var scores  = (window.scoresCache || []).length;
+      var newsTabs = Object.keys(window.newsCache || {}).length;
+      var takesLen = (window.TAKES || []).length;
+      var pinned  = !!localStorage.getItem('sl_pinned_take');
+      [
+        {label:'SCORES CACHED', val:scores+' games',      ok:scores>0},
+        {label:'NEWS TABS',     val:newsTabs+' loaded',   ok:newsTabs>0},
+        {label:'TAKES TOTAL',   val:takesLen+' takes',    ok:true},
+        {label:'PINNED TAKE',   val:pinned?'Active':'None', ok:true},
+      ].forEach(function(s) {
+        var card = document.createElement('div');
+        card.style.cssText = 'background:var(--surface2);border:1px solid '+(s.ok?'rgba(63,185,80,0.4)':'var(--border)')+';border-radius:8px;padding:12px';
+        card.innerHTML = '<div style="font-family:\'Space Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:.08em;margin-bottom:4px">'+s.label+'</div>'+
+          '<div style="font-family:Oswald,sans-serif;font-size:18px;font-weight:700;color:'+(s.ok?'var(--green)':'var(--muted)')+'">'+s.val+'</div>';
+        health.appendChild(card);
+      });
+    }
+
+    var takesEl = document.getElementById('admin-takes');
+    if (takesEl) {
+      var takes = (window.TAKES || []).slice(0, 30);
+      var pinnedId = localStorage.getItem('sl_pinned_take');
+      if (!takes.length) { takesEl.textContent = 'No takes yet.'; }
+      else {
+        takesEl.innerHTML = takes.map(function(t) {
+          var isPinned = t.id === pinnedId;
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-family:Oswald,sans-serif;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(t.text||'')+'</div>'+
+              '<div style="font-family:\'Space Mono\',monospace;font-size:8px;color:var(--muted);margin-top:2px">'+esc(t.user||'')+' · 🔥'+t.fires+' · 🧊'+t.ices+'</div>'+
+            '</div>'+
+            '<button onclick="window.adminTogglePin(\''+esc(t.id)+'\')" style="flex-shrink:0;background:'+(isPinned?'var(--amber)':'var(--surface3)')+';color:'+(isPinned?'#000':'#fff')+';border:none;border-radius:6px;padding:5px 10px;font-family:\'Space Mono\',monospace;font-size:8px;cursor:pointer;letter-spacing:.04em">'+
+              (isPinned?'📌 PINNED':'PIN')+
+            '</button>'+
+          '</div>';
+        }).join('');
+      }
+    }
+
+    var scoutEl = document.getElementById('admin-scout-feed');
+    fetchWithTimeout('/api/agent-pulse', 8000)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!scoutEl) return;
+        if (!d) { scoutEl.textContent = 'No data from agent-pulse.'; return; }
+        var html = '';
+        if (d.editorNote) html += '<div style="color:var(--green);padding:6px 0;border-bottom:1px solid var(--border)">📝 '+esc(d.editorNote)+'</div>';
+        (d.debatePrompts || []).forEach(function(p){
+          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border)">🗣 <span style="color:var(--red)">['+esc(p.sport||'')+']</span> '+esc(p.question)+'</div>';
+        });
+        (d.takes || []).forEach(function(t){
+          html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);color:var(--muted)">✍️ '+esc(t)+'</div>';
+        });
+        scoutEl.innerHTML = html || '<div>No SCOUT content available.</div>';
+      })
+      .catch(function(){ if(scoutEl) scoutEl.textContent = 'SCOUT unavailable.'; });
+  }
+
+  function showAdmin() {
+    var panel = document.getElementById('admin-panel');
+    if (!panel) return;
+    panel.style.display = 'block';
+    var authed = sessionStorage.getItem('sl_admin') === '1';
+    document.getElementById('admin-gate').style.display = authed ? 'none' : 'flex';
+    document.getElementById('admin-dash').style.display = authed ? 'block' : 'none';
+    if (authed) loadAdminDash();
+    else setTimeout(function(){ var i = document.getElementById('admin-pw-input'); if(i) i.focus(); }, 50);
+  }
+
+  window.closeAdmin = function() {
+    var panel = document.getElementById('admin-panel');
+    if (panel) panel.style.display = 'none';
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+  };
+
+  window.checkAdminPw = function() {
+    var input = document.getElementById('admin-pw-input');
+    var errEl = document.getElementById('admin-pw-error');
+    if (!input) return;
+    if (input.value === ADMIN_PW) {
+      sessionStorage.setItem('sl_admin', '1');
+      document.getElementById('admin-gate').style.display = 'none';
+      var dash = document.getElementById('admin-dash');
+      dash.style.display = 'block';
+      loadAdminDash();
+    } else {
+      if (errEl) errEl.style.display = 'block';
+      input.value = '';
+      input.focus();
+    }
+  };
+
+  window.adminTogglePin = function(id) {
+    var current = localStorage.getItem('sl_pinned_take');
+    if (current === id) localStorage.removeItem('sl_pinned_take');
+    else localStorage.setItem('sl_pinned_take', id);
+    var h = document.getElementById('admin-health');
+    var t = document.getElementById('admin-takes');
+    if (h) h.innerHTML = '';
+    if (t) t.innerHTML = 'Loading...';
+    loadAdminDash();
+  };
+
+  function handleHash() {
+    if (window.location.hash === '#admin') showAdmin();
+  }
+
+  renderAdminPanel();
+  window.addEventListener('hashchange', handleHash);
+  handleHash();
 })();
 </script>
 </body>
