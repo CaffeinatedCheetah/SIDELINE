@@ -1251,6 +1251,8 @@ var allGames = [];
 var allScoreGames = [];
 var currentScoreSport = 'all';
 var newsCache = {};
+var _playerCache = {};
+var _playerImgSeq = 0;
 var videoCache = {};
 var vidFilter = 'all';
 var scoreRetries = 0;
@@ -1539,13 +1541,67 @@ function detectSportKey(article) {
   return 'default';
 }
 
+var ESPN_SPORT_PATH = {
+  'NFL':'nfl','NBA':'nba','MLB':'mlb','NHL':'nhl',
+  'Soccer':'soccer','EPL':'soccer','Rugby':'rugby',
+  'UFC':'mma','F1':'racing','Racing':'racing'
+};
+
+function extractPlayerNames(headline) {
+  var SKIP = /^(The|A|An|In|At|On|Of|For|With|By|To|It|He|She|His|Her|Their|This|That|After|Before|During|Super|World|NBA|NFL|MLB|NHL|UFC|EPL|MLS|Champions|League|Cup|Bowl|Final|Season|Game|Match|Week|Report|Update|Trade|Deal|Draft|News|Says|Signs|Joins|Leaves|Returns|Breaks|Sets|Wins|Loses|Beats|Tops|Named|Pick|No|San|Los|New|Las|St|Fort|Mount)$/;
+  var words = headline.replace(/[',]/g,'').split(/\s+/);
+  var names = [];
+  var i = 0;
+  while (i < words.length - 1) {
+    var w1 = words[i], w2 = words[i+1];
+    if (/^[A-Z][A-Za-z]{1,}$/.test(w1) && /^[A-Z][a-z]{1,}$/.test(w2) && !SKIP.test(w1) && !SKIP.test(w2)) {
+      names.push(w1 + ' ' + w2);
+      i += 2;
+    } else {
+      i++;
+    }
+  }
+  return names;
+}
+
+function fetchPlayerHeadshot(playerName, sportKey, imgEl, fallbackUrl) {
+  var cacheKey = playerName.toLowerCase();
+  if (_playerCache[cacheKey] !== undefined) {
+    if (_playerCache[cacheKey] && document.body.contains(imgEl)) {
+      imgEl.src = _playerCache[cacheKey];
+      imgEl.onerror = function(){ this.onerror=null; this.src=fallbackUrl; };
+    }
+    return;
+  }
+  var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 4000) : null;
+  fetch('https://site.api.espn.com/apis/common/v3/search?query='+encodeURIComponent(playerName)+'&limit=3', ctrl ? {signal:ctrl.signal} : {})
+    .then(function(r){ if(timer) clearTimeout(timer); return r.json(); })
+    .then(function(d){
+      var items = d.results || [];
+      var athlete = null;
+      for (var i=0; i<items.length; i++) { if (items[i].type==='athlete') { athlete=items[i]; break; } }
+      if (!athlete || !athlete.id) { _playerCache[cacheKey] = null; return; }
+      var sport = ESPN_SPORT_PATH[sportKey] || 'nfl';
+      var url = 'https://a.espncdn.com/combiner/i?img=/i/headshots/'+sport+'/players/full/'+athlete.id+'.png&w=426&h=320&scale=crop';
+      _playerCache[cacheKey] = url;
+      if (imgEl && document.body.contains(imgEl)) {
+        imgEl.src = url;
+        imgEl.onerror = function(){ this.onerror=null; this.src=fallbackUrl; };
+      }
+    })
+    .catch(function(){ if(timer) clearTimeout(timer); _playerCache[cacheKey] = null; });
+}
+
 function newsCardHtml(article, featured) {
   var title = decodeHTML(article.title || '');
   var src = (article.source && typeof article.source === 'object' ? article.source.name : article.source) || 'News';
   var sportKey = detectSportKey(article);
   var seed = title + (article.url || '') + src;
-  var img = article.image || article.urlToImage || pickSportImg(sportKey, seed);
+  var hasArticleImg = !!(article.image || article.urlToImage);
+  var img = hasArticleImg ? (article.image || article.urlToImage) : pickSportImg(sportKey, seed);
   var fallback = pickSportImg(sportKey, 'sport_fallback_v1');
+  var imgId = hasArticleImg ? '' : ('pi_' + (++_playerImgSeq));
   var time = article.publishedAt ? timeAgo(article.publishedAt) : '';
   var url = article.url || '#';
 
@@ -1558,9 +1614,9 @@ function newsCardHtml(article, featured) {
   var ratio = featured ? '21/9' : '16/9';
   var titleSize = featured ? '22px' : '14px';
   var onclick = url && url !== '#' ? ' onclick="window.open(this.dataset.url,\'_blank\')" data-url="'+esc(url)+'"' : '';
-  return '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
+  var html = '<div class="content-card'+(featured?' featured':'')+'" style="cursor:pointer"'+onclick+'>'+
     '<div style="aspect-ratio:'+ratio+';overflow:hidden;border-radius:12px 12px 0 0;position:relative">'+
-      '<img style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(fallback)+'\'">'+
+      '<img '+(imgId?'id="'+imgId+'" ':'')+' style="width:100%;height:100%;object-fit:cover;display:block" src="'+esc(img)+'" alt="" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(fallback)+'\'">'+
       '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 30%,rgba(0,0,0,0.92) 100%)"></div>'+
       '<div style="position:absolute;bottom:0;left:0;right:0;padding:'+(featured?'20px':'10px')+'">'+
         (badges ? '<div style="margin-bottom:5px">'+badges+'</div>' : '')+
@@ -1571,6 +1627,18 @@ function newsCardHtml(article, featured) {
     '</div>'+
     (!featured ? '<div style="padding:8px 12px;background:var(--surface)"><div style="font-family:\'Rajdhani\',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--muted);opacity:0.7">'+esc(src)+' · '+esc(time)+(badges?' · '+badges:'')+'</div></div>' : '')+
   '</div>';
+  if (imgId) {
+    var names = extractPlayerNames(title);
+    if (names.length) {
+      (function(id, name, sk, fb){
+        setTimeout(function(){
+          var el = document.getElementById(id);
+          if (el) fetchPlayerHeadshot(name, sk, el, fb);
+        }, 0);
+      })(imgId, names[0], sportKey, fallback);
+    }
+  }
+  return html;
 }
 
 /* -- VIDEOS FETCHER -- */
