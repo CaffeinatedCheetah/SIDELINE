@@ -671,6 +671,14 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="sec"><div class="sec-title">🏈 American Sports</div><span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;color:var(--muted)">NFL · NBA · MLB · NHL · WNBA</span></div>
       <div class="rail" id="rail-american"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
+      <div class="sport-pills" id="pills-american" style="margin:6px 0 4px">
+        <button class="vf active" data-league="all" onclick="filterSportNews('american','all',this)">All</button>
+        <button class="vf" data-league="NFL" onclick="filterSportNews('american','NFL',this)">🏈 NFL</button>
+        <button class="vf" data-league="NBA" onclick="filterSportNews('american','NBA',this)">🏀 NBA</button>
+        <button class="vf" data-league="MLB" onclick="filterSportNews('american','MLB',this)">⚾ MLB</button>
+        <button class="vf" data-league="NHL" onclick="filterSportNews('american','NHL',this)">🏒 NHL</button>
+        <button class="vf" data-league="WNBA" onclick="filterSportNews('american','WNBA',this)">WNBA</button>
+      </div>
       <div class="content-grid" id="news-american"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
       <div id="vids-american"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
@@ -695,6 +703,14 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       </div>
       <div class="rail" id="rail-soccer"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
+      <div class="sport-pills" id="pills-soccer" style="margin:6px 0 4px">
+        <button class="vf active" data-league="all" onclick="filterSportNews('soccer','all',this)">All</button>
+        <button class="vf" data-league="EPL" onclick="filterSportNews('soccer','EPL',this)">EPL</button>
+        <button class="vf" data-league="La Liga" onclick="filterSportNews('soccer','La Liga',this)">La Liga</button>
+        <button class="vf" data-league="UCL" onclick="filterSportNews('soccer','UCL',this)">UCL</button>
+        <button class="vf" data-league="MLS" onclick="filterSportNews('soccer','MLS',this)">MLS</button>
+        <button class="vf" data-league="Bundesliga" onclick="filterSportNews('soccer','Bundesliga',this)">Bundesliga</button>
+      </div>
       <div class="content-grid" id="news-soccer"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
       <div id="vids-soccer"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
@@ -707,6 +723,12 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="sec"><div class="sec-title">🏉 Rugby</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Union · League · Six Nations · World Cup</span></div>
       <div class="rail" id="rail-rugby"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
+      <div class="sport-pills" id="pills-rugby" style="margin:6px 0 4px">
+        <button class="vf active" data-league="all" onclick="filterSportNews('rugby','all',this)">All</button>
+        <button class="vf" data-league="Union" onclick="filterSportNews('rugby','Union',this)">Union</button>
+        <button class="vf" data-league="League" onclick="filterSportNews('rugby','League',this)">League</button>
+        <button class="vf" data-league="Six Nations" onclick="filterSportNews('rugby','Six Nations',this)">Six Nations</button>
+      </div>
       <div class="content-grid" id="news-rugby"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
       <div id="vids-rugby"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
@@ -719,6 +741,12 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="sec"><div class="sec-title">🥊 Combat Sports</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">UFC · Boxing · MMA</span></div>
       <div class="rail" id="rail-combat"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
+      <div class="sport-pills" id="pills-combat" style="margin:6px 0 4px">
+        <button class="vf active" data-league="all" onclick="filterSportNews('combat','all',this)">All</button>
+        <button class="vf" data-league="UFC" onclick="filterSportNews('combat','UFC',this)">UFC</button>
+        <button class="vf" data-league="Boxing" onclick="filterSportNews('combat','Boxing',this)">Boxing</button>
+        <button class="vf" data-league="MMA" onclick="filterSportNews('combat','MMA',this)">MMA</button>
+      </div>
       <div class="content-grid" id="news-combat"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
       <div id="vids-combat"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
@@ -731,6 +759,12 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
       <div class="sec"><div class="sec-title">🏎 Racing</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">F1 · NASCAR · IndyCar · MotoGP</span></div>
       <div class="rail" id="rail-racing"></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
+      <div class="sport-pills" id="pills-racing" style="margin:6px 0 4px">
+        <button class="vf active" data-league="all" onclick="filterSportNews('racing','all',this)">All</button>
+        <button class="vf" data-league="F1" onclick="filterSportNews('racing','F1',this)">🏎 F1</button>
+        <button class="vf" data-league="NASCAR" onclick="filterSportNews('racing','NASCAR',this)">NASCAR</button>
+        <button class="vf" data-league="IndyCar" onclick="filterSportNews('racing','IndyCar',this)">IndyCar</button>
+      </div>
       <div class="content-grid" id="news-racing"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
       <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
       <div id="vids-racing"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
@@ -2653,7 +2687,7 @@ function loadWorldCup() {
                 '<div style="display:flex;align-items:center;gap:5px;min-width:0">'+
                   '<span style="font-family:Space Mono,monospace;font-size:7px;color:var(--text3);min-width:10px">'+(i+1)+'</span>'+
                   (logo?'<img src="'+esc(logo)+'" style="width:14px;height:10px;object-fit:contain" onerror="this.remove()">':'')+
-                  '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:'+(isTop2?'700':'500')+';color:'+(isTop2?'#fff':'var(--text2)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(teamName)+'</span>'+
+                  '<span style="font-family:Oswald,sans-serif;font-size:11px;font-weight:'+(isTop2?'700':'500')+';color:'+(isTop2?'#fff':'var(--text2)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="filterSportNews(\'soccer\',\''+teamName.replace(/'/g,'&#39;')+'\',null);document.getElementById(\'news-soccer\').scrollIntoView({behavior:\'smooth\'})">'+esc(teamName)+'</span>'+
                 '</div>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:#3FB950">'+esc(String(wins))+'</span>'+
                 '<span style="font-family:Space Mono,monospace;font-size:8px;color:var(--text2)">'+esc(String(draws))+'</span>'+
@@ -2673,6 +2707,81 @@ function loadWorldCup() {
 }
 window.loadWorldCup = loadWorldCup;
 
+var LEAGUE_FILTERS = {
+  american: {
+    NFL:  /\bnfl\b/i,
+    NBA:  /\bnba\b/i,
+    MLB:  /\bmlb\b/i,
+    NHL:  /\bnhl\b/i,
+    WNBA: /\bwnba\b/i
+  },
+  soccer: {
+    EPL:        /premier.?league|premier-league|\bepl\b|man\.?city|man\.?utd|man\.?united|arsenal\b|chelsea\b|liverpool\b|tottenham|everton|newcastle|west.?ham|leeds/i,
+    'La Liga':  /la.?liga|laliga|barcelona|real.?madrid|atletico|sevilla|valencia|villarreal/i,
+    UCL:        /champions.?league|champions-league|\bucl\b|europa.?league/i,
+    MLS:        /\bmls\b|major.?league.?soccer|inter.?miami|la.?galaxy|sounders|timbers|nycfc/i,
+    Bundesliga: /bundesliga|\bbvb\b|borussia|fc.?bayern|rb.?leipzig|leverkusen/i
+  },
+  rugby: {
+    Union:         /rugby.?union|\brfu\b|super.?rugby|premiership.?rugby|united.?rugby/i,
+    League:        /rugby.?league|\bnrl\b|super.?league|state.?of.?origin/i,
+    'Six Nations': /six.?nations|6.?nations/i
+  },
+  combat: {
+    UFC:    /\bufc\b/i,
+    Boxing: /\bboxing\b|prizefight|\bwbc\b|\bwba\b|\bibf\b|\bwbo\b|heavyweight|welterweight|middleweight/i,
+    MMA:    /\bmma\b|bellator|one.?championship|\bpfl\b/i
+  },
+  racing: {
+    F1:      /formula.?1|formula.?one|\bf1\b|grand.?prix|verstappen|hamilton\b|leclerc/i,
+    NASCAR:  /\bnascar\b/i,
+    IndyCar: /\bindycar\b|indy.?500|indianapolis.?500/i
+  }
+};
+var activeSportFilter = {};
+
+function filterSportNews(tab, league, btn) {
+  var bar = document.getElementById('pills-' + tab);
+  if (bar) {
+    bar.querySelectorAll('.vf').forEach(function(b){ b.classList.remove('active'); });
+    if (btn) {
+      btn.classList.add('active');
+    } else {
+      bar.querySelectorAll('[data-league]').forEach(function(b){
+        if (b.getAttribute('data-league') === league) b.classList.add('active');
+      });
+    }
+  }
+  activeSportFilter[tab] = league;
+  var articles = newsCache[tab] || [];
+  var filtered;
+  if (league === 'all') {
+    filtered = articles;
+  } else {
+    var re = LEAGUE_FILTERS[tab] && LEAGUE_FILTERS[tab][league];
+    if (re) {
+      filtered = articles.filter(function(a) {
+        var hay = (a.title || '') + ' ' + (a.url || '') + ' ' + (typeof a.source === 'object' ? ((a.source && a.source.name) || '') : (a.source || ''));
+        return re.test(hay);
+      });
+    } else {
+      var safeLeague = league.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      var re2 = new RegExp(safeLeague, 'i');
+      filtered = articles.filter(function(a) {
+        return re2.test((a.title || '') + ' ' + (a.url || ''));
+      });
+    }
+  }
+  var newsEl = document.getElementById('news-' + tab);
+  if (!newsEl) return;
+  if (!filtered.length) {
+    newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">No ' + esc(league) + ' stories right now</div>';
+    return;
+  }
+  newsEl.innerHTML = newsCardHtml(filtered[0], true) + filtered.slice(1, 8).map(function(a){ return newsCardHtml(a, false); }).join('');
+}
+window.filterSportNews = filterSportNews;
+
 function loadSportTab(tab) {
   /* World Cup live section on Soccer tab */
   if(tab === 'soccer') loadWorldCup();
@@ -2681,7 +2790,7 @@ function loadSportTab(tab) {
   var newsEl = document.getElementById('news-'+tab);
   if(newsEl) {
     if(newsCache[tab] && newsCache[tab].length) {
-      newsEl.innerHTML=newsCardHtml(newsCache[tab][0],true)+newsCache[tab].slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
+      filterSportNews(tab, activeSportFilter[tab] || 'all', null);
     } else {
       newsEl.innerHTML = '<div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:14px 0">⚡ Loading stories...</div>';
       fetchWithTimeout('/api/news?sport='+tab, 10000)
@@ -2690,7 +2799,7 @@ function loadSportTab(tab) {
           var articles = d.articles||[];
           if(!articles.length){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('No stories right now','loadSportTab(\''+tab+'\')')+'</div>';return;}
           newsCache[tab]=articles;
-          newsEl.innerHTML=newsCardHtml(articles[0],true)+articles.slice(1,8).map(function(a){return newsCardHtml(a,false);}).join('');
+          filterSportNews(tab, activeSportFilter[tab] || 'all', null);
           console.log('[Sideline]', tab, 'news loaded:', articles.length, 'articles');
         })
         .catch(function(){newsEl.innerHTML='<div style="grid-column:1/-1">'+errHTML('Could not load stories','loadSportTab(\''+tab+'\')')+'</div>';});
