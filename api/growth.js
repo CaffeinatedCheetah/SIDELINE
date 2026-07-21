@@ -50,6 +50,7 @@ export default async function handler(req, res) {
       sentIds:        (mem.publisherSentIds  || []).length,
     },
     agents: {
+      scout:     { lastRun: mem.scoutLastRun,        durationMs: mem.scoutLastDuration || 0, results: mem.scoutResults || {} },
       breaking:  { lastRun: mem.breakingLastChecked, stories:  (mem.breakingNews   || []).length },
       viral:     { lastRun: mem.viralLastChecked,    moments:  (mem.viralMoments   || []).length },
       seo:       { lastRun: mem.seoLastRun,          lastCount: mem.seoLastCount   || 0          },

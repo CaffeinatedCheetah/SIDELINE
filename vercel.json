@@ -32,15 +32,17 @@
   ],
   "crons": [
     { "path": "/api/agent-social",     "schedule": "*/30 * * * *" },
-    { "path": "/api/agent-breaking",   "schedule": "*/5 * * * *"  },
+    { "path": "/api/agent-scout",      "schedule": "*/5 * * * *"  },
     { "path": "/api/agent-hunter",     "schedule": "*/5 * * * *"  },
     { "path": "/api/agent-worldcup",   "schedule": "*/5 * * * *"  },
-    { "path": "/api/agent-viral",      "schedule": "*/5 * * * *"  },
     { "path": "/api/agent-pulse",      "schedule": "*/30 * * * *" },
-    { "path": "/api/agent-publisher",  "schedule": "*/30 * * * *" },
     { "path": "/api/push-notify",      "schedule": "*/5 * * * *"  },
-    { "path": "/api/agent-rivals",     "schedule": "0 * * * *"    },
-    { "path": "/api/agent-repurpose",  "schedule": "0 * * * *"    },
-    { "path": "/api/agent-seo",        "schedule": "0 */6 * * *"  }
-  ]
+    { "path": "/api/agent-rivals",     "schedule": "0 * * * *"    }
+  ],
+  "functions": {
+    "api/agent-scout.js": {
+      "memory": 1024,
+      "maxDuration": 300
+    }
+  }
 }

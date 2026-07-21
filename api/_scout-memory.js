@@ -84,3 +84,31 @@ export async function patchMemory(update) {
 export function getMemorySync() {
   return local();
 }
+
+// ── Distributed lock (for single-invocation agents like agent-scout) ──────
+async function kvCommand(...args) {
+  const url = process.env.KV_REST_API_URL;
+  const tok = process.env.KV_REST_API_TOKEN;
+  if (!url || !tok) return undefined;
+  try {
+    const r = await fetch(url, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${tok}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify(args),
+    });
+    const d = await r.json();
+    return d.result;
+  } catch { return undefined; }
+}
+
+// Fails open (returns true) when KV isn't configured, so local/preview runs
+// without KV credentials still execute instead of being blocked forever.
+export async function acquireLock(key, ttlSeconds) {
+  const result = await kvCommand('SET', key, String(Date.now()), 'EX', String(ttlSeconds), 'NX');
+  if (result === undefined) return true;
+  return result === 'OK';
+}
+
+export async function releaseLock(key) {
+  await kvCommand('DEL', key);
+}
