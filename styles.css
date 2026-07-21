@@ -3,7 +3,7 @@
   --bg:#0d0d0d;--surface:#111111;--surface2:#1a1a1a;--surface3:#21262D;
   --border:#1e1e1e;--border2:#2a2a2a;
   --text:#dddddd;--text2:#888888;--text3:#444444;
-  --red:#FF3D3D;--red-dark:#C41E1E;--red-dim:rgba(255,61,61,0.15);
+  --red:#FF3D3D;--red-dark:#C41E1E;--red-dim:rgba(255,61,61,0.15);--red-bright:#FF6B6B;
   --blue-dim:rgba(24,95,165,0.4);
   --radius:14px;--radius-sm:10px;
   --muted:#888888;--faint:#444444;
@@ -807,3 +807,37 @@ footer{text-align:center;padding:20px;font-family:'Space Mono',monospace;font-si
 .ft-hof-quote { font-size: 15px; color: #fff; font-weight: 600; margin-bottom: 4px; }
 .ft-hof-meta { font-size: 11px; color: rgba(255,255,255,.4); }
 .ft-hof-img { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+
+/* ═══ TRENDING TAKES LIST (script.js loadTrendingTakes target) ═══ */
+.ft-take-row { display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: border-color .15s; }
+.ft-take-row:hover { border-color: var(--red); }
+.ft-take-fire { font-size: 18px; flex-shrink: 0; }
+.ft-take-body { flex: 1; min-width: 0; }
+.ft-take-text { font-size: 13px; color: #fff; font-weight: 600; line-height: 1.4; margin-bottom: 4px; }
+.ft-take-tag { font-family: 'Space Mono', monospace; font-size: 8px; letter-spacing: .06em; text-transform: uppercase; color: var(--red); background: var(--red-dim); display: inline-block; padding: 2px 7px; border-radius: 4px; }
+.ft-take-counts { display: flex; flex-direction: column; gap: 3px; font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text2); flex-shrink: 0; text-align: right; }
+
+/* ═══ NEW SPA HEADER (spec's verbatim header markup — classes not defined
+   anywhere in the spec's own CSS block, styled here to match the site's
+   existing dark theme using the same color tokens/fonts as the rest of
+   styles.css) ═══ */
+.topbar { background: #000; border-bottom: 2px solid var(--red); padding: 0 20px; height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 200; }
+.topbar .logo { display: flex; align-items: center; gap: 1px; font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.04em; color: var(--red); text-transform: uppercase; text-decoration: none; flex-shrink: 0; }
+.topbar .logo span { color: #fff; }
+.topbar .logo strong { color: var(--red-bright); font-weight: 900; }
+.topbar .logo i { font-style: normal; color: var(--red-bright); margin-left: 3px; font-size: 13px; }
+.header-center { flex: 1; display: flex; justify-content: center; min-width: 0; }
+.header-tagline { font-family: 'Space Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desktop-nav { display: flex; align-items: center; gap: 2px; }
+.desktop-nav a { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text2); text-decoration: none; padding: 8px 12px; border-radius: 8px; transition: color .15s, background .15s; }
+.desktop-nav a:hover { color: #fff; background: var(--surface2); }
+.topbar-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.icon-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); width: 34px; height: 34px; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.icon-btn:hover { color: #fff; border-color: var(--red); }
+.btn { font-family: 'Oswald', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; transition: opacity .15s; white-space: nowrap; }
+.btn:hover { opacity: .88; }
+.btn-primary { background: var(--red); color: #fff; }
+.btn-secondary { background: var(--surface2); color: #fff; border: 1px solid var(--border2); }
+@media (max-width: 900px) {
+  .header-center, .desktop-nav { display: none; }
+}

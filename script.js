@@ -315,6 +315,14 @@ function initArena() {
   loadLiveScores();
 }
 
+// ── ARENA SIDEBAR SECTION SWITCH ──────────────────────────
+function showArenaSection(section, btn) {
+  document.querySelectorAll('.arena-nav-item').forEach(item => item.classList.remove('active'));
+  const target = btn || Array.from(document.querySelectorAll('.arena-nav-item'))
+    .find(item => item.getAttribute('onclick')?.includes(`showArenaSection('${section}')`));
+  if (target) target.classList.add('active');
+}
+
 // ── GAME ROOM INIT ───────────────────────────────────────
 function initGameRoom() {
   loadLiveScores();
