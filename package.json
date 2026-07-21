@@ -5,6 +5,7 @@
   "description": "Sideline - Live Sports, Fan Takes & Trending",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.106.0",
+    "@vercel/kv": "^3.0.0",
     "web-push": "^3.6.7"
   }
 }
