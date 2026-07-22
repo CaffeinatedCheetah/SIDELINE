@@ -1,1424 +1,1306 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<link rel="icon" href="data:,"/>
-<meta name="apple-mobile-web-app-title" content="Sideline"/>
-<meta name="theme-color" content="#FF3D3D"/>
-<title>FanTakes — The Home of Sports Fans</title>
-<meta name="description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates and trending highlights. NBA, NFL, Soccer, UFC, F1 and more.">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Sideline">
-<meta property="og:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
-<meta property="og:description" content="Drop your hottest sports takes. Live scores, breaking news, fan debates. All sports, all fans.">
-<meta property="og:image" content="https://www.fantakes.app/api/og-image?type=site">
-<meta property="og:url" content="https://www.fantakes.app">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:site" content="@sidelineapp">
-<meta name="twitter:title" content="Sideline — Live Sports, Fan Takes &amp; Trending">
-<meta name="twitter:image" content="https://www.fantakes.app/api/og-image?type=site">
-<link rel="canonical" href="https://www.fantakes.app">
-<link rel="manifest" href="/manifest.json">
-<script>if(!location.hostname.endsWith('fantakes.app')){var _m=document.createElement('meta');_m.name='robots';_m.content='noindex,nofollow';document.head.appendChild(_m);}</script>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&family=Rajdhani:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="FanTakes — The home of sports fans. Live scores, debates, communities and fan identity.">
+  <meta property="og:title" content="FanTakes — The Home of Sports Fans">
+  <meta property="og:url" content="https://www.fantakes.app">
+  <link rel="canonical" href="https://www.fantakes.app">
+  <title>FanTakes — The Home of Sports Fans</title>
+  <script>
+    if(!['www.fantakes.app','fantakes.app'].includes(location.hostname)){
+      document.write('<meta name="robots" content="noindex,nofollow">');
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3851387070368601" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar" id="main-header">
-  <a class="logo" href="#" onclick="showView('public-home');return false">
-    <span>Fan</span><strong>Takes</strong><i>▱</i>
-  </a>
-  <div class="header-center" id="header-center-title">
-    <span class="header-tagline">🏆 THE HOME OF SPORTS FANS</span>
-  </div>
-  <nav class="desktop-nav" id="desktop-nav">
-    <a href="#" onclick="showView('public-home');return false" data-view="public-home">Home</a>
-    <a href="#" onclick="showView('game-room');return false" data-view="game-room">Games</a>
-    <a href="#" onclick="showView('communities');return false" data-view="communities">Communities</a>
-    <a href="#" onclick="showView('debate-center');return false" data-view="debate-center">Debate Center</a>
-    <a href="#" onclick="showView('hall-of-flame');return false" data-view="hall-of-flame">Hall of Flame</a>
-    <a href="#" onclick="showView('more-support');return false" data-view="more-support">More ▾</a>
-  </nav>
-  <div class="topbar-actions">
-    <button class="icon-btn" id="searchButton">⌕</button>
-    <div id="streak-badge" style="display:none;align-items:center;gap:4px;background:rgba(255,255,255,.06);border-radius:20px;padding:4px 12px;cursor:pointer" onclick="showView('fan-profile')">
-      <span>🔥</span><span id="streak-count" style="font-size:11px;font-weight:700;color:#FF8C00">0</span><span style="font-size:10px;color:#555">streak</span>
+<header class="topbar" id="topbar">
+  <div class="topbar-inner">
+    <a class="ft-logo" href="#" onclick="showView('home');return false">
+      <span class="logo-fan">Fan</span><span class="logo-takes">Takes</span><span class="logo-mark">▱</span>
+    </a>
+    <div class="topbar-center">
+      <span class="topbar-trophy">🏆</span>
+      <span class="topbar-tagline">THE HOME OF SPORTS FANS</span>
     </div>
-    <button class="btn btn-secondary" id="auth-login-btn" onclick="openModal('login')">Log In</button>
-    <button class="btn btn-primary" id="auth-signup-btn" onclick="openModal('signup')">Sign Up</button>
-    <div id="auth-user-menu" style="display:none;align-items:center;gap:10px">
-      <div id="auth-user-avatar" onclick="showView('fan-profile')"
-        style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#ef1f2f,#560008);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;cursor:pointer;border:2px solid rgba(239,31,47,.5)">U</div>
+    <nav class="topbar-nav">
+      <a href="#" onclick="showView('home');return false" data-view="home" class="nav-active">Home</a>
+      <a href="#" onclick="showView('game-room');return false" data-view="game-room">Games</a>
+      <a href="#" onclick="showView('communities');return false" data-view="communities">Communities</a>
+      <a href="#" onclick="showView('debate-center');return false" data-view="debate-center">Debate Center</a>
+      <a href="#" onclick="showView('hall-of-flame');return false" data-view="hall-of-flame">Hall of Flame</a>
+      <a href="#" onclick="showView('more');return false" data-view="more">More ▾</a>
+    </nav>
+    <div class="topbar-actions">
+      <button class="topbar-search" aria-label="Search">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+      </button>
+      <div id="streak-badge" style="display:none;align-items:center;gap:5px;background:rgba(255,255,255,.05);border-radius:20px;padding:5px 12px;cursor:pointer">
+        <span>🔥</span><b id="streak-num" style="color:#FF8C00;font-size:12px">0</b><span style="font-size:11px;color:#555">streak</span>
+      </div>
+      <button class="btn-login" id="btn-login" onclick="openModal('login')">LOG IN</button>
+      <button class="btn-signup" id="btn-signup" onclick="openModal('signup')">SIGN UP</button>
+      <div id="user-menu" style="display:none;align-items:center;gap:8px">
+        <div id="user-avatar" onclick="showView('profile')" class="user-avatar-btn">U</div>
+      </div>
     </div>
   </div>
 </header>
-<main id="app-main">
+<main id="app">
 
-<div id="view-public-home" class="view">
-<div id="breaking-ticker" style="background:var(--red);padding:6px 16px;display:flex;align-items:center;gap:10px;overflow:hidden;">
-  <div style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#fff;opacity:.7;white-space:nowrap;flex-shrink:0">NOW</div>
-  <div style="overflow:hidden;flex:1">
-    <div id="ticker-text" style="font-size:11px;color:#fff;white-space:nowrap;animation:tickerScroll 30s linear infinite">Loading live updates...</div>
-  </div>
-</div>
-<style>
-@keyframes tickerScroll{0%{transform:translateX(0);}100%{transform:translateX(-50%);}}
-</style>
+<div id="view-home" class="view active">
 
-<!-- HERO LIVE CARD -->
-<div id="hero-section" style="padding:10px 12px;display:none">
-  <div id="hero-card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--red)">⚡ LIVE NOW</div>
-      <div id="hero-your-pill" style="display:none;font-size:9px;background:var(--red-dim);color:var(--red);padding:2px 8px;border-radius:20px;font-weight:600">Your team</div>
-    </div>
-    <div class="hero-scores">
-      <div class="hero-team">
-        <div id="hero-home-score" class="hero-score-num">0</div>
-        <div id="hero-home-team" class="hero-team-name">Home</div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);padding:0 12px">vs</div>
-      <div class="hero-team">
-        <div id="hero-away-score" class="hero-score-num">0</div>
-        <div id="hero-away-team" class="hero-team-name">Away</div>
+  <!-- CINEMATIC HERO -->
+  <section class="hero">
+    <div class="hero-atmosphere"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-fan-silhouette">
+      <div class="fan-body">
+        <div class="fan-jersey-text">FAN<span>01</span></div>
       </div>
     </div>
-    <div style="margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <div id="hero-heat-pct" style="font-size:10px;color:var(--text2)">50% home</div>
-        <div id="hero-status" style="font-size:10px;color:var(--red)">Live</div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">THE HOME OF</p>
+      <h1 class="hero-h1">
+        <span class="h1-white">SPORTS</span>
+        <span class="h1-red">FANS</span>
+      </h1>
+      <p class="hero-sub">
+        Scores bring fans in.<br>
+        Conversations keep them.<br>
+        Identity brings them back.
+      </p>
+      <div class="hero-btns">
+        <button class="btn-arena" onclick="openModal('signup')">ENTER THE ARENA →</button>
+        <button class="btn-browse" onclick="document.getElementById('live-section').scrollIntoView({behavior:'smooth'})">BROWSE LIVE GAMES</button>
       </div>
-      <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden">
-        <div id="hero-heat-bar" style="height:100%;width:50%;background:var(--red);border-radius:2px;transition:width .4s ease"></div>
-      </div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button id="hero-btn-fire" onclick="showTab('allscores',document.querySelectorAll('.tab')[9])" style="flex:1;background:var(--red-dim);border:0.5px solid var(--red);color:var(--red);border-radius:var(--radius-sm);padding:9px;font-size:11px;font-weight:600;cursor:pointer">Home win</button>
-      <button id="hero-btn-ice" onclick="showTab('allscores',document.querySelectorAll('.tab')[9])" style="flex:1;background:var(--blue-dim);border:0.5px solid #185fa5;color:#5ba3e0;border-radius:var(--radius-sm);padding:9px;font-size:11px;font-weight:600;cursor:pointer">Away win</button>
-    </div>
-  </div>
-</div>
-
-<!-- STORY RINGS -->
-<div id="stories-section" style="padding:10px 16px;border-bottom:0.5px solid var(--border)">
-  <div style="font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--text3);margin-bottom:10px">YOUR TEAMS</div>
-  <div id="stories-row" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px"></div>
-</div>
-
-<div class="scout-banner" id="scout-banner">
-  <span class="scout-dot"></span>
-  <span class="scout-badge">🤖 SCOUT</span>
-  <span class="scout-note" id="scout-note">Always watching. Always one step ahead.</span>
-</div>
-<div class="scout-debate-prompts" id="scout-debate-prompts" style="display:none"></div>
-<div class="breaking-rail" id="breaking-rail" style="display:none"></div>
-
-<div class="tabs">
-  <button id="foryou-tab" class="tab" style="display:none" onclick="showTab('foryou',this)">✨ For you</button>
-  <button class="tab active" onclick="showTab('home',this)">🏠 Home</button>
-  <button class="tab" onclick="showTab('american',this)">🏈 American</button>
-  <button class="tab" onclick="showTab('soccer',this)">⚽ Soccer</button>
-  <button class="tab" onclick="showTab('rugby',this)">🏉 Rugby</button>
-  <button class="tab" onclick="showTab('combat',this)">🥊 Combat</button>
-  <button class="tab" onclick="showTab('racing',this)">🏎 Racing</button>
-  <button class="tab" onclick="showTab('takes',this)">🎙 Fan Takes</button>
-  <button class="tab" onclick="showTab('videos',this)">▶ Videos</button>
-  <button class="tab" onclick="showTab('allscores',this)">📊 All Scores</button>
-  <button class="tab" onclick="showTab('trending',this)">🔥 Trending</button>
-</div>
-
-<div class="layout">
-  <div class="feed">
-
-    <!-- FOR YOU -->
-    <div class="page" id="page-foryou">
-      <div id="for-you-feed" style="padding:10px 0">
-        <div style="padding:40px 16px;text-align:center;font-family:'Space Mono',monospace;font-size:10px;color:var(--text3)">Sign in and follow teams to get your personalized feed ✨</div>
-      </div>
-      <div id="rivalry-section" style="display:none;padding:0 16px 10px">
-        <div style="font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text3);padding:12px 0 8px">RIVALRIES</div>
-      </div>
-    </div>
-
-    <!-- HOME -->
-    <div class="page active" id="page-home">
-
-      <div class="sec"><div class="sec-title">⚡ Live &amp; Recent Scores</div><button class="sec-more" onclick="navTo('allscores',9)">See all</button></div>
-      <div class="rail" id="rail-home"></div>
-
-      <div class="sec"><div class="sec-title">🔥 Trending Now</div><button class="sec-more" onclick="navTo('trending',10)">More</button></div>
-      <div class="content-grid" id="trending-cards"></div>
-
-      <div class="sec"><div class="sec-title">🌍 All Sports</div></div>
-      <div class="sport-grid">
-        <div class="sport-tile" onclick="navTo('american',2)"><span class="sport-tile-icon">🏈</span><div class="sport-tile-name">American</div><div class="sport-tile-sub">NFL · NBA · MLB · NHL · WNBA</div></div>
-        <div class="sport-tile" onclick="navTo('soccer',3)"><span class="sport-tile-icon">⚽</span><div class="sport-tile-name">Soccer</div><div class="sport-tile-sub">EPL · La Liga · UCL · MLS</div></div>
-        <div class="sport-tile" onclick="navTo('rugby',4)"><span class="sport-tile-icon">🏉</span><div class="sport-tile-name">Rugby</div><div class="sport-tile-sub">Union · League · Six Nations</div></div>
-        <div class="sport-tile" onclick="navTo('combat',5)"><span class="sport-tile-icon">🥊</span><div class="sport-tile-name">Combat</div><div class="sport-tile-sub">UFC · Boxing · MMA</div></div>
-        <div class="sport-tile" onclick="navTo('racing',6)"><span class="sport-tile-icon">🏎</span><div class="sport-tile-name">Racing</div><div class="sport-tile-sub">F1 · NASCAR · IndyCar</div></div>
-        <div class="sport-tile" onclick="navTo('takes',7)"><span class="sport-tile-icon">🎙</span><div class="sport-tile-name">Fan Takes</div><div class="sport-tile-sub">Record · Clap Back · Go viral</div></div>
-        <div class="sport-tile" onclick="navTo('videos',8)"><span class="sport-tile-icon">▶</span><div class="sport-tile-name">Videos</div><div class="sport-tile-sub">Highlights · Viral clips</div></div>
-        <div class="sport-tile" onclick="navTo('allscores',9)"><span class="sport-tile-icon">📊</span><div class="sport-tile-name">All Scores</div><div class="sport-tile-sub">Every game · Every league</div></div>
-        <div class="sport-tile" onclick="navTo('trending',10)" style="border-color:rgba(255,61,61,0.4);background:linear-gradient(135deg,rgba(255,61,61,0.08),transparent)"><span class="sport-tile-icon">🔥</span><div class="sport-tile-name" style="color:var(--red)">Trending</div><div class="sport-tile-sub">Hot takes · Breaking · Highlights</div></div>
-      </div>
-
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Top Stories</div><button class="sec-more" onclick="navTo('trending',10)">More news</button></div>
-      <div class="content-grid" id="home-news"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading top stories...</div></div>
-
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Trending Videos</div><button class="sec-more" onclick="navTo('videos',8)">See all</button></div>
-      <div class="vid-grid" id="home-vids"></div>
-
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Top Fan Takes</div><button class="sec-more" onclick="navTo('takes',7)">All takes →</button></div>
-      <div id="home-takes"></div>
-      <div id="trending-takes-list"></div>
-    </div>
-
-    <!-- AMERICAN -->
-    <div class="page" id="page-american">
-      <div class="sec"><div class="sec-title">🏈 American Sports</div><span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;color:var(--muted)">NFL · NBA · MLB · NHL · WNBA</span></div>
-      <div class="rail" id="rail-american"></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
-      <div class="sport-pills" id="pills-american" style="margin:6px 0 4px">
-        <button class="vf active" data-league="all" onclick="filterSportNews('american','all',this)">All</button>
-        <button class="vf" data-league="NFL" onclick="filterSportNews('american','NFL',this)">🏈 NFL</button>
-        <button class="vf" data-league="NBA" onclick="filterSportNews('american','NBA',this)">🏀 NBA</button>
-        <button class="vf" data-league="MLB" onclick="filterSportNews('american','MLB',this)">⚾ MLB</button>
-        <button class="vf" data-league="NHL" onclick="filterSportNews('american','NHL',this)">🏒 NHL</button>
-        <button class="vf" data-league="WNBA" onclick="filterSportNews('american','WNBA',this)">WNBA</button>
-      </div>
-      <div class="content-grid" id="news-american"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
-      <div id="vids-american"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Fan Takes</div></div>
-      <div id="takes-american"></div>
-    </div>
-
-    <!-- SOCCER -->
-    <div class="page" id="page-soccer">
-      <div class="sec"><div class="sec-title">⚽ Soccer</div><span style="font-family:'Rajdhani',sans-serif;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;opacity:0.7;color:var(--muted)">EPL · La Liga · UCL · MLS · Bundesliga</span></div>
-      <!-- WORLD CUP 2026 LIVE SECTION -->
-      <div style="background:linear-gradient(135deg,#001a00 0%,#0d1117 60%,#1a0d00 100%);border:1px solid rgba(63,185,80,0.4);border-radius:16px;padding:16px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:700;color:#3FB950;display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#3FB950;animation:pulse 1.4s infinite;display:inline-block"></span>🏆 World Cup 2026 — LIVE</div>
-          <span style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted)">USA · Canada · Mexico</span>
+      <div class="hero-proof">
+        <div class="proof-avatars">
+          <div class="proof-av" style="background:#1a5276">JD</div>
+          <div class="proof-av" style="background:#6c3483">MK</div>
+          <div class="proof-av" style="background:#1e8449">TW</div>
+          <div class="proof-av" style="background:#784212">RS</div>
+          <span class="proof-more">+28K</span>
         </div>
-        <div id="wc-scores" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none"><span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Loading...</span></div>
-        <div style="margin-top:14px">
-          <div style="font-family:Space Mono,monospace;font-size:9px;color:#3FB950;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px">Group Standings</div>
-          <div id="wc-groups" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px"><span style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">Loading groups...</span></div>
+        <span class="proof-dot"></span>
+        <span class="proof-label">Fans online now</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIVE RIGHT NOW -->
+  <section id="live-section" class="section-wrap">
+    <div class="section-row">
+      <h2 class="section-title"><span class="pulse-dot"></span> LIVE RIGHT NOW</h2>
+      <a class="view-all-link" href="#" onclick="showView('game-room');return false">View All Games →</a>
+    </div>
+    <div class="games-scroll">
+      <div class="games-row" id="games-row">
+
+        <article class="game-card" onclick="showView('game-room')">
+          <div class="game-card-top">
+            <span class="game-sport-tag">NFL</span>
+            <span class="live-badge">LIVE</span>
+          </div>
+          <div class="game-teams">
+            <div class="game-team">
+              <div class="team-emblem lions">🦁</div>
+              <div class="team-score" id="g-nfl-home">24</div>
+              <div class="team-name">LIONS</div>
+            </div>
+            <div class="game-sep">-</div>
+            <div class="game-team">
+              <div class="team-emblem bears">🐻</div>
+              <div class="team-score" id="g-nfl-away">20</div>
+              <div class="team-name">BEARS</div>
+            </div>
+          </div>
+          <div class="game-footer">
+            <span id="g-nfl-clock">4TH QTR · 06:12</span>
+            <span class="game-fans">21.4K fans</span>
+          </div>
+        </article>
+
+        <article class="game-card" onclick="showView('game-room')">
+          <div class="game-card-top">
+            <span class="game-sport-tag">NBA</span>
+            <span class="live-badge">LIVE</span>
+          </div>
+          <div class="game-teams">
+            <div class="game-team">
+              <div class="team-emblem lakers">🏀</div>
+              <div class="team-score">91</div>
+              <div class="team-name">LAKERS</div>
+            </div>
+            <div class="game-sep">-</div>
+            <div class="game-team">
+              <div class="team-emblem warriors">⚡</div>
+              <div class="team-score">88</div>
+              <div class="team-name">WARRIORS</div>
+            </div>
+          </div>
+          <div class="game-footer">
+            <span>4TH QTR · 03:47</span>
+            <span class="game-fans">18.2K fans</span>
+          </div>
+        </article>
+
+        <article class="game-card" onclick="showView('game-room')">
+          <div class="game-card-top">
+            <span class="game-sport-tag">MLB</span>
+            <span class="live-badge">LIVE</span>
+          </div>
+          <div class="game-teams">
+            <div class="game-team">
+              <div class="team-emblem yankees">⚾</div>
+              <div class="team-score">5</div>
+              <div class="team-name">YANKEES</div>
+            </div>
+            <div class="game-sep">-</div>
+            <div class="game-team">
+              <div class="team-emblem redsox">🧢</div>
+              <div class="team-score">4</div>
+              <div class="team-name">RED SOX</div>
+            </div>
+          </div>
+          <div class="game-footer">
+            <span>TOP 8TH · 1 OUT</span>
+            <span class="game-fans">8.6K fans</span>
+          </div>
+        </article>
+
+        <article class="game-card game-card-ufc" onclick="showView('game-room')">
+          <div class="game-card-top">
+            <span class="game-sport-tag">UFC</span>
+            <span class="live-badge">LIVE</span>
+          </div>
+          <div class="ufc-matchup">
+            <div class="ufc-fighter">
+              <div class="ufc-avatar">V</div>
+              <div class="ufc-name">VOLKANOVSKI</div>
+            </div>
+            <div class="ufc-vs">vs</div>
+            <div class="ufc-fighter">
+              <div class="ufc-avatar">T</div>
+              <div class="ufc-name">TOPURIA</div>
+            </div>
+          </div>
+          <div class="game-footer">
+            <span>UFC 302 · MAIN CARD</span>
+            <span class="game-fans">12.3K fans</span>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- BIGGEST DEBATE + TRENDING TAKES -->
+  <section class="section-wrap two-col-section">
+
+    <div class="debate-main-col">
+      <h2 class="section-title">🔥 BIGGEST DEBATE RIGHT NOW</h2>
+      <div class="debate-big-card">
+        <div class="debate-big-content">
+          <h3 class="debate-big-q">Should Mahomes already be considered the GOAT?</h3>
+          <div class="debate-vote-bars">
+            <div class="vote-side">
+              <div class="vote-thumb">👍</div>
+              <div class="vote-pct green">64%</div>
+              <div class="vote-word">AGREE</div>
+              <div class="vote-track"><div class="vote-fill green-fill" style="width:64%"></div></div>
+            </div>
+            <div class="vote-side">
+              <div class="vote-thumb">👎</div>
+              <div class="vote-pct red">36%</div>
+              <div class="vote-word">DISAGREE</div>
+              <div class="vote-track"><div class="vote-fill red-fill" style="width:36%"></div></div>
+            </div>
+          </div>
+          <div class="debate-counts">24,387 votes · 3.7K comments</div>
+          <button class="btn-join-debate" onclick="showView('debate-center')">JOIN DEBATE</button>
         </div>
-      </div>
-      <div class="rail" id="rail-soccer"></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
-      <div class="sport-pills" id="pills-soccer" style="margin:6px 0 4px">
-        <button class="vf active" data-league="all" onclick="filterSportNews('soccer','all',this)">All</button>
-        <button class="vf" data-league="EPL" onclick="filterSportNews('soccer','EPL',this)">EPL</button>
-        <button class="vf" data-league="La Liga" onclick="filterSportNews('soccer','La Liga',this)">La Liga</button>
-        <button class="vf" data-league="UCL" onclick="filterSportNews('soccer','UCL',this)">UCL</button>
-        <button class="vf" data-league="MLS" onclick="filterSportNews('soccer','MLS',this)">MLS</button>
-        <button class="vf" data-league="Bundesliga" onclick="filterSportNews('soccer','Bundesliga',this)">Bundesliga</button>
-      </div>
-      <div class="content-grid" id="news-soccer"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
-      <div id="vids-soccer"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Fan Takes</div></div>
-      <div id="takes-soccer"></div>
-    </div>
-
-    <!-- RUGBY -->
-    <div class="page" id="page-rugby">
-      <div class="sec"><div class="sec-title">🏉 Rugby</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">Union · League · Six Nations · World Cup</span></div>
-      <div class="rail" id="rail-rugby"></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
-      <div class="sport-pills" id="pills-rugby" style="margin:6px 0 4px">
-        <button class="vf active" data-league="all" onclick="filterSportNews('rugby','all',this)">All</button>
-        <button class="vf" data-league="Union" onclick="filterSportNews('rugby','Union',this)">Union</button>
-        <button class="vf" data-league="League" onclick="filterSportNews('rugby','League',this)">League</button>
-        <button class="vf" data-league="Six Nations" onclick="filterSportNews('rugby','Six Nations',this)">Six Nations</button>
-      </div>
-      <div class="content-grid" id="news-rugby"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
-      <div id="vids-rugby"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Fan Takes</div></div>
-      <div id="takes-rugby"></div>
-    </div>
-
-    <!-- COMBAT -->
-    <div class="page" id="page-combat">
-      <div class="sec"><div class="sec-title">🥊 Combat Sports</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">UFC · Boxing · MMA</span></div>
-      <div class="rail" id="rail-combat"></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
-      <div class="sport-pills" id="pills-combat" style="margin:6px 0 4px">
-        <button class="vf active" data-league="all" onclick="filterSportNews('combat','all',this)">All</button>
-        <button class="vf" data-league="UFC" onclick="filterSportNews('combat','UFC',this)">UFC</button>
-        <button class="vf" data-league="Boxing" onclick="filterSportNews('combat','Boxing',this)">Boxing</button>
-        <button class="vf" data-league="MMA" onclick="filterSportNews('combat','MMA',this)">MMA</button>
-      </div>
-      <div class="content-grid" id="news-combat"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
-      <div id="vids-combat"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Fan Takes</div></div>
-      <div id="takes-combat"></div>
-    </div>
-
-    <!-- RACING -->
-    <div class="page" id="page-racing">
-      <div class="sec"><div class="sec-title">🏎 Racing</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">F1 · NASCAR · IndyCar · MotoGP</span></div>
-      <div class="rail" id="rail-racing"></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">📰 Latest Stories</div></div>
-      <div class="sport-pills" id="pills-racing" style="margin:6px 0 4px">
-        <button class="vf active" data-league="all" onclick="filterSportNews('racing','all',this)">All</button>
-        <button class="vf" data-league="F1" onclick="filterSportNews('racing','F1',this)">🏎 F1</button>
-        <button class="vf" data-league="NASCAR" onclick="filterSportNews('racing','NASCAR',this)">NASCAR</button>
-        <button class="vf" data-league="IndyCar" onclick="filterSportNews('racing','IndyCar',this)">IndyCar</button>
-      </div>
-      <div class="content-grid" id="news-racing"><div style="grid-column:1/-1;font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading stories...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">▶ Latest Videos</div></div>
-      <div id="vids-racing"><div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);padding:10px 0">Loading videos...</div></div>
-      <div class="sec" style="margin-top:20px"><div class="sec-title">🔥 Fan Takes</div></div>
-      <div id="takes-racing"></div>
-    </div>
-
-    <!-- FAN TAKES -->
-    <div class="page" id="page-takes">
-      <div class="takes-hero">
-        <div style="font-size:52px;margin-bottom:10px">🔥</div>
-        <h2>Fan Takes</h2>
-        <p>Drop your hottest sports opinions.<br>The crowd votes fire or ice. Reply. Repost. Go viral.</p>
-        <div class="takes-btns">
-          <button class="takes-btn primary" onclick="openTakeModal()">🔥 Drop Your Take</button>
-          <button class="takes-btn" onclick="openTakeModal('',null,'quote')">🔁 Quote a Take</button>
+        <div class="debate-player-art">
+          <div class="player-num">15</div>
+          <div class="player-name">MAHOMES</div>
         </div>
       </div>
+    </div>
 
-      <!-- HALL OF FLAME -->
-      <div class="sec"><div class="sec-title">🏆 Hall of Flame</div><span style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted)">All-time most fired takes</span></div>
-      <div id="hall-of-flame" style="margin-bottom:16px"></div>
-
-      <!-- SORT + FILTER -->
-      <div class="feed-controls">
-        <div class="sort-bar">
-          <button class="sort-btn active" id="sort-hot" onclick="setSortMode('hot',this)">🔥 Hot</button>
-          <button class="sort-btn" id="sort-new" onclick="setSortMode('new',this)">⚡ New</button>
-          <button class="sort-btn" id="sort-discussed" onclick="setSortMode('discussed',this)">💬 Discussed</button>
-          <button class="sort-btn" id="sort-hof" onclick="setSortMode('hof',this)">🏆 Hall of Flame</button>
+    <div class="takes-sidebar-col">
+      <div class="section-row">
+        <h2 class="section-title">🔥 TRENDING FAN TAKES</h2>
+        <a class="view-all-link" href="#" onclick="showView('hall-of-flame');return false">View All →</a>
+      </div>
+      <div class="trending-takes-list" id="trending-takes-list">
+        <div class="trending-take-row" onclick="showView('hall-of-flame')">
+          <span class="take-fire-icon">🔥</span>
+          <div class="take-row-body">
+            <div class="take-row-text">Dan Campbell has to go for it.</div>
+            <div class="take-row-tag">NFL · Lions vs Bears</div>
+          </div>
+          <div class="take-row-counts"><span>👍 8.2K</span><span>💬 1.4K</span></div>
         </div>
-        <div class="sport-pills">
-          <button class="sport-pill active" onclick="setSportPill('All',this)">All</button>
-          <button class="sport-pill" onclick="setSportPill('NBA',this)">🏀 NBA</button>
-          <button class="sport-pill" onclick="setSportPill('NFL',this)">🏈 NFL</button>
-          <button class="sport-pill" onclick="setSportPill('MLB',this)">⚾ MLB</button>
-          <button class="sport-pill" onclick="setSportPill('Soccer',this)">⚽ Soccer</button>
-          <button class="sport-pill" onclick="setSportPill('UFC',this)">🥊 UFC</button>
-          <button class="sport-pill" onclick="setSportPill('F1',this)">🏎 F1</button>
-          <button class="sport-pill" onclick="setSportPill('Rugby',this)">🏉 Rugby</button>
-          <button class="sport-pill" onclick="setSportPill('NHL',this)">🏒 NHL</button>
+        <div class="trending-take-row" onclick="showView('hall-of-flame')">
+          <span class="take-fire-icon">🔥</span>
+          <div class="take-row-body">
+            <div class="take-row-text">The Lakers need another center.</div>
+            <div class="take-row-tag">NBA · Lakers</div>
+          </div>
+          <div class="take-row-counts"><span>👍 5.9K</span><span>💬 882</span></div>
+        </div>
+        <div class="trending-take-row" onclick="showView('hall-of-flame')">
+          <span class="take-fire-icon">🔥</span>
+          <div class="take-row-body">
+            <div class="take-row-text">Judge is the best player in baseball.</div>
+            <div class="take-row-tag">MLB · Yankees</div>
+          </div>
+          <div class="take-row-counts"><span>👍 4.7K</span><span>💬 612</span></div>
+        </div>
+        <div class="trending-take-row" onclick="showView('hall-of-flame')">
+          <span class="take-fire-icon">🔥</span>
+          <div class="take-row-body">
+            <div class="take-row-text">Topuria is the future of this division.</div>
+            <div class="take-row-tag">UFC · Lightweight</div>
+          </div>
+          <div class="take-row-counts"><span>👍 3.3K</span><span>💬 410</span></div>
         </div>
       </div>
-
-      <div id="takes-list"></div>
     </div>
 
-    <!-- VIDEOS -->
-    <div class="page" id="page-videos">
-      <div class="sec"><div class="sec-title">▶ Official Highlights</div><button class="sec-more" onclick="loadVideos()">↺ Refresh</button></div>
-      <div class="vid-filter-bar" id="vid-filters">
-        <span class="vf active" onclick="filterVids('all',this)">All</span>
-        <span class="vf" onclick="filterVids('NFL',this)">NFL</span>
-        <span class="vf" onclick="filterVids('NBA',this)">NBA</span>
-        <span class="vf" onclick="filterVids('MLB',this)">MLB</span>
-        <span class="vf" onclick="filterVids('NHL',this)">NHL</span>
-        <span class="vf" onclick="filterVids('Soccer',this)">Soccer</span>
-        <span class="vf" onclick="filterVids('Rugby',this)">Rugby</span>
-        <span class="vf" onclick="filterVids('UFC',this)">UFC</span>
-        <span class="vf" onclick="filterVids('F1',this)">F1</span>
+  </section>
+
+  <!-- TOP COMMUNITIES -->
+  <section class="section-wrap">
+    <div class="section-row">
+      <h2 class="section-title">TOP COMMUNITIES</h2>
+      <a class="view-all-link" href="#" onclick="showView('communities');return false">View All Communities →</a>
+    </div>
+    <div class="communities-grid">
+      <article class="community-card" style="background:radial-gradient(circle at 50% 20%,#0b3d6b,#050508)" onclick="joinComm('lions',this)">
+        <div class="comm-bg-emoji">🦁</div>
+        <div class="comm-info">
+          <h3>Lions Nation</h3>
+          <p>93.2K members</p>
+          <p class="comm-online">● 1.2K online</p>
+        </div>
+        <button class="comm-join-btn">JOIN</button>
+      </article>
+      <article class="community-card" style="background:radial-gradient(circle at 50% 20%,#3d1a6b,#050508)" onclick="joinComm('lakers',this)">
+        <div class="comm-bg-emoji">🏀</div>
+        <div class="comm-info">
+          <h3>Lakers World</h3>
+          <p>112K members</p>
+          <p class="comm-online">● 2.1K online</p>
+        </div>
+        <button class="comm-join-btn">JOIN</button>
+      </article>
+      <article class="community-card" style="background:radial-gradient(circle at 50% 20%,#111130,#050508)" onclick="joinComm('yankees',this)">
+        <div class="comm-bg-emoji">⚾</div>
+        <div class="comm-info">
+          <h3>Yankees Universe</h3>
+          <p>78.6K members</p>
+          <p class="comm-online">● 890 online</p>
+        </div>
+        <button class="comm-join-btn">JOIN</button>
+      </article>
+      <article class="community-card" style="background:radial-gradient(circle at 50% 20%,#4a0a10,#050508)" onclick="joinComm('ufc',this)">
+        <div class="comm-bg-emoji">🥊</div>
+        <div class="comm-info">
+          <h3>UFC Fans</h3>
+          <p>65.3K members</p>
+          <p class="comm-online">● 1.1K online</p>
+        </div>
+        <button class="comm-join-btn">JOIN</button>
+      </article>
+      <article class="community-card" style="background:radial-gradient(circle at 50% 20%,#2e1a00,#050508)" onclick="joinComm('college',this)">
+        <div class="comm-bg-emoji">🏈</div>
+        <div class="comm-info">
+          <h3>College Football</h3>
+          <p>54.8K members</p>
+          <p class="comm-online">● 723 online</p>
+        </div>
+        <button class="comm-join-btn">JOIN</button>
+      </article>
+    </div>
+  </section>
+
+  <!-- BOTTOM THREE COLUMNS -->
+  <section class="section-wrap three-col-section">
+
+    <!-- FAN IDENTITY -->
+    <div class="bottom-card">
+      <div class="section-row">
+        <h2 class="section-title">YOUR FAN IDENTITY</h2>
+        <a class="view-all-link" href="#" onclick="showView('profile');return false">View Profile →</a>
       </div>
-      <div class="vid-grid" id="vid-grid-1"></div>
-      <div class="vid-grid" id="vid-grid-2"></div>
-    </div>
-
-    <!-- ALL SCORES -->
-    <div class="page" id="page-allscores">
-      <div class="sec"><div class="sec-title">📊 All Scores</div></div>
-      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;" id="score-sport-btns">
-        <button class="vf active" onclick="filterAllScores('all',this)">All Sports</button>
-        <button class="vf" onclick="filterAllScores('american',this)">🏈 American</button>
-        <button class="vf" onclick="filterAllScores('soccer',this)">⚽ Soccer</button>
-        <button class="vf" onclick="filterAllScores('rugby',this)">🏉 Rugby</button>
-        <button class="vf" onclick="filterAllScores('combat',this)">🥊 Combat</button>
-        <button class="vf" onclick="filterAllScores('racing',this)">🏎 Racing</button>
+      <div class="fan-score-block">
+        <div class="gauge-container">
+          <svg viewBox="0 0 140 80" width="140" height="80">
+            <path d="M15 72 A55 55 0 0 1 125 72" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12" stroke-linecap="round"/>
+            <path d="M15 72 A55 55 0 0 1 125 72" fill="none" stroke="#EF1F2F" stroke-width="12" stroke-linecap="round" stroke-dasharray="173" stroke-dashoffset="45"/>
+          </svg>
+          <div class="gauge-center">
+            <div class="gauge-num">9,320</div>
+            <div class="gauge-sub">FAN SCORE</div>
+          </div>
+        </div>
+        <div class="fan-rank">Top 6% of Fans</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;" id="score-date-btns">
-        <button class="vf active" onclick="pickScoreDate(0,this)">Today</button>
-        <button class="vf" onclick="pickScoreDate(1,this)">Yesterday</button>
-        <button class="vf" onclick="pickScoreDate(2,this)">2 Days Ago</button>
-        <button class="vf" onclick="pickScoreDate(3,this)">3 Days Ago</button>
-      </div>
-      <div id="all-scores"></div>
-    </div>
-
-    <!-- TRENDING -->
-    <div class="page" id="page-trending">
-      <div style="text-align:center;padding:28px 0 16px;border-bottom:1px solid var(--border);margin-bottom:22px">
-        <div style="font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:var(--red);text-transform:uppercase;margin-bottom:8px">Live · Right Now · On Fire</div>
-        <div style="font-family:Oswald,sans-serif;font-size:36px;font-weight:700;color:#fff;line-height:1.1;letter-spacing:1px">WHAT'S HOT<br>ON SIDELINE</div>
-        <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-top:8px">Every fan is Stephen A. Smith here. Act accordingly. &mdash; <span style="color:var(--red)">fantakes.app</span></div>
-      </div>
-
-      <div class="sec">
-        <div class="sec-title">🔥 Hottest Takes Right Now</div>
-        <button class="sec-more" onclick="navTo('takes',7)">All Takes →</button>
-      </div>
-      <div id="trending-takes" style="margin-bottom:28px"></div>
-
-      <div class="sec">
-        <div class="sec-title">⚡ Breaking News</div>
-        <button class="sec-more" onclick="navTo('american',2)">More →</button>
-      </div>
-      <div class="content-grid" id="trending-news" style="margin-bottom:28px"></div>
-
-      <div class="sec">
-        <div class="sec-title">▶ Must-Watch Highlights</div>
-        <button class="sec-more" onclick="navTo('videos',8)">All Videos →</button>
-      </div>
-      <div class="vid-grid" id="trending-vids"></div>
-    </div>
-
-  </div>
-
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <!-- AD SLOT: remove display:none when AdSense/Ezoic approved and script added -->
-    <div class="ad-slot" style="display:none"><div class="ad-label">Advertisement</div><div class="ad-text">Your ad here</div></div>
-
-    <div class="sec"><div class="sec-title">⚡ Live Now</div></div>
-    <div id="sb-live"><span class="empty">Fetching live games...</span></div>
-
-    <div class="sec"><div class="sec-title">💬 Hot Takes</div></div>
-    <div id="sb-hot"></div>
-
-    <div class="sec"><div class="sec-title">🏆 Sports Today</div></div>
-    <div id="sb-sports"></div>
-
-    <!-- Breaking alerts -->
-    <div class="sec" style="margin-top:16px"><div class="sec-title">🔔 Breaking Alerts</div></div>
-    <div id="push-cta" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;margin-bottom:16px">
-      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:10px">Get notified on goals, trades &amp; breaking news</div>
-      <button style="background:var(--red);color:#fff;border:none;font-family:Space Mono,monospace;font-size:11px;font-weight:700;letter-spacing:1px;padding:9px 18px;border-radius:6px;cursor:pointer;width:100%" onclick="subscribePush()">🔔 ENABLE ALERTS</button>
-    </div>
-
-    <!-- Blog link -->
-    <div class="sec"><div class="sec-title">📰 Analysis &amp; Blog</div></div>
-    <a href="/blog.html" style="display:block;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;text-decoration:none">
-      <div style="font-family:Oswald,sans-serif;font-size:14px;font-weight:600;color:#fff;margin-bottom:4px">Sports News &amp; Hot Takes →</div>
-      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted)">AI-powered analysis on every match</div>
-    </a>
-
-    <div class="sec" style="margin-top:4px"><div class="sec-title">📱 Get the App</div></div>
-    <div style="background:linear-gradient(135deg,#1a0000,#0d1117);border:1px solid rgba(255,61,61,0.3);border-radius:12px;padding:16px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">📲</div>
-      <div style="font-family:Oswald,sans-serif;font-size:16px;font-weight:600;color:#fff;margin-bottom:6px;">fantakes.app</div>
-      <div style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);margin-bottom:12px;">Sideline &mdash; Coming soon to iOS &amp; Android</div>
-      <button style="background:var(--red);color:#fff;border:none;font-family:Oswald,sans-serif;font-size:12px;font-weight:600;padding:8px 20px;border-radius:6px;cursor:pointer;width:100%;" onclick="showToast('You\'ll be first to know — stay tuned! 📲')">Notify Me</button>
-    </div>
-  </div>
-</div>
-
-<!-- VIDEO MODAL -->
-<div class="modal" id="vid-modal" onclick="if(event.target===this)closeVid()">
-  <div class="modal-inner">
-    <div class="modal-top">
-      <div class="modal-title" id="modal-title"></div>
-      <button class="modal-close" onclick="closeVid()">X Close</button>
-    </div>
-    <div class="vid-frame-wrap">
-      <iframe id="vid-frame" allowfullscreen allow="autoplay;encrypted-media"></iframe>
-    </div>
-    <div class="modal-foot" id="modal-foot">Official content from YouTube · Tap outside to close</div>
-  </div>
-</div>
-
-<!-- GAME POPUP -->
-<div class="modal" id="game-popup" onclick="if(event.target===this)closeGamePopup()">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:360px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div id="gp-label" style="font-family:Space Mono,monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em"></div>
-      <button onclick="closeGamePopup()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1">✕</button>
-    </div>
-    <div id="gp-status" style="text-align:center;margin-bottom:16px"></div>
-    <div style="background:var(--surface2);border-radius:12px;overflow:hidden">
-      <div id="gp-away" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"></div>
-      <div style="height:1px;background:var(--border)"></div>
-      <div id="gp-home" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px"></div>
-    </div>
-    <div id="gp-footer" style="text-align:center;margin-top:14px"></div>
-  </div>
-</div>
-
-<!-- POST TAKE MODAL v2 -->
-<div class="modal" id="take-modal" onclick="if(event.target===this)closeTakeModal()">
-  <div class="composer-modal">
-    <!-- Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-      <div>
-        <div style="font-family:Oswald,sans-serif;font-size:26px;font-weight:700;color:#fff;line-height:1" id="composer-title">Drop Your Take 🔥</div>
-        <div style="font-family:Space Mono,monospace;font-size:9px;color:var(--muted);margin-top:3px">Any sport. Any opinion. Let the crowd decide.</div>
-      </div>
-      <button onclick="closeTakeModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:Space Mono,monospace;font-size:11px;padding:7px 14px;border-radius:8px;cursor:pointer;flex-shrink:0">✕ Close</button>
-    </div>
-
-    <!-- Type Selector (hidden when quoting/stitching/dueting) -->
-    <div class="composer-types" id="comp-type-row">
-      <button class="comp-type-btn active" id="ctype-short" onclick="setTakeMode('short',this)">✏️ Short Take</button>
-      <button class="comp-type-btn" id="ctype-long" onclick="setTakeMode('long',this)">📝 Long Take</button>
-      <button class="comp-type-btn" id="ctype-thread" onclick="setTakeMode('thread',this)">🧵 Thread</button>
-    </div>
-
-    <!-- Handle -->
-    <div style="margin-bottom:14px">
-      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Your handle (optional)</div>
-      <input id="take-username" type="text" placeholder="@yourname" maxlength="30" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;color:#fff;font-family:Space Mono,monospace;font-size:12px;outline:none;box-sizing:border-box;transition:border-color 0.15s" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">
-    </div>
-
-    <!-- Sport Selector -->
-    <div style="margin-bottom:14px">
-      <div style="font-family:Space Mono,monospace;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Pick your sport</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">
-        <button class="sport-pick active" onclick="pickSport('NBA',this)">🏀 NBA</button>
-        <button class="sport-pick" onclick="pickSport('NFL',this)">🏈 NFL</button>
-        <button class="sport-pick" onclick="pickSport('Soccer',this)">⚽ Soccer</button>
-        <button class="sport-pick" onclick="pickSport('MLB',this)">⚾ MLB</button>
-        <button class="sport-pick" onclick="pickSport('NHL',this)">🏒 NHL</button>
-        <button class="sport-pick" onclick="pickSport('UFC',this)">🥊 UFC</button>
-        <button class="sport-pick" onclick="pickSport('F1',this)">🏎 F1</button>
-        <button class="sport-pick" onclick="pickSport('Rugby',this)">🏉 Rugby</button>
-        <button class="sport-pick" onclick="pickSport('WNBA',this)">🏀 WNBA</button>
+      <div class="fan-badges-row">
+        <div class="fan-badge-item">
+          <div class="fbi-icon">🎯</div>
+          <div class="fbi-val">87%</div>
+          <div class="fbi-label">Accuracy</div>
+        </div>
+        <div class="fan-badge-item">
+          <div class="fbi-icon">🏆</div>
+          <div class="fbi-val">12</div>
+          <div class="fbi-label">Hall of Flame</div>
+        </div>
+        <div class="fan-badge-item">
+          <div class="fbi-icon">⭐</div>
+          <div class="fbi-val">Elite</div>
+          <div class="fbi-label">Debater</div>
+        </div>
       </div>
     </div>
 
-    <!-- Quoted/Stitch/Duet context (shown when applicable) -->
-    <div id="quote-context" style="display:none" class="quoted-take-composer">
-      <div class="quoted-take-composer-label" id="quote-context-label">🔁 Quoting:</div>
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <div class="quoted-take-avatar" id="qc-avatar" style="width:20px;height:20px;font-size:8px"></div>
-        <span style="font-family:Oswald,sans-serif;font-size:12px;font-weight:700;color:#fff" id="qc-user"></span>
+    <!-- HALL OF FLAME PREVIEW -->
+    <div class="bottom-card">
+      <div class="section-row">
+        <h2 class="section-title">HALL OF FLAME</h2>
+        <a class="view-all-link" href="#" onclick="showView('hall-of-flame');return false">View All →</a>
       </div>
-      <div class="quoted-take-composer-text" id="qc-text"></div>
-    </div>
-
-    <!-- SHORT TAKE input -->
-    <div id="comp-short-area">
-      <textarea class="take-input" id="take-input" placeholder="Drop your hottest take... bold opinions only." oninput="onMainInputChange()" maxlength="280" style="height:110px;font-size:17px;"></textarea>
-    </div>
-
-    <!-- LONG TAKE input -->
-    <div id="comp-long-area" style="display:none">
-      <textarea class="take-input" id="take-input-long" placeholder="Write your full take. No limit. Say what needs to be said." oninput="onLongInputChange()" maxlength="2000" style="height:160px;font-size:15px;font-family:Inter,sans-serif;line-height:1.6;"></textarea>
-    </div>
-
-    <!-- THREAD composer -->
-    <div id="comp-thread-area" style="display:none">
-      <div class="thread-parts-composer" id="thread-parts-list"></div>
-      <button class="add-part-btn" id="add-thread-part-btn" onclick="addThreadPart()">+ Add another part (max 5)</button>
-    </div>
-
-    <!-- Media upload -->
-    <div id="comp-media-row" style="margin-top:12px">
-      <div class="media-upload-row">
-        <label class="media-btn" style="cursor:pointer">
-          📹 Add Video
-          <input type="file" id="video-upload" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="handleVideoUpload(this)">
-        </label>
-        <label class="media-btn" style="cursor:pointer">
-          🖼 Add Image
-          <input type="file" id="image-upload" accept="image/jpeg,image/png,image/gif" style="display:none" onchange="handleImageUpload(this)">
-        </label>
-      </div>
-      <div id="media-preview" style="display:none" class="media-preview-wrap">
-        <img id="media-preview-img" style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px" alt="">
-        <video id="media-preview-vid" style="display:none;width:100%;max-height:200px;object-fit:cover;border-radius:10px" muted playsinline></video>
-        <button class="remove-media-btn" onclick="removeMedia()">✕</button>
+      <div class="hof-preview-list">
+        <div class="hof-preview-item" onclick="showView('hall-of-flame')">
+          <span class="hof-flame">🔥</span>
+          <div class="hof-preview-body">
+            <div class="hof-preview-quote">"I called the upset before kickoff."</div>
+            <div class="hof-preview-meta">18.2K upvotes · NFL</div>
+          </div>
+          <div class="hof-preview-thumb" style="background:linear-gradient(135deg,#1a2a4a,#050508)">🏈</div>
+        </div>
+        <div class="hof-preview-item" onclick="showView('hall-of-flame')">
+          <span class="hof-flame">🔥</span>
+          <div class="hof-preview-body">
+            <div class="hof-preview-quote">"This trade will change the Lakers season."</div>
+            <div class="hof-preview-meta">12.7K upvotes · NBA</div>
+          </div>
+          <div class="hof-preview-thumb" style="background:linear-gradient(135deg,#3a1a6a,#050508)">🏀</div>
+        </div>
+        <div class="hof-preview-item" onclick="showView('hall-of-flame')">
+          <span class="hof-flame">🔥</span>
+          <div class="hof-preview-body">
+            <div class="hof-preview-quote">"Topuria by KO. Book it."</div>
+            <div class="hof-preview-meta">9.8K upvotes · UFC</div>
+          </div>
+          <div class="hof-preview-thumb" style="background:linear-gradient(135deg,#4a0a10,#050508)">🥊</div>
+        </div>
       </div>
     </div>
 
-    <!-- Link to Live Game -->
-    <div class="link-game-row" id="link-game-row" style="margin-top:10px">
-      <button class="link-game-btn" id="link-game-btn" onclick="toggleGameDropdown()">⚡ Link to Live Game</button>
-      <div id="game-dropdown" style="display:none" class="game-dropdown"></div>
+    <!-- JOIN CTA -->
+    <div class="bottom-card cta-card">
+      <h2 class="cta-headline">EVERY FAN HAS A TAKE.</h2>
+      <p class="cta-sub">MAKE YOURS COUNT.</p>
+      <ul class="cta-features">
+        <li><span class="cta-star">★</span> Live games &amp; real-time fan chat</li>
+        <li><span class="cta-star">★</span> Debate, vote &amp; be heard</li>
+        <li><span class="cta-star">★</span> Build your fan identity</li>
+        <li><span class="cta-star">★</span> Climb the ranks &amp; be legendary</li>
+      </ul>
+      <button class="btn-join-fantakes" onclick="openModal('signup')">JOIN FANTAKES →</button>
     </div>
 
-    <!-- Error -->
-    <div id="take-error" style="display:none;font-family:Space Mono,monospace;font-size:10px;color:var(--red);margin-top:10px;padding:8px 12px;background:rgba(255,61,61,0.1);border-radius:6px;border-left:3px solid var(--red)"></div>
+  </section>
 
-    <!-- Footer -->
-    <div class="composer-footer">
-      <span class="char-count" id="take-char-count">0 / 280</span>
-      <button class="post-take-btn" onclick="submitTake()">Drop It 🔥</button>
+  <!-- FOOTER -->
+  <footer class="ft-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a class="ft-logo footer-logo" href="#">
+          <span class="logo-fan">Fan</span><span class="logo-takes">Takes</span><span class="logo-mark">▱</span>
+        </a>
+        <div class="footer-socials">
+          <a href="#" class="social-icon">𝕏</a>
+          <a href="#" class="social-icon">📷</a>
+          <a href="#" class="social-icon">🎵</a>
+          <a href="#" class="social-icon">▶</a>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div class="footer-col"><h4>ABOUT</h4><a href="#">About Us</a><a href="#">Careers</a><a href="#">Press</a></div>
+        <div class="footer-col"><h4>SUPPORT</h4><a href="#">Help Center</a><a href="#">Community Guidelines</a><a href="#">Contact Us</a></div>
+        <div class="footer-col"><h4>COMPANY</h4><a href="#">Terms of Service</a><a href="#">Privacy Policy</a><a href="#">Cookie Policy</a></div>
+      </div>
+      <div class="footer-subscribe">
+        <h4>STAY IN THE ARENA</h4>
+        <p>Get the latest updates &amp; biggest debates</p>
+        <form class="subscribe-form" onsubmit="handleSubscribe(event)">
+          <input type="email" placeholder="Enter your email" required class="subscribe-input">
+          <button type="submit" class="subscribe-btn">SUBSCRIBE</button>
+        </form>
+      </div>
     </div>
+    <div class="footer-bottom">
+      <p>© <span id="footer-year"></span> FanTakes. All rights reserved.</p>
+    </div>
+  </footer>
 
-    <!-- Hidden canvas for video thumbnail extraction -->
-    <canvas id="thumb-canvas" style="display:none"></canvas>
-  </div>
-</div>
+</div><!-- end view-home -->
 
-<footer>SIDELINE &mdash; <strong style="color:var(--red)">fantakes.app</strong> &middot; All sports, all fans, all the time &middot; Data via ESPN &middot; Refreshes every 30s</footer>
-
-</div>
-<div id="view-my-arena" class="view" style="display:none">
-  <div class="arena-layout">
+<!-- ═══════════════════════════════════════════
+     VIEW 2 — MY ARENA
+═══════════════════════════════════════════ -->
+<div id="view-my-arena" class="view">
+  <div class="arena-wrap">
     <aside class="arena-sidebar">
-      <div class="arena-user-block">
-        <div class="arena-avatar" id="arena-avatar-display">JD</div>
-        <div class="arena-username" id="arena-username">Jordan23</div>
-        <div class="arena-badge">⭐ Pro Member</div>
-        <div class="arena-score" id="arena-fan-score">92.4</div>
-        <div class="arena-score-label">Top 6% of Fans</div>
+      <div class="arena-user">
+        <div class="arena-av">J</div>
+        <div class="arena-uname">Jordan23</div>
+        <div class="arena-ubadge">Pro Member</div>
+        <div class="arena-score-big">92.4</div>
+        <div class="arena-score-label">FAN SCORE</div>
       </div>
-      <nav class="arena-nav">
-        <div class="arena-nav-item active" onclick="showArenaSection('home')">🏠 My Arena</div>
-        <div class="arena-nav-item" onclick="showView('game-room')">🎮 Games</div>
-        <div class="arena-nav-item">👥 My Teams</div>
-        <div class="arena-nav-item" onclick="showView('communities')">🏘 Communities</div>
-        <div class="arena-nav-item" onclick="showView('debate-center')">⚡ Debate Center</div>
-        <div class="arena-nav-item" onclick="showView('hall-of-flame')">🔥 Hall of Flame</div>
-        <div class="arena-nav-item">👫 Friends</div>
-        <div class="arena-nav-item">🔔 Notifications <span class="nav-badge">3</span></div>
-        <div class="arena-nav-item" onclick="showView('fan-profile')">👤 Profile</div>
-        <div class="arena-nav-item" onclick="showView('more-support')">⚙️ Settings</div>
+      <nav class="arena-nav-list">
+        <a class="arena-nav-link active" href="#" onclick="showView('my-arena');return false">🏠 Dashboard</a>
+        <a class="arena-nav-link" href="#" onclick="showView('game-room');return false">🎮 Game Room</a>
+        <a class="arena-nav-link" href="#" onclick="showView('debate-center');return false">🔥 Debate Center</a>
+        <a class="arena-nav-link" href="#" onclick="showView('communities');return false">👥 Communities</a>
+        <a class="arena-nav-link" href="#" onclick="showView('hall-of-flame');return false">🏆 Hall of Flame</a>
+        <a class="arena-nav-link" href="#" onclick="showView('more');return false">🔔 Notifications<span class="arena-notif-badge">3</span></a>
+        <a class="arena-nav-link" href="#" onclick="showView('profile');return false">👤 Profile</a>
+        <a class="arena-nav-link" href="#" onclick="showView('more');return false">⚙️ More</a>
       </nav>
     </aside>
-    <div class="arena-content">
-      <div class="arena-welcome">Welcome back, <span id="arena-welcome-name">Jordan</span>! 🔥</div>
-      <div class="arena-stats-bar">
-        <div class="arena-stat"><small>FAN SCORE</small><b>87%</b><span class="change">↑ 3.7</span></div>
-        <div class="arena-stat"><small>ACCURACY</small><b>87%</b><span class="change">Top 1%</span></div>
-        <div class="arena-stat"><small>RANK</small><b>#4,892</b><span class="change">of 1.2M fans</span></div>
-        <div class="arena-stat"><small>HALL OF FLAME</small><b>12 🔥</b><span class="change">Appearances</span></div>
+    <div class="arena-main">
+      <h1 class="arena-welcome">Welcome back, <span id="arena-welcome-name">Jordan</span> 👋</h1>
+      <div class="arena-stats">
+        <div class="arena-stat"><small>ACCURACY</small><b>87%</b><span class="change">+2% this week</span></div>
+        <div class="arena-stat"><small>RANK</small><b>#4892</b><span class="change">↑ 214 this week</span></div>
+        <div class="arena-stat"><small>HALL OF FLAME</small><b>12</b><span class="change">+1 this week</span></div>
+        <div class="arena-stat"><small>STREAK</small><b id="arena-streak-num">5</b><span class="change">days running</span></div>
       </div>
-      <div class="arena-section-title">LIVE GAMES YOU CAN JOIN <a href="#" onclick="showView('game-room');return false">View All</a></div>
-      <div class="arena-live-games">
-        <div class="arena-game-card" onclick="showView('game-room')">
-          <div class="arena-game-league">GSW vs DAL · NBA PLAYOFFS</div>
+      <div class="arena-section-hdr">LIVE GAMES <a href="#" onclick="showView('game-room');return false">View All →</a></div>
+      <div class="arena-games">
+        <div class="arena-game" onclick="showView('game-room')">
+          <div class="arena-game-league">NBA · PLAYOFFS</div>
           <div class="arena-game-score">
-            <div class="arena-game-team">GSW</div>
-            <div class="arena-game-vs">101<span style="font-size:16px;opacity:.4;margin:0 8px">-</span>99</div>
-            <div class="arena-game-team">DAL</div>
+            <span class="arena-game-team">GSW</span>
+            <span class="arena-big-score">101 – 99</span>
+            <span class="arena-game-team">DAL</span>
           </div>
-          <div class="arena-game-meta"><span>4TH QTR · 1:32</span><span class="arena-game-fans">18.7K fans</span></div>
-          <button class="arena-join-btn" onclick="showView('game-room')">JOIN ARENA</button>
+          <div class="arena-game-meta"><span>4TH QTR · 1:32</span><span class="arena-fans">18.7K in arena</span></div>
+          <button class="arena-join" onclick="event.stopPropagation();showView('game-room')">JOIN ARENA</button>
         </div>
-        <div class="arena-game-card" onclick="showView('game-room')">
-          <div class="arena-game-league">BOS vs MIA · NBA PLAYOFFS</div>
+        <div class="arena-game" onclick="showView('game-room')">
+          <div class="arena-game-league">NBA</div>
           <div class="arena-game-score">
-            <div class="arena-game-team">BOS</div>
-            <div class="arena-game-vs">87<span style="font-size:16px;opacity:.4;margin:0 8px">-</span>82</div>
-            <div class="arena-game-team">MIA</div>
+            <span class="arena-game-team">BOS</span>
+            <span class="arena-big-score">88 – 84</span>
+            <span class="arena-game-team">MIA</span>
           </div>
-          <div class="arena-game-meta"><span>3RD QTR · 8:44</span><span class="arena-game-fans">22.3K fans</span></div>
-          <button class="arena-join-btn" onclick="showView('game-room')">JOIN ARENA</button>
+          <div class="arena-game-meta"><span>3RD QTR · 5:10</span><span class="arena-fans">11.2K in arena</span></div>
+          <button class="arena-join" onclick="event.stopPropagation();showView('game-room')">JOIN ARENA</button>
         </div>
-        <div class="arena-game-card" onclick="showView('game-room')">
-          <div class="arena-game-league">UFC 302 · MAIN CARD</div>
-          <div class="arena-game-score" style="flex-direction:column;align-items:center;gap:4px">
-            <div style="font-size:13px;font-weight:700">VOLKANOVSKI</div>
-            <div style="font-size:14px;opacity:.4">vs</div>
-            <div style="font-size:13px;font-weight:700">TOPURIA</div>
+        <div class="arena-game" onclick="showView('game-room')">
+          <div class="arena-game-league">UFC 302</div>
+          <div class="arena-game-score">
+            <span class="arena-game-team">Volkanovski</span>
+            <span class="arena-big-score">VS</span>
+            <span class="arena-game-team">Topuria</span>
           </div>
-          <div class="arena-game-meta"><span>LIVE</span><span class="arena-game-fans">12.6K fans</span></div>
-          <button class="arena-join-btn" onclick="showView('game-room')">JOIN ARENA</button>
+          <div class="arena-game-meta"><span>MAIN CARD</span><span class="arena-fans">12.3K in arena</span></div>
+          <button class="arena-join" onclick="event.stopPropagation();showView('game-room')">JOIN ARENA</button>
         </div>
       </div>
-      <div class="arena-three-col">
-        <div class="arena-col-card">
-          <div class="arena-section-title">FRIENDS DEBATING <a href="#">View All</a></div>
-          <div class="friend-item">
-            <div class="friend-avatar" style="background:linear-gradient(135deg,#6c3483,#1a0a2e)">HH</div>
-            <div><div class="friend-text"><b>HoopHannah</b> posted a take — "Curry is HIM 🔥"</div><div class="friend-counts">👍 1.2K · 💬 128 · 3m ago</div></div>
+      <div class="arena-cols">
+        <div class="arena-col">
+          <div class="arena-section-hdr">FRIENDS DEBATING</div>
+          <div class="friend-row">
+            <div class="friend-av" style="background:#1a5276">MK</div>
+            <div class="friend-txt">MikeK just took <b>DISAGREE</b> on the Mahomes GOAT debate<div class="friend-meta">2m ago</div></div>
           </div>
-          <div class="friend-item">
-            <div class="friend-avatar" style="background:linear-gradient(135deg,#1a5276,#0a1a2e)">MG</div>
-            <div><div class="friend-text"><b>MikeG</b> voted in a poll — "Who wins the East?"</div><div class="friend-counts">5m ago</div></div>
+          <div class="friend-row">
+            <div class="friend-av" style="background:#6c3483">TW</div>
+            <div class="friend-txt">TashaW is arguing in Lakers World about the trade deadline<div class="friend-meta">9m ago</div></div>
           </div>
-          <div class="friend-item">
-            <div class="friend-avatar" style="background:linear-gradient(135deg,#784212,#2e1a0a)">CK</div>
-            <div><div class="friend-text"><b>ClutchKing</b> replied to your take</div><div class="friend-counts">💬 "Game of the year." · 8m ago</div></div>
+          <div class="friend-row">
+            <div class="friend-av" style="background:#1e8449">RS</div>
+            <div class="friend-txt">RonS dropped a take in the GSW vs DAL game room<div class="friend-meta">14m ago</div></div>
           </div>
-        </div>
-        <div class="arena-col-card">
-          <div class="arena-section-title">YOUR COMMUNITIES <a href="#" onclick="showView('communities');return false">View All</a></div>
-          <div class="comm-item">
-            <div class="comm-item-icon">🏀</div>
-            <div><div class="comm-item-name">Lakers Nation</div><div class="comm-item-count">93.2K members</div><div class="comm-item-update">Community update</div></div>
-          </div>
-          <div class="comm-item">
-            <div class="comm-item-icon">⭐</div>
-            <div><div class="comm-item-name">Cowboys Nation</div><div class="comm-item-count">81.4K members</div></div>
-          </div>
-          <div class="comm-item">
-            <div class="comm-item-icon">🥊</div>
-            <div><div class="comm-item-name">UFC Fans</div><div class="comm-item-count">63.4K members</div></div>
+          <div class="friend-row">
+            <div class="friend-av" style="background:#784212">JD</div>
+            <div class="friend-txt">JordanD just joined the Verstappen F1 debate<div class="friend-meta">22m ago</div></div>
           </div>
         </div>
-        <div class="arena-col-card">
-          <div class="arena-section-title">RECENT ACTIVITY</div>
-          <div class="recent-item">
+        <div class="arena-col">
+          <div class="arena-section-hdr">YOUR COMMUNITIES</div>
+          <div class="comm-row">
+            <div class="comm-icon">🏀</div>
+            <div style="flex:1"><div class="comm-name">Lakers World</div><div class="comm-count">112K members</div></div>
+            <div class="comm-update">12 new</div>
+          </div>
+          <div class="comm-row">
+            <div class="comm-icon">🦁</div>
+            <div style="flex:1"><div class="comm-name">Lions Nation</div><div class="comm-count">93.2K members</div></div>
+            <div class="comm-update">4 new</div>
+          </div>
+          <div class="comm-row">
+            <div class="comm-icon">⚾</div>
+            <div style="flex:1"><div class="comm-name">Yankees Universe</div><div class="comm-count">78.6K members</div></div>
+            <div class="comm-update">7 new</div>
+          </div>
+          <div class="comm-row">
+            <div class="comm-icon">🥊</div>
+            <div style="flex:1"><div class="comm-name">UFC Fans</div><div class="comm-count">65.3K members</div></div>
+            <div class="comm-update">2 new</div>
+          </div>
+        </div>
+        <div class="arena-col">
+          <div class="arena-section-hdr">RECENT ACTIVITY</div>
+          <div class="recent-row">
             <div class="recent-icon">🔥</div>
-            <div><div class="recent-text">You posted a take: <i>"The Lakers need another center."</i></div><div class="recent-meta">2m ago · <span class="recent-fire">5.9K fire</span></div></div>
+            <div class="recent-txt"><span class="recent-fire">+152</span> upvotes on "Judge is unanimous MVP"<div class="recent-meta">3h ago</div></div>
           </div>
-          <div class="recent-item">
-            <div class="recent-icon">📊</div>
-            <div><div class="recent-text">You voted in a poll: <i>"Who wins the East?"</i></div><div class="recent-meta">10m ago</div></div>
+          <div class="recent-row">
+            <div class="recent-icon">🏆</div>
+            <div class="recent-txt">You entered the Hall of Flame in NFL<div class="recent-meta">1d ago</div></div>
           </div>
-          <div class="recent-item">
-            <div class="recent-icon">⭐</div>
-            <div><div class="recent-text">You earned a badge: <b>Elite Debater</b></div><div class="recent-meta">1h ago</div></div>
+          <div class="recent-row">
+            <div class="recent-icon">💬</div>
+            <div class="recent-txt">You commented on the Cowboys Super Bowl debate<div class="recent-meta">2d ago</div></div>
+          </div>
+          <div class="recent-row">
+            <div class="recent-icon">🎯</div>
+            <div class="recent-txt">Your prediction accuracy hit <b>87%</b><div class="recent-meta">3d ago</div></div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<div id="view-game-room" class="view" style="display:none">
-  <div class="game-room-header">
-    <div style="max-width:900px;margin:0 auto;display:flex;justify-content:space-between;align-items:center">
-      <a href="#" onclick="showView('public-home');return false" style="font-size:12px;color:rgba(255,255,255,.5);text-decoration:none;font-weight:600">← Back to Games</a>
-      <div style="display:flex;gap:8px">
-        <button style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer">⤴</button>
-        <button style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer">⋯</button>
-      </div>
-    </div>
-    <div style="max-width:900px;margin:0 auto;font-size:10px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.4);text-align:center;margin-top:10px">NBA PLAYOFFS</div>
-    <div class="game-scoreboard">
-      <div class="game-team-block">
-        <div class="game-team-logo-big">🟡</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 3 — GAME ROOM
+═══════════════════════════════════════════ -->
+<div id="view-game-room" class="view">
+  <div class="gr-header">
+    <div class="gr-back" onclick="showView('home')">← Back to Home</div>
+    <div class="gr-scoreboard">
+      <div class="gr-team">
+        <div class="gr-team-emoji">⚡</div>
         <div>
-          <div class="game-team-abbr">GSW</div>
-          <div class="game-big-score" id="g1-home-score">101</div>
+          <div class="gr-score">101</div>
+          <div class="gr-team-name">WARRIORS</div>
         </div>
       </div>
-      <div class="game-clock-display">
-        <div class="game-clock-time" id="g1-clock">4TH QTR · 1:32</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px">🔥 18.7K in arena</div>
+      <div class="gr-mid">
+        <div class="gr-clock">NBA PLAYOFFS · 4TH QTR · 1:32</div>
+        <div class="gr-arena-count">🟢 18.7K in arena</div>
       </div>
-      <div class="game-team-block right">
+      <div class="gr-team right">
         <div>
-          <div class="game-team-abbr" style="text-align:right">DAL</div>
-          <div class="game-big-score" id="g1-away-score">99</div>
+          <div class="gr-score">99</div>
+          <div class="gr-team-name">MAVERICKS</div>
         </div>
-        <div class="game-team-logo-big">🔵</div>
+        <div class="gr-team-emoji">🐴</div>
       </div>
     </div>
   </div>
 
-  <div class="game-tabs">
-    <button class="tab-btn" onclick="switchGameTab('chat',this)">Chat</button>
-    <button class="tab-btn active" onclick="switchGameTab('takes',this)">Takes</button>
-    <button class="tab-btn" onclick="switchGameTab('polls',this)">Polls</button>
-    <button class="tab-btn" onclick="switchGameTab('stats',this)">Stats</button>
-    <button class="tab-btn" onclick="switchGameTab('playbyplay',this)">Play by Play</button>
+  <div class="gr-tabs">
+    <button class="gr-tab" type="button" onclick="switchGRTab('chat',this)">Chat</button>
+    <button class="gr-tab active" type="button" onclick="switchGRTab('takes',this)">Takes</button>
+    <button class="gr-tab" type="button" onclick="switchGRTab('polls',this)">Polls</button>
+    <button class="gr-tab" type="button" onclick="switchGRTab('stats',this)">Stats</button>
+    <button class="gr-tab" type="button" onclick="switchGRTab('pxp',this)">Play by Play</button>
   </div>
 
-  <div class="game-room-body">
-    <div class="game-main-content">
+  <div class="gr-body">
+    <div class="gr-main">
 
-      <!-- TAKES (default) -->
-      <div class="game-tab-content active" id="game-tab-takes">
-        <div class="take-input-row">
-          <input class="take-input" id="game-take-input" placeholder="Share your take...">
-          <button class="post-btn" onclick="postTake('game-take-input','NBA')">POST</button>
+      <!-- CHAT TAB -->
+      <div class="gr-tab-content" id="gr-tab-chat">
+        <div class="gr-post-row">
+          <input class="gr-post-input" id="gr-chat-input" type="text" placeholder="Say something to the arena...">
+          <button class="gr-post-btn" onclick="postGameTake('gr-chat-input')">Send</button>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button class="tab-btn active" style="padding:6px 12px">Top</button>
-          <button class="tab-btn" style="padding:6px 12px">Recent</button>
-          <button class="tab-btn" style="padding:6px 12px">Following</button>
+        <div class="gr-takes-feed">
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#1a5276">MK</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">MikeK <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Curry is heating up, this is over if he keeps this pace.</div>
+            </div>
+          </div>
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#6c3483">TW</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">TashaW <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Mavs need to switch the defense NOW.</div>
+            </div>
+          </div>
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#1e8449">RS</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">RonS <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">This crowd is INSANE right now 🔥</div>
+            </div>
+          </div>
         </div>
-        <div class="take-feed">
-          <div class="take-item">
-            <div class="take-avatar">CH</div>
-            <div class="take-content">
-              <div class="take-username">@ClutchHannah<span class="live-indicator"></span></div>
-              <div class="take-text">Warriors can close this out. Curry time! 🔥</div>
-              <div class="take-actions">
-                <button onclick="voteOnTake('gr-1','fire',this)">👍 1.2K</button>
-                <button>💬 128</button>
+      </div>
+
+      <!-- TAKES TAB (default active) -->
+      <div class="gr-tab-content active" id="gr-tab-takes" style="display:block">
+        <div class="gr-post-row">
+          <input class="gr-post-input" id="gr-take-input" type="text" placeholder="Drop your take on this game...">
+          <button class="gr-post-btn" onclick="postGameTake('gr-take-input')">Post</button>
+        </div>
+        <div class="gr-takes-feed">
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#1a5276">JD</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">JordanD <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Warriors bench is winning this game single-handedly.</div>
+              <div class="gr-take-actions">
+                <button onclick="voteTake('gr-take-1','fire',this)">🔥 842</button>
+                <button onclick="voteTake('gr-take-1','ice',this)">🧊 61</button>
+                <button>💬 118</button>
               </div>
             </div>
           </div>
-          <div class="take-item">
-            <div class="take-avatar">SB</div>
-            <div class="take-content">
-              <div class="take-username">@SplashBro</div>
-              <div class="take-text">Dallas will pull this off. Luka is different.</div>
-              <div class="take-actions">
-                <button onclick="voteOnTake('gr-2','fire',this)">👍 642</button>
-                <button>💬 73</button>
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#6c3483">MK</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">MikeK <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Kyrie has to get more aggressive in the 4th.</div>
+              <div class="gr-take-actions">
+                <button onclick="voteTake('gr-take-2','fire',this)">🔥 613</button>
+                <button onclick="voteTake('gr-take-2','ice',this)">🧊 44</button>
+                <button>💬 87</button>
               </div>
             </div>
           </div>
-          <div class="take-item">
-            <div class="take-avatar">HH</div>
-            <div class="take-content">
-              <div class="take-username">@HoopHannah</div>
-              <div class="take-text">This is the best game of the playoffs!</div>
-              <div class="take-actions">
-                <button onclick="voteOnTake('gr-3','fire',this)">👍 680</button>
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#1e8449">TW</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">TashaW <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Draymond's defense is the real MVP tonight.</div>
+              <div class="gr-take-actions">
+                <button onclick="voteTake('gr-take-3','fire',this)">🔥 405</button>
+                <button onclick="voteTake('gr-take-3','ice',this)">🧊 32</button>
+                <button>💬 56</button>
+              </div>
+            </div>
+          </div>
+          <div class="gr-take">
+            <div class="gr-take-av" style="background:#784212">RS</div>
+            <div class="gr-take-body">
+              <div class="gr-take-user">RonS <span class="gr-live-dot"></span></div>
+              <div class="gr-take-text">Mavericks blow this if they don't foul smart down the stretch.</div>
+              <div class="gr-take-actions">
+                <button onclick="voteTake('gr-take-4','fire',this)">🔥 298</button>
+                <button onclick="voteTake('gr-take-4','ice',this)">🧊 19</button>
                 <button>💬 41</button>
               </div>
             </div>
           </div>
-          <div class="take-item">
-            <div class="take-avatar">MF</div>
-            <div class="take-content">
-              <div class="take-username">@MavsFaithful ✓</div>
-              <div class="take-text">Lively and Gafford are shutting it down.</div>
-              <div class="take-actions">
-                <button onclick="voteOnTake('gr-4','fire',this)">👍 612</button>
-                <button>💬 29</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      <!-- CHAT -->
-      <div class="game-tab-content" id="game-tab-chat" style="display:none">
-        <div class="take-feed">
-          <div class="take-item">
-            <div class="take-avatar">CH</div>
-            <div class="take-content"><div class="take-username">@ClutchHannah<span class="live-indicator"></span></div><div class="take-text">LETS GOOO</div></div>
-          </div>
-          <div class="take-item">
-            <div class="take-avatar">SB</div>
-            <div class="take-content"><div class="take-username">@SplashBro</div><div class="take-text">not over yet</div></div>
-          </div>
-          <div class="take-item">
-            <div class="take-avatar">HH</div>
-            <div class="take-content"><div class="take-username">@HoopHannah</div><div class="take-text">what a game</div></div>
-          </div>
+      <!-- POLLS TAB -->
+      <div class="gr-tab-content" id="gr-tab-polls">
+        <div class="gr-poll-q">Who wins this game?</div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Warriors</span><span>63%</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-w" style="width:63%"></div></div>
+        </div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Mavericks</span><span>37%</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-m" style="width:37%"></div></div>
+        </div>
+        <div class="gr-poll-votes">14,208 votes</div>
+      </div>
+
+      <!-- STATS TAB -->
+      <div class="gr-tab-content" id="gr-tab-stats">
+        <div class="gr-poll-q">Team Comparison</div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>FG% — Warriors 48%</span><span>Mavericks 44%</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-w" style="width:52%"></div></div>
+        </div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Rebounds — Warriors 39</span><span>Mavericks 35</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-w" style="width:53%"></div></div>
+        </div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Assists — Warriors 27</span><span>Mavericks 22</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-w" style="width:55%"></div></div>
+        </div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Turnovers — Warriors 9</span><span>Mavericks 13</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-m" style="width:59%"></div></div>
         </div>
       </div>
 
-      <!-- POLLS -->
-      <div class="game-tab-content" id="game-tab-polls" style="display:none">
-        <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:12px">Who wins this game?</div>
-        <div class="debate-vote-row">
-          <div class="debate-vote-side">
-            <div class="debate-vote-pct yes">63%</div>
-            <div class="debate-vote-label">WARRIORS</div>
-            <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:63%"></div></div>
-          </div>
-          <div class="debate-vote-side">
-            <div class="debate-vote-pct no">37%</div>
-            <div class="debate-vote-label">MAVERICKS</div>
-            <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:37%"></div></div>
-          </div>
+      <!-- PLAY BY PLAY TAB -->
+      <div class="gr-tab-content" id="gr-tab-pxp">
+        <div class="recent-row">
+          <div class="recent-icon">🏀</div>
+          <div class="recent-txt">Curry makes 3-pointer. GSW 101 – 99 DAL<div class="recent-meta">1:32 · 4th quarter</div></div>
         </div>
-        <div class="debate-meta">6.2K votes</div>
-      </div>
-
-      <!-- STATS -->
-      <div class="game-tab-content" id="game-tab-stats" style="display:none">
-        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#fff">
-          <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.1);text-align:left">
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">TEAM</th>
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">FG%</th>
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">3PT%</th>
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">REB</th>
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">AST</th>
-              <th style="padding:8px 4px;color:rgba(255,255,255,.4);font-size:10px;letter-spacing:.08em">TO</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:10px 4px;font-weight:700">GSW</td><td style="padding:10px 4px">48%</td><td style="padding:10px 4px">37%</td><td style="padding:10px 4px">42</td><td style="padding:10px 4px">24</td><td style="padding:10px 4px">9</td></tr>
-            <tr><td style="padding:10px 4px;font-weight:700">DAL</td><td style="padding:10px 4px">45%</td><td style="padding:10px 4px">34%</td><td style="padding:10px 4px">38</td><td style="padding:10px 4px">20</td><td style="padding:10px 4px">11</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- PLAY BY PLAY -->
-      <div class="game-tab-content" id="game-tab-playbyplay" style="display:none">
-        <div class="activity-item">
-          <div class="activity-icon">🏀</div>
-          <div><div class="activity-text"><b>01:48 GSW</b> — Stephen Curry makes 2-pt layup</div><div class="activity-meta">101–98</div></div>
+        <div class="recent-row">
+          <div class="recent-icon">🔄</div>
+          <div class="recent-txt">Mavericks full timeout<div class="recent-meta">1:41 · 4th quarter</div></div>
         </div>
-        <div class="activity-item">
-          <div class="activity-icon">🏀</div>
-          <div><div class="activity-text"><b>01:43 DAL</b> — Luka Doncic misses 3-pt jump shot</div></div>
+        <div class="recent-row">
+          <div class="recent-icon">🏀</div>
+          <div class="recent-txt">Doncic layup. GSW 98 – 99 DAL<div class="recent-meta">2:05 · 4th quarter</div></div>
         </div>
-        <div class="activity-item">
-          <div class="activity-icon">🔥</div>
-          <div><div class="activity-text"><b>01:32 GSW</b> — Curry hits clutch layup</div></div>
+        <div class="recent-row">
+          <div class="recent-icon">🛡️</div>
+          <div class="recent-txt">Green steals the ball from Kyrie<div class="recent-meta">2:20 · 4th quarter</div></div>
         </div>
       </div>
 
     </div>
 
-    <div class="game-sidebar">
-      <div class="arena-section-title">FAN PULSE</div>
-      <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:10px">Who wins this game?</div>
-      <div class="debate-vote-row">
-        <div class="debate-vote-side">
-          <div class="debate-vote-pct yes">63%</div>
-          <div class="debate-vote-label">WARRIORS</div>
+    <aside class="gr-sidebar">
+      <div class="gr-sidebar-section">
+        <div class="gr-sidebar-title">Fan Pulse</div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Warriors</span><span>63%</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-w" style="width:63%"></div></div>
         </div>
-        <div class="debate-vote-side">
-          <div class="debate-vote-pct no">37%</div>
-          <div class="debate-vote-label">MAVERICKS</div>
+        <div class="gr-poll-opt">
+          <div class="gr-poll-label"><span>Mavericks</span><span>37%</span></div>
+          <div class="gr-poll-track"><div class="gr-poll-fill gr-poll-fill-m" style="width:37%"></div></div>
         </div>
       </div>
-      <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:63%"></div></div>
-      <div class="debate-meta" style="margin-top:8px">6.2K votes</div>
-
-      <div class="arena-section-title" style="margin-top:24px">TOP CONTRIBUTORS</div>
-      <div class="hof-contributor"><span class="hof-contributor-name">1. FlameLord23</span><span class="hof-contributor-count">1.2K</span></div>
-      <div class="hof-contributor"><span class="hof-contributor-name">2. StatsSavant</span><span class="hof-contributor-count">980</span></div>
-      <div class="hof-contributor"><span class="hof-contributor-name">3. ClutchKing</span><span class="hof-contributor-count">870</span></div>
-      <div class="hof-contributor"><span class="hof-contributor-name">4. HoopHannah</span><span class="hof-contributor-count">760</span></div>
-      <div class="hof-contributor"><span class="hof-contributor-name">5. MavsFaithful</span><span class="hof-contributor-count">650</span></div>
-
-      <div class="arena-section-title" style="margin-top:24px">HIGHLIGHT</div>
-      <div style="background:linear-gradient(135deg,#1a0a0a,#0a0a0c);border-radius:12px;padding:20px;text-align:center">
-        <div class="vid-play" style="margin:0 auto 10px"><div class="vid-tri"></div></div>
-        <div style="font-size:12px;color:rgba(255,255,255,.7)">Curry hits clutch layup</div>
+      <div class="gr-sidebar-section">
+        <div class="gr-sidebar-title">Top Contributors</div>
+        <div class="gr-contrib-list">
+          <div class="gr-contrib"><span class="gr-contrib-rank">1</span><span class="gr-contrib-av" style="background:#1a5276">JD</span><span class="gr-contrib-name">JordanD</span><span class="gr-contrib-count">142 takes</span></div>
+          <div class="gr-contrib"><span class="gr-contrib-rank">2</span><span class="gr-contrib-av" style="background:#6c3483">MK</span><span class="gr-contrib-name">MikeK</span><span class="gr-contrib-count">98 takes</span></div>
+          <div class="gr-contrib"><span class="gr-contrib-rank">3</span><span class="gr-contrib-av" style="background:#1e8449">TW</span><span class="gr-contrib-name">TashaW</span><span class="gr-contrib-count">76 takes</span></div>
+          <div class="gr-contrib"><span class="gr-contrib-rank">4</span><span class="gr-contrib-av" style="background:#784212">RS</span><span class="gr-contrib-name">RonS</span><span class="gr-contrib-count">54 takes</span></div>
+          <div class="gr-contrib"><span class="gr-contrib-rank">5</span><span class="gr-contrib-av" style="background:#4a0a10">OP</span><span class="gr-contrib-name">OnePride99</span><span class="gr-contrib-count">41 takes</span></div>
+        </div>
       </div>
-    </div>
+      <div class="gr-sidebar-section">
+        <div class="gr-sidebar-title">Highlight</div>
+        <div class="gr-highlight">
+          <div class="gr-highlight-icon">🎬</div>
+          <div class="gr-highlight-label">Curry's step-back 3 at the 1:32 mark</div>
+        </div>
+      </div>
+    </aside>
   </div>
 </div>
-<div id="view-debate-center" class="view" style="display:none">
-  <div class="debate-center-layout">
-    <div class="debate-center-header">
+
+<!-- ═══════════════════════════════════════════
+     VIEW 4 — DEBATE CENTER
+═══════════════════════════════════════════ -->
+<div id="view-debate-center" class="view">
+  <div class="dc-wrap">
+    <div class="dc-header">
       <div>
-        <h1 class="debate-center-title">Debate Center</h1>
-        <p class="debate-center-subtitle">Explore trending opinions and counter-takes.</p>
+        <h1 class="dc-title">Debate Center</h1>
+        <p class="dc-sub">Where fans go head to head. Vote, argue, be heard.</p>
       </div>
-      <button class="start-debate-btn" onclick="openModal('signup')">+ Start Debate</button>
+      <button class="dc-start-btn" onclick="openModal('signup')">+ Start Debate</button>
     </div>
 
-    <div class="debate-tabs">
-      <button class="tab-btn active" onclick="switchDebateTab('trending',this)">Trending</button>
-      <button class="tab-btn" onclick="switchDebateTab('recent',this)">Most Recent</button>
-      <button class="tab-btn" onclick="switchDebateTab('following',this)">Following</button>
+    <div class="dc-tabs">
+      <button class="dc-tab active" type="button" onclick="switchDebateTab('trending',this)">Trending</button>
+      <button class="dc-tab" type="button" onclick="switchDebateTab('recent',this)">Most Recent</button>
+      <button class="dc-tab" type="button" onclick="switchDebateTab('following',this)">Following</button>
     </div>
 
-    <div class="debate-tab-content" id="debate-tab-trending" style="display:block">
-      <div class="debate-cards-list">
+    <div class="dc-debates">
 
-        <div class="debate-card-full" onclick="openModal('signup')">
-          <div>
-            <div class="debate-sport-tag">NFL</div>
-            <h2 class="debate-question-big">Should Mahomes already be considered the GOAT?</h2>
-            <div class="debate-vote-row">
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">✅</div>
-                <div class="debate-vote-pct yes" id="debate-yes-1" onclick="event.stopPropagation();voteOnDebate('1','yes',this)">64%</div>
-                <div class="debate-vote-label">YES</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:64%"></div></div>
-              </div>
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">❌</div>
-                <div class="debate-vote-pct no" id="debate-no-1" onclick="event.stopPropagation();voteOnDebate('1','no',this)">36%</div>
-                <div class="debate-vote-label">NO</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:36%"></div></div>
-              </div>
+      <article class="dc-card" onclick="showView('debate-center')">
+        <div>
+          <div class="dc-sport">NFL</div>
+          <h3 class="dc-question">Should Mahomes already be considered the GOAT?</h3>
+          <div class="dc-votes">
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-mahomes','fire',this)">👍</div>
+              <div class="dc-vote-pct yes">64%</div>
+              <div class="dc-vote-word">AGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-y" style="width:64%"></div></div>
             </div>
-            <div class="debate-meta">24.3K votes · 3.7K comments</div>
-            <button class="debate-join-btn" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
-          </div>
-          <div class="debate-player-art">🏈</div>
-        </div>
-
-        <div class="debate-card-full" onclick="openModal('signup')">
-          <div>
-            <div class="debate-sport-tag">NFL</div>
-            <h2 class="debate-question-big">Is Dan Campbell the best coach in the NFL right now?</h2>
-            <div class="debate-vote-row">
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">✅</div>
-                <div class="debate-vote-pct yes" id="debate-yes-2" onclick="event.stopPropagation();voteOnDebate('2','yes',this)">78%</div>
-                <div class="debate-vote-label">YES</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:78%"></div></div>
-              </div>
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">❌</div>
-                <div class="debate-vote-pct no" id="debate-no-2" onclick="event.stopPropagation();voteOnDebate('2','no',this)">22%</div>
-                <div class="debate-vote-label">NO</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:22%"></div></div>
-              </div>
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-mahomes','no',this)">👎</div>
+              <div class="dc-vote-pct no">36%</div>
+              <div class="dc-vote-word">DISAGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-n" style="width:36%"></div></div>
             </div>
-            <div class="debate-meta">18.6K votes · 2.1K comments</div>
-            <button class="debate-join-btn" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
           </div>
-          <div class="debate-player-art">🦁</div>
+          <div class="dc-counts">24,387 votes · 3.7K comments</div>
+          <button class="dc-join" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
         </div>
+        <div class="dc-art"><div class="dc-art-num">15</div></div>
+      </article>
 
-        <div class="debate-card-full" onclick="openModal('signup')">
-          <div>
-            <div class="debate-sport-tag">NBA</div>
-            <h2 class="debate-question-big">Who wins the NBA Finals?</h2>
-            <div class="debate-vote-row">
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">☘️</div>
-                <div class="debate-vote-pct yes" id="debate-yes-3" onclick="event.stopPropagation();voteOnDebate('3','yes',this)">55%</div>
-                <div class="debate-vote-label">CELTICS</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:55%"></div></div>
-              </div>
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">🔥</div>
-                <div class="debate-vote-pct no" id="debate-no-3" onclick="event.stopPropagation();voteOnDebate('3','no',this)">45%</div>
-                <div class="debate-vote-label">HEAT</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:45%"></div></div>
-              </div>
+      <article class="dc-card" onclick="showView('debate-center')">
+        <div>
+          <div class="dc-sport">NFL</div>
+          <h3 class="dc-question">Is Dan Campbell the best coach in football right now?</h3>
+          <div class="dc-votes">
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-campbell','fire',this)">👍</div>
+              <div class="dc-vote-pct yes">78%</div>
+              <div class="dc-vote-word">AGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-y" style="width:78%"></div></div>
             </div>
-            <div class="debate-meta">15.2K votes · 1.8K comments</div>
-            <button class="debate-join-btn" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
-          </div>
-          <div class="debate-player-art">🏀</div>
-        </div>
-
-        <div class="debate-card-full" onclick="openModal('signup')">
-          <div>
-            <div class="debate-sport-tag">F1</div>
-            <h2 class="debate-question-big">Is Max Verstappen the greatest F1 driver of this era?</h2>
-            <div class="debate-vote-row">
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">✅</div>
-                <div class="debate-vote-pct yes" id="debate-yes-4" onclick="event.stopPropagation();voteOnDebate('4','yes',this)">62%</div>
-                <div class="debate-vote-label">YES</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:62%"></div></div>
-              </div>
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">❌</div>
-                <div class="debate-vote-pct no" id="debate-no-4" onclick="event.stopPropagation();voteOnDebate('4','no',this)">38%</div>
-                <div class="debate-vote-label">NO</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:38%"></div></div>
-              </div>
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-campbell','no',this)">👎</div>
+              <div class="dc-vote-pct no">22%</div>
+              <div class="dc-vote-word">DISAGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-n" style="width:22%"></div></div>
             </div>
-            <div class="debate-meta">9.8K votes · 1.2K comments</div>
-            <button class="debate-join-btn" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
           </div>
-          <div class="debate-player-art">🏎</div>
+          <div class="dc-counts">18,940 votes · 2.1K comments</div>
+          <button class="dc-join" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
         </div>
+        <div class="dc-art"><div class="dc-art-emoji">🦁</div></div>
+      </article>
 
-        <div class="debate-card-full" onclick="openModal('signup')">
-          <div>
-            <div class="debate-sport-tag">NFL</div>
-            <h2 class="debate-question-big">Will the Cowboys win the Super Bowl next season?</h2>
-            <div class="debate-vote-row">
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">✅</div>
-                <div class="debate-vote-pct yes" id="debate-yes-5" onclick="event.stopPropagation();voteOnDebate('5','yes',this)">47%</div>
-                <div class="debate-vote-label">YES</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-yes" style="width:47%"></div></div>
-              </div>
-              <div class="debate-vote-side">
-                <div class="debate-vote-icon">❌</div>
-                <div class="debate-vote-pct no" id="debate-no-5" onclick="event.stopPropagation();voteOnDebate('5','no',this)">53%</div>
-                <div class="debate-vote-label">NO</div>
-                <div class="debate-progress-track"><div class="debate-progress-fill debate-fill-no" style="width:53%"></div></div>
-              </div>
+      <article class="dc-card" onclick="showView('debate-center')">
+        <div>
+          <div class="dc-sport">NBA</div>
+          <h3 class="dc-question">Who wins the NBA Finals this year?</h3>
+          <div class="dc-votes">
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-finals','fire',this)">👍</div>
+              <div class="dc-vote-pct yes">55%</div>
+              <div class="dc-vote-word">WARRIORS</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-y" style="width:55%"></div></div>
             </div>
-            <div class="debate-meta">7.8K votes · 832 comments</div>
-            <button class="debate-join-btn" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-finals','no',this)">👎</div>
+              <div class="dc-vote-pct no">45%</div>
+              <div class="dc-vote-word">MAVERICKS</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-n" style="width:45%"></div></div>
+            </div>
           </div>
-          <div class="debate-player-art">⭐</div>
+          <div class="dc-counts">31,205 votes · 5.2K comments</div>
+          <button class="dc-join" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
         </div>
+        <div class="dc-art"><div class="dc-art-emoji">🏀</div></div>
+      </article>
 
-      </div>
+      <article class="dc-card" onclick="showView('debate-center')">
+        <div>
+          <div class="dc-sport">F1</div>
+          <h3 class="dc-question">Is Verstappen already the greatest F1 driver ever?</h3>
+          <div class="dc-votes">
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-verstappen','fire',this)">👍</div>
+              <div class="dc-vote-pct yes">62%</div>
+              <div class="dc-vote-word">AGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-y" style="width:62%"></div></div>
+            </div>
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-verstappen','no',this)">👎</div>
+              <div class="dc-vote-pct no">38%</div>
+              <div class="dc-vote-word">DISAGREE</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-n" style="width:38%"></div></div>
+            </div>
+          </div>
+          <div class="dc-counts">9,812 votes · 1.3K comments</div>
+          <button class="dc-join" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
+        </div>
+        <div class="dc-art"><div class="dc-art-num">1</div></div>
+      </article>
+
+      <article class="dc-card" onclick="showView('debate-center')">
+        <div>
+          <div class="dc-sport">NFL</div>
+          <h3 class="dc-question">Do the Cowboys make the Super Bowl this season?</h3>
+          <div class="dc-votes">
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-cowboys','fire',this)">👍</div>
+              <div class="dc-vote-pct yes">47%</div>
+              <div class="dc-vote-word">YES</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-y" style="width:47%"></div></div>
+            </div>
+            <div class="dc-vote-side">
+              <div class="dc-vote-thumb" onclick="event.stopPropagation();voteTake('dc-cowboys','no',this)">👎</div>
+              <div class="dc-vote-pct no">53%</div>
+              <div class="dc-vote-word">NO</div>
+              <div class="dc-vote-track"><div class="dc-vote-fill dc-fill-n" style="width:53%"></div></div>
+            </div>
+          </div>
+          <div class="dc-counts">15,660 votes · 2.8K comments</div>
+          <button class="dc-join" onclick="event.stopPropagation();openModal('signup')">JOIN DEBATE</button>
+        </div>
+        <div class="dc-art"><div class="dc-art-emoji">⭐</div></div>
+      </article>
+
     </div>
-
-    <div class="debate-tab-content" id="debate-tab-recent" style="display:none">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">No recent debates yet. Check back soon.</div>
-    </div>
-
-    <div class="debate-tab-content" id="debate-tab-following" style="display:none">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">Follow fans and teams to see their debates here.</div>
-    </div>
-
   </div>
 </div>
-<div id="view-communities" class="view" style="display:none">
-  <div class="community-page-layout">
-    <div class="community-page-header">
-      <div class="community-logo-big">🏀</div>
-      <div class="community-header-info">
-        <h1>Lakers Nation</h1>
-        <p>93.2K members</p>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 5 — TEAM COMMUNITIES
+═══════════════════════════════════════════ -->
+<div id="view-communities" class="view">
+  <div class="cm-header">
+    <div class="cm-logo">🏀</div>
+    <div>
+      <h1 class="cm-name">Lakers Nation</h1>
+      <p class="cm-count">112K members · 2.1K online</p>
+    </div>
+    <button class="cm-join-big comm-join-btn" onclick="joinComm('lakers-nation', this.closest('.cm-header'))">JOIN</button>
+  </div>
+
+  <div class="cm-tabs">
+    <button class="cm-tab active" type="button" onclick="switchCommTab('feed',this)">Feed</button>
+    <button class="cm-tab" type="button" onclick="switchCommTab('chat',this)">Chat</button>
+    <button class="cm-tab" type="button" onclick="switchCommTab('polls',this)">Polls</button>
+    <button class="cm-tab" type="button" onclick="switchCommTab('events',this)">Events</button>
+    <button class="cm-tab" type="button" onclick="switchCommTab('members',this)">Members</button>
+    <button class="cm-tab" type="button" onclick="switchCommTab('media',this)">Media</button>
+  </div>
+
+  <div class="cm-body">
+    <div class="cm-feed">
+      <div class="cm-post">
+        <div class="cm-post-hdr">
+          <div class="cm-post-av" style="background:#3d1a6b">LG</div>
+          <div>
+            <div class="cm-post-name">LakerGuru</div>
+            <div class="cm-post-role">Community Leader</div>
+          </div>
+          <div class="cm-post-time">1h ago</div>
+        </div>
+        <div class="cm-post-text">This trade will change the Lakers season. We finally have the frontcourt depth we needed.</div>
+        <div class="cm-post-actions">
+          <button onclick="voteTake('cm-post-1','fire',this)">🔥 12.7K</button>
+          <button>💬 884</button>
+          <button>↗ Share</button>
+        </div>
       </div>
-      <button class="community-join-big" onclick="joinCommunity('lakers-nation',this)">JOIN COMMUNITY</button>
+      <div class="cm-post">
+        <div class="cm-post-hdr">
+          <div class="cm-post-av" style="background:#111130">PG</div>
+          <div>
+            <div class="cm-post-name">PurpleAndGold24</div>
+            <div class="cm-post-role">Member</div>
+          </div>
+          <div class="cm-post-time">3h ago</div>
+        </div>
+        <div class="cm-post-text">Anyone else going to the Lakers Watch Party this weekend? Let's meet up before tipoff.</div>
+        <div class="cm-post-actions">
+          <button onclick="voteTake('cm-post-2','fire',this)">🔥 2.4K</button>
+          <button>💬 213</button>
+          <button>↗ Share</button>
+        </div>
+      </div>
     </div>
 
-    <div class="comm-tabs">
-      <button class="tab-btn active" onclick="switchCommunityTab('feed',this)">Feed</button>
-      <button class="tab-btn" onclick="switchCommunityTab('chat',this)">Chat</button>
-      <button class="tab-btn" onclick="switchCommunityTab('polls',this)">Polls</button>
-      <button class="tab-btn" onclick="switchCommunityTab('events',this)">Events</button>
-      <button class="tab-btn" onclick="switchCommunityTab('members',this)">Members</button>
-      <button class="tab-btn" onclick="switchCommunityTab('media',this)">Media</button>
+    <aside class="cm-sidebar">
+      <div class="cm-sidebar-card">
+        <div class="cm-sidebar-title">Community Leaders</div>
+        <div class="cm-leader">
+          <div class="cm-leader-av" style="background:#3d1a6b">LG</div>
+          <div><div class="cm-leader-name">LakerGuru</div><div class="cm-leader-role">Founder</div></div>
+        </div>
+        <div class="cm-leader">
+          <div class="cm-leader-av" style="background:#1a5276">DK</div>
+          <div><div class="cm-leader-name">DubKing</div><div class="cm-leader-role">Moderator</div></div>
+        </div>
+        <div class="cm-leader">
+          <div class="cm-leader-av" style="background:#1e8449">AH</div>
+          <div><div class="cm-leader-name">AceHollywood</div><div class="cm-leader-role">Moderator</div></div>
+        </div>
+      </div>
+      <div class="cm-sidebar-card">
+        <div class="cm-sidebar-title">Upcoming Event</div>
+        <div class="cm-event">
+          <div class="cm-event-title">Lakers Watch Party</div>
+          <div class="cm-event-meta">Sat, 7:00 PM · Downtown Sports Bar</div>
+          <button class="cm-event-btn" onclick="showToast('RSVP confirmed! See you there 🏀')">RSVP</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 6 — FAN PROFILE
+═══════════════════════════════════════════ -->
+<div id="view-profile" class="view">
+  <div class="fp-wrap">
+    <div class="fp-header">
+      <div class="fp-header-top">
+        <div class="fp-avatar">J</div>
+        <div>
+          <h1 class="fp-name">Jordan23 <span class="fp-name-check">✓</span></h1>
+          <div class="fp-sub">Pro Member · Joined 2023</div>
+        </div>
+        <button class="fp-edit" onclick="showToast('Edit profile coming soon!')">Edit Profile</button>
+      </div>
+      <div class="fp-stats">
+        <div class="fp-stat"><small>FAN SCORE</small><b>92.4</b><div class="sub">Top 6%</div></div>
+        <div class="fp-stat"><small>ACCURACY</small><b>87%</b><div class="sub">+2% this week</div></div>
+        <div class="fp-stat"><small>TAKES</small><b>1,247</b><div class="sub">+18 this week</div></div>
+        <div class="fp-stat"><small>REPUTATION</small><b>Legendary</b><div class="sub">Elite Debater</div></div>
+      </div>
     </div>
 
-    <div class="community-body">
+    <div class="fp-tabs">
+      <button class="fp-tab active" type="button" onclick="switchProfileTab('overview',this)">Overview</button>
+      <button class="fp-tab" type="button" onclick="switchProfileTab('takes',this)">Takes</button>
+      <button class="fp-tab" type="button" onclick="switchProfileTab('activity',this)">Activity</button>
+      <button class="fp-tab" type="button" onclick="switchProfileTab('badges',this)">Badges</button>
+      <button class="fp-tab" type="button" onclick="switchProfileTab('following',this)">Following</button>
+      <button class="fp-tab" type="button" onclick="switchProfileTab('followers',this)">Followers</button>
+    </div>
+
+    <div class="fp-body">
       <div>
-        <div class="comm-tab-content active" id="comm-tab-feed" style="display:block">
-          <div class="comm-post">
-            <div class="comm-post-header">
-              <div class="take-avatar">LG</div>
-              <div><b style="color:#fff;font-size:13px">@LakerGuru</b> <span style="font-size:10px;color:rgba(255,255,255,.4)">Admin · 2h ago</span></div>
-            </div>
-            <div class="comm-post-text">Playoff bound. What adjustments do you want to see next game?</div>
-            <div class="comm-post-actions">
-              <button onclick="voteOnTake('cp-1','fire',this)">👍 242</button>
-              <button>💬 89</button>
-            </div>
+        <div class="fp-card">
+          <div class="fp-card-title">About Me</div>
+          <p class="fp-about">Lifelong Lakers fan, Cowboys on Sundays, Braves in October. Here for the debates, staying for the takes. 🔥</p>
+        </div>
+        <div class="fp-card">
+          <div class="fp-card-title">Badges</div>
+          <div class="fp-badges">
+            <div class="fp-badge">🏆 Hall of Flame x12</div>
+            <div class="fp-badge">🎯 87% Accuracy</div>
+            <div class="fp-badge">⭐ Elite Debater</div>
+            <div class="fp-badge">🔥 30 Day Streak</div>
           </div>
-          <div class="comm-post">
-            <div class="comm-post-header">
-              <div class="take-avatar">PG</div>
-              <div><b style="color:#fff;font-size:13px">@PurpleAndGold24</b> <span style="font-size:10px;color:rgba(255,255,255,.4)">1h ago</span></div>
-            </div>
-            <div class="comm-post-text">AD was dominant tonight. Respect.</div>
-            <div class="comm-post-actions">
-              <button onclick="voteOnTake('cp-2','fire',this)">👍 193</button>
-              <button>💬 38</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="comm-tab-content" id="comm-tab-chat" style="display:none">
-          <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">Chat is live during game hours.</div>
-        </div>
-        <div class="comm-tab-content" id="comm-tab-polls" style="display:none">
-          <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">No active polls right now.</div>
-        </div>
-        <div class="comm-tab-content" id="comm-tab-events" style="display:none">
-          <div class="event-card">
-            <div class="event-title">Lakers Watch Party</div>
-            <div class="event-meta">Fri, May 18 · 7:00 PM · Crypto.com Arena</div>
-            <button class="event-join-btn" onclick="joinCommunity('lakers-watch-party',this)">JOIN EVENT</button>
-          </div>
-        </div>
-        <div class="comm-tab-content" id="comm-tab-members" style="display:none">
-          <div class="comm-leader"><div class="take-avatar">LG</div><div><div class="comm-leader-name">LakerGuru</div><div class="comm-leader-role">Admin</div></div></div>
-          <div class="comm-leader"><div class="take-avatar">KJ</div><div><div class="comm-leader-name">KingJames4Life</div><div class="comm-leader-role">Moderator</div></div></div>
-          <div class="comm-leader"><div class="take-avatar">SS</div><div><div class="comm-leader-name">StatsSavant</div><div class="comm-leader-role">Moderator</div></div></div>
-        </div>
-        <div class="comm-tab-content" id="comm-tab-media" style="display:none">
-          <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">No media posted yet.</div>
         </div>
       </div>
-
       <div>
-        <div class="comm-sidebar-card">
-          <div class="comm-sidebar-title">Community Leaders</div>
-          <div class="comm-leader"><div class="take-avatar">LG</div><div><div class="comm-leader-name">LakerGuru</div><div class="comm-leader-role">Admin</div></div></div>
-          <div class="comm-leader"><div class="take-avatar">KJ</div><div><div class="comm-leader-name">KingJames4Life</div><div class="comm-leader-role">Moderator</div></div></div>
-          <div class="comm-leader"><div class="take-avatar">SS</div><div><div class="comm-leader-name">StatsSavant</div><div class="comm-leader-role">Moderator</div></div></div>
-        </div>
-
-        <div class="comm-sidebar-card">
-          <div class="comm-sidebar-title">Upcoming Event</div>
-          <div class="event-card">
-            <div class="event-title">Lakers Watch Party</div>
-            <div class="event-meta">Fri, May 18 · 7:00 PM · Crypto.com Arena</div>
-            <button class="event-join-btn" onclick="joinCommunity('lakers-watch-party',this)">JOIN EVENT</button>
+        <div class="fp-card">
+          <div class="fp-card-title">Teams</div>
+          <div class="fp-teams">
+            <div class="fp-team"><span class="fp-team-emoji">🏀</span>Lakers</div>
+            <div class="fp-team"><span class="fp-team-emoji">⭐</span>Cowboys</div>
+            <div class="fp-team"><span class="fp-team-emoji">⚾</span>Braves</div>
           </div>
         </div>
-
-        <div class="comm-sidebar-card">
-          <div class="comm-sidebar-title">More Communities</div>
-          <div class="comm-item"><div class="comm-item-icon">🏀</div><div><div class="comm-item-name">Lakers Nation</div><div class="comm-item-count">93.2K members</div></div></div>
-          <div class="comm-item"><div class="comm-item-icon">⭐</div><div><div class="comm-item-name">Cowboys Nation</div><div class="comm-item-count">81.4K members</div></div></div>
-          <div class="comm-item"><div class="comm-item-icon">🥊</div><div><div class="comm-item-name">UFC Fans</div><div class="comm-item-count">63.4K members</div></div></div>
+        <div class="fp-card">
+          <div class="fp-card-title">Recent Activity</div>
+          <div class="fp-activity">
+            <div class="fp-act">
+              <div class="fp-act-icon">🔥</div>
+              <div class="fp-act-txt"><span class="fp-act-fire">+152</span> upvotes on "Judge is unanimous MVP"<div class="fp-act-meta">3h ago</div></div>
+            </div>
+            <div class="fp-act">
+              <div class="fp-act-icon">🏆</div>
+              <div class="fp-act-txt">Entered the Hall of Flame in NFL<div class="fp-act-meta">1d ago</div></div>
+            </div>
+            <div class="fp-act">
+              <div class="fp-act-icon">💬</div>
+              <div class="fp-act-txt">Commented on the Cowboys Super Bowl debate<div class="fp-act-meta">2d ago</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="fp-card">
+          <div class="fp-card-title">Fan Score</div>
+          <div class="fp-gauge-big">
+            <div class="fp-gauge-score">92.4</div>
+            <div class="fp-gauge-rank">Top 6% of Fans</div>
+          </div>
+        </div>
+        <div class="fp-card">
+          <div class="fp-card-title">90 Day Trend</div>
+          <div class="fp-trend-chart">
+            <div class="fp-trend-line"></div>
+            <div class="fp-trend-label">Last 90 days</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<div id="view-fan-profile" class="view" style="display:none">
-  <div class="profile-layout">
-    <div class="profile-header-card">
-      <div class="profile-header-top">
-        <div class="profile-big-avatar">23</div>
-        <div class="profile-name-block">
-          <h1 id="profile-display-name">Jordan23 <span>✓</span></h1>
-          <p>Pro Member · Joined Jan 2023</p>
-        </div>
-        <button class="edit-profile-btn">EDIT PROFILE</button>
-      </div>
-      <div class="profile-stats-row">
-        <div class="profile-stat-block"><small>FAN SCORE</small><b id="profile-fan-score">92.4</b><div class="sub">Top 6%</div></div>
-        <div class="profile-stat-block"><small>ACCURACY</small><b>87%</b><div class="sub">Top 1%</div></div>
-        <div class="profile-stat-block"><small>TAKES POSTED</small><b>1,247</b></div>
-        <div class="profile-stat-block"><small>REPUTATION</small><b>Legendary</b></div>
-      </div>
-    </div>
 
-    <div class="profile-tabs">
-      <button class="tab-btn active" onclick="switchProfileTab('overview',this)">Overview</button>
-      <button class="tab-btn" onclick="switchProfileTab('takes',this)">Takes</button>
-      <button class="tab-btn" onclick="switchProfileTab('activity',this)">Activity</button>
-      <button class="tab-btn" onclick="switchProfileTab('badges',this)">Badges</button>
-      <button class="tab-btn" onclick="switchProfileTab('following',this)">Following</button>
-      <button class="tab-btn" onclick="switchProfileTab('followers',this)">Followers</button>
-    </div>
-
-    <div class="profile-tab-content" id="profile-tab-overview" style="display:block">
-      <div class="profile-body">
-        <div>
-          <div class="profile-section-card">
-            <div class="profile-section-title">About Me</div>
-            <p style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5">Lakers fan for life. Love ball, love debates, respect the game.</p>
-          </div>
-          <div class="profile-section-card">
-            <div class="profile-section-title">Badges</div>
-            <div class="badge-grid">
-              <div class="badge-item">🏅 Hall of Flame Nominee</div>
-              <div class="badge-item">🔥 Elite Debater</div>
-              <div class="badge-item">🛡 Community Leader</div>
-              <div class="badge-item">⭐ Consistent Predictor</div>
-            </div>
-          </div>
-          <div class="profile-section-card">
-            <div class="profile-section-title">Teams</div>
-            <div class="team-grid">
-              <div class="team-item"><span class="team-emoji">🏀</span>Lakers</div>
-              <div class="team-item"><span class="team-emoji">⭐</span>Cowboys</div>
-              <div class="team-item"><span class="team-emoji">⚾</span>Braves</div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div class="profile-section-card">
-            <div class="profile-section-title">Recent Activity</div>
-            <div class="activity-item">
-              <div class="activity-icon">🔥</div>
-              <div><div class="activity-text">Posted a take: <i>"The Lakers need another center."</i></div><div class="activity-meta">2m ago · 5.9K fire</div></div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon">📊</div>
-              <div><div class="activity-text">Voted in a poll: <i>"Who wins the East?"</i></div><div class="activity-meta">10m ago</div></div>
-            </div>
-            <div class="activity-item">
-              <div class="activity-icon">⭐</div>
-              <div><div class="activity-text">Earned a badge: <b>Elite Debater</b></div><div class="activity-meta">1h ago</div></div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div class="profile-section-card">
-            <div class="profile-section-title">Fan Score Progress</div>
-            <div class="big-score-gauge">
-              <div class="gauge-score">92.4</div>
-              <div class="gauge-label">Top 6% of Fans</div>
-            </div>
-            <div class="fan-score-chart"><div class="chart-line"></div></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.4);text-align:center">90 Day Trend</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="profile-tab-content" id="profile-tab-takes">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">1,247 takes posted. Recent ones show up here.</div>
-    </div>
-    <div class="profile-tab-content" id="profile-tab-activity">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">Full activity history coming soon.</div>
-    </div>
-    <div class="profile-tab-content" id="profile-tab-badges">
-      <div class="badge-grid" style="max-width:400px;margin:20px auto">
-        <div class="badge-item">🏅 Hall of Flame Nominee</div>
-        <div class="badge-item">🔥 Elite Debater</div>
-        <div class="badge-item">🛡 Community Leader</div>
-        <div class="badge-item">⭐ Consistent Predictor</div>
-      </div>
-    </div>
-    <div class="profile-tab-content" id="profile-tab-following">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">Not following anyone yet.</div>
-    </div>
-    <div class="profile-tab-content" id="profile-tab-followers">
-      <div style="text-align:center;padding:40px 0;color:rgba(255,255,255,.4);font-size:13px">No followers yet.</div>
-    </div>
-  </div>
-</div>
-<div id="view-hall-of-flame" class="view" style="display:none">
-  <div class="hof-layout">
-    <div class="hof-main">
-      <h1>Hall of Flame</h1>
-      <p>Where legendary takes live forever.</p>
+<!-- ═══════════════════════════════════════════
+     VIEW 7 — HALL OF FLAME
+═══════════════════════════════════════════ -->
+<div id="view-hall-of-flame" class="view">
+  <div class="hof-wrap">
+    <div>
+      <h1 class="hof-title">Hall of Flame</h1>
+      <p class="hof-sub">Where legendary takes live forever.</p>
 
       <div class="hof-tabs">
-        <button class="tab-btn active">Top Takes</button>
-        <button class="tab-btn">Top Fans</button>
-        <button class="tab-btn">All Time</button>
+        <button class="hof-tab active" type="button" onclick="document.querySelectorAll('#view-hall-of-flame .hof-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Top Takes</button>
+        <button class="hof-tab" type="button" onclick="document.querySelectorAll('#view-hall-of-flame .hof-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active')">Top Fans</button>
+        <button class="hof-tab" type="button" onclick="document.querySelectorAll('#view-hall-of-flame .hof-tab').forEach(b=>b.classList.remove('active'));this.classList.add('active')">All Time</button>
       </div>
 
-      <div class="hof-takes-list" id="hof-takes-list">
-        <div class="ft-hof-item">
-          <div class="ft-hof-rank">🔥</div>
-          <div class="ft-hof-body">
-            <div class="ft-hof-quote">"I called the upset before kickoff."</div>
-            <div class="ft-hof-meta">NFL · 18.2K upvotes</div>
+      <div class="hof-list" id="hof-takes-list">
+        <div class="hof-item">
+          <div class="hof-rank">🔥</div>
+          <div class="hof-item-body">
+            <div class="hof-quote">"I called the upset before kickoff."</div>
+            <div class="hof-meta">NFL · 18.2K upvotes</div>
           </div>
-          <div class="ft-hof-img">🏈</div>
+          <div class="hof-thumb" style="background:linear-gradient(135deg,#1a2a4a,#050508)">🏈</div>
         </div>
-        <div class="ft-hof-item">
-          <div class="ft-hof-rank">🔥</div>
-          <div class="ft-hof-body">
-            <div class="ft-hof-quote">"This trade will change the Lakers season."</div>
-            <div class="ft-hof-meta">NBA · 12.7K upvotes</div>
+        <div class="hof-item">
+          <div class="hof-rank">🔥</div>
+          <div class="hof-item-body">
+            <div class="hof-quote">"This trade will change the Lakers season."</div>
+            <div class="hof-meta">NBA · 12.7K upvotes</div>
           </div>
-          <div class="ft-hof-img">🏀</div>
+          <div class="hof-thumb" style="background:linear-gradient(135deg,#3a1a6a,#050508)">🏀</div>
         </div>
-        <div class="ft-hof-item">
-          <div class="ft-hof-rank">🔥</div>
-          <div class="ft-hof-body">
-            <div class="ft-hof-quote">"Topuria by KO. Book it."</div>
-            <div class="ft-hof-meta">UFC · 9.8K upvotes</div>
+        <div class="hof-item">
+          <div class="hof-rank">🔥</div>
+          <div class="hof-item-body">
+            <div class="hof-quote">"Topuria by KO. Book it."</div>
+            <div class="hof-meta">UFC · 9.8K upvotes</div>
           </div>
-          <div class="ft-hof-img">🥊</div>
+          <div class="hof-thumb" style="background:linear-gradient(135deg,#4a0a10,#050508)">🥊</div>
         </div>
-        <div class="ft-hof-item">
-          <div class="ft-hof-rank">4</div>
-          <div class="ft-hof-body">
-            <div class="ft-hof-quote">"The Cowboys' defense is elite."</div>
-            <div class="ft-hof-meta">NFL · 8.9K upvotes</div>
+        <div class="hof-item">
+          <div class="hof-rank">4</div>
+          <div class="hof-item-body">
+            <div class="hof-quote">"Judge is the best player in baseball, full stop."</div>
+            <div class="hof-meta">MLB · 8.1K upvotes</div>
           </div>
-          <div class="ft-hof-img">🏈</div>
+          <div class="hof-thumb" style="background:linear-gradient(135deg,#1a2a1a,#050508)">⚾</div>
         </div>
-        <div class="ft-hof-item">
-          <div class="ft-hof-rank">5</div>
-          <div class="ft-hof-body">
-            <div class="ft-hof-quote">"Curry is the clutchest of all time."</div>
-            <div class="ft-hof-meta">NBA · 8.1K upvotes</div>
+        <div class="hof-item">
+          <div class="hof-rank">5</div>
+          <div class="hof-item-body">
+            <div class="hof-quote">"Verstappen is already a top 3 F1 driver ever."</div>
+            <div class="hof-meta">F1 · 6.4K upvotes</div>
           </div>
-          <div class="ft-hof-img">🏀</div>
+          <div class="hof-thumb" style="background:linear-gradient(135deg,#1a1a1a,#050508)">🏎️</div>
         </div>
       </div>
 
-      <button class="view-all-hof-btn">View All Hall of Flame</button>
+      <button class="hof-view-all" onclick="showToast('Loading more legendary takes...')">View All Hall of Flame</button>
     </div>
 
-    <div>
+    <aside>
       <div class="hof-sidebar-card">
-        <div class="hof-sidebar-title">Top Contributors</div>
-        <div class="hof-contributor"><span class="hof-contributor-name">1. FlameLord23</span><span class="hof-contributor-count">1.2M</span></div>
-        <div class="hof-contributor"><span class="hof-contributor-name">2. StatsSavant</span><span class="hof-contributor-count">980K</span></div>
-        <div class="hof-contributor"><span class="hof-contributor-name">3. ClutchKing</span><span class="hof-contributor-count">870K</span></div>
-        <div class="hof-contributor"><span class="hof-contributor-name">4. HoopHannah</span><span class="hof-contributor-count">760K</span></div>
-        <div class="hof-contributor"><span class="hof-contributor-name">5. GameDayPro</span><span class="hof-contributor-count">690K</span></div>
+        <div class="hof-side-title">Top Contributors</div>
+        <div class="hof-contrib"><span class="hof-contrib-name">JordanD</span><span class="hof-contrib-count">142 takes</span></div>
+        <div class="hof-contrib"><span class="hof-contrib-name">MikeK</span><span class="hof-contrib-count">98 takes</span></div>
+        <div class="hof-contrib"><span class="hof-contrib-name">TashaW</span><span class="hof-contrib-count">76 takes</span></div>
+        <div class="hof-contrib"><span class="hof-contrib-name">RonS</span><span class="hof-contrib-count">54 takes</span></div>
+        <div class="hof-contrib"><span class="hof-contrib-name">OnePride99</span><span class="hof-contrib-count">41 takes</span></div>
       </div>
-
       <div class="hof-sidebar-card">
-        <div class="hof-sidebar-title">Hall of Flame Criteria</div>
+        <div class="hof-side-title">Hall of Flame Criteria</div>
         <ul class="hof-criteria">
-          <li><span class="check">✓</span> Original, high-impact takes</li>
-          <li><span class="check">✓</span> Community upvotes</li>
-          <li><span class="check">✓</span> Accuracy over time</li>
-          <li><span class="check">✓</span> Positive impact on debates</li>
-          <li><span class="check">✓</span> Consistency &amp; reputation</li>
+          <li class="hof-crit"><span class="hof-check">✓</span>5,000+ fire votes</li>
+          <li class="hof-crit"><span class="hof-check">✓</span>Verified prediction accuracy</li>
+          <li class="hof-crit"><span class="hof-check">✓</span>Posted before the outcome</li>
+          <li class="hof-crit"><span class="hof-check">✓</span>No moderation flags</li>
+          <li class="hof-crit"><span class="hof-check">✓</span>Community reviewed</li>
         </ul>
       </div>
-    </div>
+    </aside>
   </div>
 </div>
-<div id="view-more-support" class="view" style="display:none">
-  <div class="more-layout">
-    <div class="more-grid">
-      <div class="more-card" onclick="showView('fan-profile')">
-        <div class="more-card-icon">🔔<span class="more-card-badge">3</span></div>
+
+<!-- ═══════════════════════════════════════════
+     VIEW 8 — MORE / SUPPORT
+═══════════════════════════════════════════ -->
+<div id="view-more" class="view">
+  <div class="ms-wrap">
+    <h1 class="ms-title">More</h1>
+    <p class="ms-sub">Everything else you need, in one place.</p>
+
+    <div class="ms-grid">
+      <div class="ms-card" onclick="showToast('You have 3 new notifications')">
+        <div class="ms-icon-wrap">
+          <div class="ms-icon">🔔</div>
+          <div class="ms-notif-badge">3</div>
+        </div>
         <h3>Notifications</h3>
-        <p>Stay updated on games, takes &amp; friends.</p>
+        <p>See replies, fire votes, and mentions from around the arena.</p>
       </div>
-      <div class="more-card" onclick="showToast('Coming soon 🚧')">
-        <div class="more-card-icon">👥</div>
+      <div class="ms-card" onclick="showToast('Friends list coming soon!')">
+        <div class="ms-icon-wrap"><div class="ms-icon">👥</div></div>
         <h3>Friends</h3>
-        <p>Debate, chat and compete together.</p>
+        <p>Manage your friends and see who's debating right now.</p>
       </div>
-      <div class="more-card" onclick="showToast('Coming soon 🚧')">
-        <div class="more-card-icon">⚙️</div>
+      <div class="ms-card" onclick="showToast('Settings coming soon!')">
+        <div class="ms-icon-wrap"><div class="ms-icon">⚙️</div></div>
         <h3>Settings</h3>
-        <p>Manage your account and preferences.</p>
+        <p>Update your profile, notifications, and privacy preferences.</p>
       </div>
-      <div class="more-card" onclick="showToast('Coming soon 🚧')">
-        <div class="more-card-icon">❓</div>
+      <div class="ms-card" onclick="showToast('Opening Help Center...')">
+        <div class="ms-icon-wrap"><div class="ms-icon">❓</div></div>
         <h3>Help Center</h3>
-        <p>Get help and find answers.</p>
+        <p>Answers to common questions about FanTakes.</p>
       </div>
-      <div class="more-card" onclick="showToast('Coming soon 🚧')">
-        <div class="more-card-icon">📋</div>
+      <div class="ms-card" onclick="showToast('Opening Community Guidelines...')">
+        <div class="ms-icon-wrap"><div class="ms-icon">📋</div></div>
         <h3>Community Guidelines</h3>
-        <p>Keep FanTakes a respectful place.</p>
+        <p>Keep the arena respectful. Know the rules before you post.</p>
       </div>
-      <div class="more-card" onclick="showToast('Coming soon 🚧')">
-        <div class="more-card-icon">💬</div>
+      <div class="ms-card" onclick="showToast('Opening Contact Us...')">
+        <div class="ms-icon-wrap"><div class="ms-icon">💬</div></div>
         <h3>Contact Us</h3>
-        <p>We're here to help&hellip;</p>
+        <p>Reach the FanTakes team directly with feedback or issues.</p>
       </div>
     </div>
 
-    <div class="more-footer-row">
-      <div class="logo" style="font-size:18px"><span>Fan</span><strong>Takes</strong></div>
-      <div style="display:flex;gap:14px;font-size:16px">
-        <a href="#" style="color:rgba(255,255,255,.5);text-decoration:none">𝕏</a>
-        <a href="#" style="color:rgba(255,255,255,.5);text-decoration:none">📷</a>
-        <a href="#" style="color:rgba(255,255,255,.5);text-decoration:none">🎵</a>
-        <a href="#" style="color:rgba(255,255,255,.5);text-decoration:none">▶</a>
+    <div class="ms-footer">
+      <a class="ft-logo" href="#" onclick="showView('home');return false">
+        <span class="logo-fan">Fan</span><span class="logo-takes">Takes</span><span class="logo-mark">▱</span>
+      </a>
+      <div class="footer-socials">
+        <a href="#" class="social-icon">𝕏</a>
+        <a href="#" class="social-icon">📷</a>
+        <a href="#" class="social-icon">🎵</a>
+        <a href="#" class="social-icon">▶</a>
       </div>
-      <div style="font-size:11px;color:rgba(255,255,255,.35)">© <span id="footer-year"></span> FanTakes. All rights reserved.</div>
     </div>
   </div>
 </div>
+
 </main>
-<div id="toast"></div>
-
-<!-- MODAL — adapted from the prior auth-modal so there is a single shared login/signup modal (element IDs renamed to match script.js) -->
-<div id="modalBackdrop" hidden>
-  <div id="auth-card">
-    <button id="closeModal" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;line-height:1;padding:4px 6px;">✕</button>
-
-    <div style="text-align:center;margin-bottom:18px">
-      <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:-.02em">Fan<b style="color:var(--red)">Takes</b></div>
-    </div>
-
-    <div style="text-align:center;margin-bottom:20px">
-      <div id="modalTitle" style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px"></div>
-      <div id="modalSubtitle" style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace;line-height:1.5"></div>
-    </div>
-
-    <div id="clerk-auth-container" style="display:none"></div>
-
-    <form id="signupForm" style="display:grid;gap:14px">
-      <div class="auth-field">
-        <label>Your Name</label>
-        <input type="text" id="signup-name" placeholder="Jordan" autocomplete="name" required>
-      </div>
-      <div class="auth-field">
-        <label>Favorite Team / Sport</label>
-        <select id="signup-team" required>
-          <option value="">Pick one...</option>
-          <option value="NFL">🏈 NFL</option>
-          <option value="NBA">🏀 NBA</option>
-          <option value="MLB">⚾ MLB</option>
-          <option value="NHL">🏒 NHL</option>
-          <option value="Soccer">⚽ Soccer</option>
-          <option value="Rugby">🏉 Rugby</option>
-          <option value="Combat">🥊 Combat</option>
-          <option value="Racing">🏎 Racing</option>
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal-box" role="dialog" aria-modal="true">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-eyebrow">WELCOME TO THE ARENA</div>
+    <h2 class="modal-title" id="modal-title">Create your FanTakes profile</h2>
+    <p class="modal-sub" id="modal-sub">Pick your teams, join communities, and start building your fan reputation.</p>
+    <div id="clerk-container"></div>
+    <form id="signup-form" class="modal-form" style="display:none">
+      <label>Display name<input type="text" id="f-name" placeholder="OnePride99" required></label>
+      <label>Email<input type="email" id="f-email" placeholder="you@example.com" required></label>
+      <label>Favorite team
+        <select id="f-team" required>
+          <option value="">Choose a team</option>
+          <option>Detroit Lions</option><option>Los Angeles Lakers</option>
+          <option>Dallas Cowboys</option><option>Golden State Warriors</option>
+          <option>New York Yankees</option><option>Philadelphia Eagles</option>
+          <option>Liverpool FC</option><option>Other</option>
         </select>
-      </div>
-      <button type="submit" class="auth-submit-btn">Enter the Arena →</button>
-      <a href="#" class="auth-guest-link" onclick="closeModal();return false">Continue as guest →</a>
+      </label>
+      <button type="submit" class="modal-submit">Enter the Arena</button>
     </form>
   </div>
 </div>
-
+<div class="toast-msg" id="toast" role="status"></div>
 <script src="script.js"></script>
 </body>
 </html>
