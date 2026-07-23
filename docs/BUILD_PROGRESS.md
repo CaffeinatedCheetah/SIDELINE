@@ -1,6 +1,6 @@
 # FanTakes Version 1 build progress
 
-Last updated: 2026-07-22
+Last updated: 2026-07-23
 
 ## Environment and decisions
 
@@ -15,33 +15,32 @@ Last updated: 2026-07-22
   do not exist. Fan Score and ranking will use the transparent event-ledger and
   eligibility rules in `DATABASE_SCHEMA.md`, `PRODUCT_VISION.md`, and
   `pages/HALL_OF_FLAME.md`. No hidden formula will be invented.
-- External Google, email, PostgreSQL, sports-data, and Vercel services are not
-  configured locally. Development adapters and deterministic seed data will be
-  used without claiming production integration.
+- Supabase PostgreSQL is configured locally through ignored environment state.
+  Google, email, sports-data, and Vercel production credentials remain external.
 
 ## Feature ledger
 
-| Area                          | Route                                        | UI       | Backend     | Tests         | Status      | Notes                                                                      |
-| ----------------------------- | -------------------------------------------- | -------- | ----------- | ------------- | ----------- | -------------------------------------------------------------------------- |
-| Tooling and application shell | all                                          | Complete | Complete    | Basic checks  | Complete    | Responsive navigation and authenticated shell                              |
-| Design system and primitives  | shared                                       | Complete | N/A         | Unit coverage | Complete    | Semantic tokens and accessible shared controls                             |
-| Database, migration, seed     | N/A                                          | N/A      | In progress | Generate pass | Blocked     | Live migrate/seed and drift checks await isolated PostgreSQL               |
-| Authentication and onboarding | `/auth/*`, `/onboarding`                     | Complete | Complete    | DB blocked    | Blocked     | Runtime complete; integration awaits PostgreSQL                            |
-| Public homepage               | `/`                                          | Complete | Complete    | E2E passed    | Complete    | Server-rendered database discovery                                         |
-| Games directory               | `/games`                                     | Complete | Complete    | Component     | Complete    | League and status filters                                                  |
-| Game Room                     | `/games/[gameId]`                            | Partial  | Partial     | DB pending    | In progress | Polling and predictions exist; chat/reaction/poll UI incomplete            |
-| My Arena                      | `/arena`                                     | Complete | Complete    | DB pending    | In progress | Authenticated personalized queries                                         |
-| Debate Center/detail          | `/debates`, `/debates/[debateId]`            | Complete | Complete    | DB pending    | In progress | Creation fixed; persistence and concurrency remain unverified              |
-| Community directory/detail    | `/communities`, `/communities/[slug]`        | Complete | Complete    | DB pending    | In progress | Public communities only                                                    |
-| Public/editable profile       | `/users/[handle]`, `/settings`               | Partial  | Partial     | DB pending    | In progress | Basic profile works; interests/privacy/session controls incomplete         |
-| Hall of Flame                 | `/hall-of-flame`                             | Complete | Complete    | Domain unit   | In progress | Deterministic multi-signal ranking                                         |
-| Notifications                 | `/notifications`                             | Partial  | Partial     | DB pending    | In progress | Read APIs exist; generation and open-to-read flow incomplete               |
-| Search                        | `/search`                                    | Complete | Complete    | Unit passed   | Complete    | Debounced multi-entity search                                              |
-| Moderation and safety         | `/moderation`, API                           | Partial  | Partial     | DB pending    | In progress | Audit records exist; action effects and moderator UI incomplete            |
-| Legal/help pages              | `/help`, `/guidelines`, `/terms`, `/privacy` | Complete | N/A         | Pending       | In progress | Public static content                                                      |
-| API v1                        | `/api/v1/*`                                  | N/A      | Partial     | Domain unit   | In progress | Core routes exist; idempotency and documented resource coverage incomplete |
-| Accessibility and SEO         | all                                          | Complete | Complete    | Component     | Complete    | Landmarks, focus, metadata, sitemap, robots                                |
-| Deployment and operations     | N/A                                          | N/A      | In progress | Build gate    | Blocked     | Managed pooled/direct config added; live preview validation pending        |
+| Area                          | Route                                        | UI       | Backend  | Tests          | Status      | Notes                                                                             |
+| ----------------------------- | -------------------------------------------- | -------- | -------- | -------------- | ----------- | --------------------------------------------------------------------------------- |
+| Tooling and application shell | all                                          | Complete | Complete | Basic checks   | Complete    | Responsive navigation and authenticated shell                                     |
+| Design system and primitives  | shared                                       | Complete | N/A      | Unit coverage  | Complete    | Semantic tokens and accessible shared controls                                    |
+| Database, migration, seed     | N/A                                          | N/A      | Complete | DB integration | Complete    | Supabase migration, repeated seed, constraints, relations, and drift verified     |
+| Authentication and onboarding | `/auth/*`, `/onboarding`                     | Complete | Complete | DB + E2E       | Complete    | Development login, session persistence, logout, and persistence verified          |
+| Public homepage               | `/`                                          | Complete | Complete | E2E passed     | Complete    | Server-rendered database discovery                                                |
+| Games directory               | `/games`                                     | Complete | Complete | Component      | Complete    | League and status filters                                                         |
+| Game Room                     | `/games/[gameId]`                            | Partial  | Complete | DB integration | In progress | Backend posting, reactions, polls, and prediction locks verified; UI remains      |
+| My Arena                      | `/arena`                                     | Complete | Complete | DB pending     | In progress | Authenticated personalized queries                                                |
+| Debate Center/detail          | `/debates`, `/debates/[debateId]`            | Complete | Complete | DB integration | Complete    | Creation, unique voting, and server percentages verified                          |
+| Community directory/detail    | `/communities`, `/communities/[slug]`        | Complete | Complete | DB integration | Complete    | Join, leave, notification preference, and duplicate prevention verified           |
+| Public/editable profile       | `/users/[handle]`, `/settings`               | Partial  | Partial  | DB pending     | In progress | Basic profile works; interests/privacy/session controls incomplete                |
+| Hall of Flame                 | `/hall-of-flame`                             | Complete | Complete | Domain unit    | In progress | Deterministic multi-signal ranking                                                |
+| Notifications                 | `/notifications`                             | Partial  | Partial  | DB pending     | In progress | Read APIs exist; generation and open-to-read flow incomplete                      |
+| Search                        | `/search`                                    | Complete | Complete | Unit passed    | Complete    | Debounced multi-entity search                                                     |
+| Moderation and safety         | `/moderation`, API                           | Partial  | Partial  | DB pending     | In progress | Audit records exist; action effects and moderator UI incomplete                   |
+| Legal/help pages              | `/help`, `/guidelines`, `/terms`, `/privacy` | Complete | N/A      | Pending        | In progress | Public static content                                                             |
+| API v1                        | `/api/v1/*`                                  | N/A      | Partial  | Domain unit    | In progress | Core routes exist; idempotency and documented resource coverage incomplete        |
+| Accessibility and SEO         | all                                          | Complete | Complete | Component      | Complete    | Landmarks, focus, metadata, sitemap, robots                                       |
+| Deployment and operations     | N/A                                          | N/A      | Complete | Build + DB     | Complete    | Pooled runtime, direct migrations, preview seed guard, and Vercel vars documented |
 
 ## Explicitly deferred
 
@@ -50,9 +49,12 @@ Last updated: 2026-07-22
   judging, automatic moderation punishment, public developer API, webhooks, and
   WebSockets.
 
-## Blockers
+## Remaining gaps
 
-- No system Node.js/npm installation was available; an official Node.js 22 LTS
-  binary is being used for this build session.
-- PostgreSQL is not installed locally. Migration and seed verification require a
-  reachable development/test `DATABASE_URL`; container tooling is also absent.
+- Google OAuth, email delivery, and the sports provider require external
+  credentials and provider setup.
+- Several documented controls remain UI-incomplete even though their
+  server-authoritative mutation paths now have PostgreSQL evidence; see
+  `PRE_MERGE_REVIEW.md`.
+- The in-memory rate limiter must be replaced before an unrestricted public
+  launch on a multi-instance serverless deployment.

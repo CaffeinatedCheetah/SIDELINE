@@ -80,22 +80,27 @@ service can run manually or from a protected scheduler adapter.
 Unit and component coverage verifies controls, forms, modals, navigation,
 content cards, participation actions, API envelopes, rate limiting, Fan Score,
 Hall ranking, permissions, voting rules, and prediction locks. Playwright covers
-public discovery and navigation. Database-backed authentication and mutation
-tests require an isolated PostgreSQL connection and have not yet been executed
-on this workstation.
+public discovery and navigation. The opt-in PostgreSQL integration suite covers
+onboarding/profile persistence, communities, takes, debates, polls,
+predictions, follows, notifications, Fan Score, Hall of Flame, moderation, and
+account deletion against Supabase. An authenticated browser flow verifies
+development login, session persistence, logout, and protected redirection.
 
 Latest local verification:
 
 - Prisma Client generation: passed with Prisma 6.19.3.
+- Initial migration `202607220001_initial`: applied successfully.
+- Prisma migration status: database schema is up to date.
+- Schema drift: no difference detected.
+- Seed: passed twice with stable counts and working relations.
 - Lint: passed with zero warnings.
 - Strict TypeScript: passed.
-- Vitest/React Testing Library: 25 tests passed across 9 files.
-- Playwright: 4 tests passed across desktop Chromium and mobile Chromium.
+- Vitest/React Testing Library: 25 standard tests passed; 11 opt-in PostgreSQL
+  tests also passed against Supabase.
+- Playwright: 4 public tests passed across desktop and mobile Chromium; the
+  opt-in authenticated database flow passed in desktop Chromium.
 - Production build: passed with development authentication disabled, as
   production policy requires.
-- Migration and seed execution: blocked because no PostgreSQL server is
-  available at the configured local address. Schema validation, client
-  generation, and migration SQL generation passed.
 
 ## Environment variables
 
@@ -137,8 +142,9 @@ available at this snapshot and must be rechecked before deployment.
 
 - No live sports-data provider is connected. Development uses labeled seed
   snapshots; polling is ready for a provider-backed game endpoint.
-- PostgreSQL and browser binaries are not installed on the current workstation,
-  so live migration/seed and browser execution require external infrastructure.
+- Managed-database responses are slower than local PostgreSQL; integration and
+  browser tests use explicit bounded timeouts without changing application
+  request semantics.
 - Game stats, play-by-play, and highlights display truthful empty states until a
   provider is configured.
 - Data export is an explicitly disabled placeholder. It does not claim success.
@@ -150,10 +156,11 @@ available at this snapshot and must be rechecked before deployment.
 
 ## Recommended next steps
 
-1. Run the migration and seed against an isolated PostgreSQL database.
-2. Execute database-backed integration and Playwright flows in CI.
-3. Select a sports-data provider and implement the documented adapter contract.
-4. Replace the development rate limiter with a distributed production adapter.
+1. Add the opt-in PostgreSQL integration and authenticated Playwright flows to
+   protected CI using an isolated database.
+2. Select a sports-data provider and implement the documented adapter contract.
+3. Replace the development rate limiter with a distributed production adapter.
+4. Complete the remaining UI wiring identified in `PRE_MERGE_REVIEW.md`.
 5. Complete legal review of Terms, Privacy, retention, and data export behavior.
 
 ## Local commands

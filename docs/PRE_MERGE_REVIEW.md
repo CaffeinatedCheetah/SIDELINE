@@ -1,6 +1,6 @@
 # FanTakes Version 1 pre-merge review
 
-Reviewed: 2026-07-22
+Reviewed: 2026-07-23
 
 Branch: `claude/fantakes-v1-implementation`
 
@@ -9,10 +9,11 @@ Baseline: `e3cf6cb23868f1198627feeffd8fc321b4b5b1fe`
 ## Review method
 
 This review compares the implementation with every product contract under
-`docs/`. A route or model alone is not treated as a completed user flow. “DB
-blocked” means the code was inspected and may have unit evidence, but has not
-been exercised against PostgreSQL because neither `DATABASE_URL` nor
-`DIRECT_URL` was available. No production or important database was reset.
+`docs/`. A route or model alone is not treated as a completed user flow.
+Database-backed claims in the verification update were exercised against the
+dedicated Supabase project using pooled runtime and direct migration
+connections. No database was reset, and disposable integration records were
+cleaned after each run.
 
 ## Requirement matrix
 
@@ -73,8 +74,29 @@ been exercised against PostgreSQL because neither `DATABASE_URL` nor
   transition.
 - Added a safe JSON error boundary for unexpected API failures.
 
-These corrections require PostgreSQL-backed verification before they can be
-accepted as complete.
+## Database-backed verification update
+
+The earlier matrix records the gaps found before a database was available. The
+following evidence supersedes only the rows explicitly listed here:
+
+| Area                        | Verified result                                                                                                            | Evidence                                                    | Remaining gap                                                                    |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Migration and schema        | `202607220001_initial` applied; migration status current; no schema drift; all 35 migration-defined unique indexes present | Prisma deploy/status/diff and PostgreSQL catalog inspection | None identified                                                                  |
+| Seed                        | Two successful runs produced stable expected counts and working relations                                                  | Supabase row-count and relation inspection                  | Preview seed remains manual and opt-in                                           |
+| Authentication              | Development login, refresh persistence, logout, and protected-route redirect passed                                        | `tests/e2e/authenticated-database.spec.ts`                  | Google and SMTP require external credentials                                     |
+| Profile/onboarding          | Profile, interests, preferences, and onboarding completion persisted                                                       | `tests/integration/database-flows.test.ts`                  | Fresh-user browser onboarding is not yet automated                               |
+| Communities                 | Join, preference update, leave, rejoin, and duplicate prevention passed                                                    | PostgreSQL integration                                      | Preference UI remains incomplete                                                 |
+| Takes                       | Create, reply, ownership rejection, edit, tombstone delete, vote update, reaction, save, and unsave passed                 | PostgreSQL integration                                      | Several controls remain unwired in the browser UI                                |
+| Debates and polls           | Creation, valid voting, server totals, and duplicate-vote constraints passed                                               | PostgreSQL integration                                      | Full mutation browser flows remain incomplete                                    |
+| Game Room and predictions   | Game take persisted; live prediction rejected; future prediction upsert remained unique                                    | PostgreSQL integration                                      | Provider-backed resolution is not configured                                     |
+| Social and notifications    | Follow/unfollow, unique relationship, notification creation, unread state, and read mutation passed                        | PostgreSQL integration                                      | Broader event/deep-link browser coverage remains                                 |
+| Fan Score and Hall of Flame | Ledger idempotency and repeated deterministic ranking passed                                                               | PostgreSQL integration                                      | The complete scoring policy remains narrower than the full product specification |
+| Moderation                  | Report creation, normal-user rejection, administrator action, and audit record passed                                      | PostgreSQL integration                                      | All moderation actions do not yet apply their final user/content effects         |
+| Account deletion            | Pending-deletion state persisted and subsequent authenticated mutation was rejected                                        | PostgreSQL integration                                      | Retention, cancellation, and final anonymization remain incomplete               |
+
+These results establish database and controlled-preview readiness. They do not
+convert the remaining partial UI and product-policy rows into completed Version
+1 features.
 
 ## Assumptions and decisions
 
@@ -84,14 +106,16 @@ accepted as complete.
   production deployment command.
 - Missing external Google, SMTP, sports, analytics, and hosting credentials are
   configuration dependencies, not reasons to invent fake integrations.
-- The repository cannot claim database-backed readiness until an isolated test
-  database is supplied and all required persistence/concurrency tests pass.
+- The configured Supabase project is treated as development/preview
+  infrastructure. Production seeding remains prohibited by default.
 
 ## Merge recommendation
 
-**Do not merge or deploy this branch yet.** The static application foundation is
-sound and the focused fixes above are appropriate, but PostgreSQL migration,
-seed, authentication, persistence, concurrency, and authorization evidence is
-absent. Several documented interaction surfaces also remain partial. The next
-required input is an isolated PostgreSQL pooled connection and its direct
-migration connection; no production or important account should be used.
+**Safe to push for a controlled Vercel preview; not yet safe to merge as a
+complete FanTakes Version 1 release.** Database migration, repeatable seed,
+schema drift, core authentication, persistence, authorization, and idempotency
+now have real Supabase evidence. Remaining high-severity gaps are product
+completeness issues already recorded in the matrix: unwired interaction UI,
+incomplete moderation effects, a process-local rate limiter, and incomplete
+authenticated browser coverage. Preview access should remain limited and demo
+content must remain labeled.
