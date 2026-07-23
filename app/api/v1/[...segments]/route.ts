@@ -1,4 +1,4 @@
-import { ContentStatus, DebateStatus, VoteKind } from "@prisma/client";
+import { ContentStatus, DebateStatus, Prisma, VoteKind } from "@prisma/client";
 import { z } from "zod";
 
 import { auth } from "@/auth";
@@ -13,10 +13,15 @@ type Context = { params: Promise<{ segments: string[] }> };
 
 async function identity() {
   const session = await auth();
-  return session?.user?.id;
+  if (!session?.user?.id) return undefined;
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { status: true },
+  });
+  return user?.status === "ACTIVE" ? session.user.id : undefined;
 }
 
-export async function GET(request: Request, context: Context) {
+async function handleGet(request: Request, context: Context) {
   const { segments } = await context.params;
   const resource = segments[0];
   const url = new URL(request.url);
@@ -176,7 +181,7 @@ export async function GET(request: Request, context: Context) {
   return apiError("NOT_FOUND", "API resource not found.", 404);
 }
 
-export async function POST(request: Request, context: Context) {
+async function handlePost(request: Request, context: Context) {
   const { segments } = await context.params;
   const resource = segments[0];
   const userId = await identity();
@@ -247,6 +252,11 @@ export async function POST(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
+    const community = await db.community.findFirst({
+      where: { id: parsed.data.communityId, status: ContentStatus.ACTIVE },
+      select: { id: true },
+    });
+    if (!community) return apiError("NOT_FOUND", "Community not found.", 404);
     if (!parsed.data.join) {
       await db.communityMember.deleteMany({
         where: { userId, communityId: parsed.data.communityId },
@@ -285,6 +295,22 @@ export async function POST(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
+    if (parsed.data.communityId) {
+      const membership = await db.communityMember.findFirst({
+        where: {
+          communityId: parsed.data.communityId,
+          userId,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+      if (!membership)
+        return apiError(
+          "FORBIDDEN",
+          "Join this community before posting.",
+          403,
+        );
+    }
     const take = await db.take.create({
       data: { ...parsed.data, authorId: userId },
     });
@@ -370,7 +396,16 @@ export async function POST(request: Request, context: Context) {
         title: z.string().trim().min(10).max(140),
         prompt: z.string().trim().min(20).max(2000),
         slug: z.string().regex(/^[a-z0-9-]+$/),
-        options: z.array(z.string().trim().min(1).max(80)).min(2).max(6),
+        options: z
+          .array(z.string().trim().min(1).max(80))
+          .min(2)
+          .max(6)
+          .refine(
+            (options) =>
+              new Set(options.map((option) => option.toLowerCase())).size ===
+              options.length,
+            "Debate options must be distinct.",
+          ),
         gameId: z.string().uuid().optional(),
         communityId: z.string().uuid().optional(),
       }),
@@ -382,6 +417,22 @@ export async function POST(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
+    if (parsed.data.communityId) {
+      const membership = await db.communityMember.findFirst({
+        where: {
+          communityId: parsed.data.communityId,
+          userId,
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+      if (!membership)
+        return apiError(
+          "FORBIDDEN",
+          "Join this community before starting a debate.",
+          403,
+        );
+    }
     const debate = await db.debate.create({
       data: {
         creatorId: userId,
@@ -437,7 +488,12 @@ export async function POST(request: Request, context: Context) {
         }),
         201,
       );
-    } catch {
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2002"
+      )
+        throw error;
       return apiError(
         "DUPLICATE_VOTE",
         "You already voted in this debate.",
@@ -530,7 +586,12 @@ export async function POST(request: Request, context: Context) {
         }),
         201,
       );
-    } catch {
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2002"
+      )
+        throw error;
       return apiError("DUPLICATE_VOTE", "You already voted in this poll.", 409);
     }
   }
@@ -588,6 +649,26 @@ export async function POST(request: Request, context: Context) {
     });
     return apiSuccess({ read: true });
   }
+  if (resource === "notifications" && segments[1] === "read") {
+    const parsed = await parseJson(
+      request,
+      z.object({ notificationId: z.string().uuid() }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid notification request.",
+        400,
+        parsed.error.flatten(),
+      );
+    const result = await db.notification.updateMany({
+      where: { id: parsed.data.notificationId, recipientId: userId },
+      data: { readAt: new Date() },
+    });
+    if (!result.count)
+      return apiError("NOT_FOUND", "Notification not found.", 404);
+    return apiSuccess({ read: true });
+  }
   if (resource === "follows") {
     const parsed = await parseJson(
       request,
@@ -595,6 +676,11 @@ export async function POST(request: Request, context: Context) {
     );
     if (!parsed.success || parsed.data.userId === userId)
       return apiError("INVALID_REQUEST", "Invalid follow request.", 400);
+    const target = await db.user.findFirst({
+      where: { id: parsed.data.userId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!target) return apiError("NOT_FOUND", "User not found.", 404);
     if (!parsed.data.follow) {
       await db.follow.deleteMany({
         where: { followerId: userId, followedId: parsed.data.userId },
@@ -756,10 +842,62 @@ export async function POST(request: Request, context: Context) {
   return apiError("NOT_FOUND", "API operation not found.", 404);
 }
 
-export async function DELETE(_request: Request, context: Context) {
+async function handlePatch(request: Request, context: Context) {
   const { segments } = await context.params;
   const userId = await identity();
   if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  if (segments[0] !== "takes" || !segments[1])
+    return apiError("NOT_FOUND", "API operation not found.", 404);
+  if (!checkRateLimit(`${userId}:takes:update`).allowed)
+    return apiError("RATE_LIMITED", "Please wait before trying again.", 429);
+  const parsed = await parseJson(
+    request,
+    z.object({ body: z.string().trim().min(1).max(1000) }),
+  );
+  if (!parsed.success)
+    return apiError(
+      "INVALID_REQUEST",
+      "Invalid take.",
+      400,
+      parsed.error.flatten(),
+    );
+  const result = await db.take.updateMany({
+    where: {
+      id: segments[1],
+      authorId: userId,
+      status: ContentStatus.ACTIVE,
+      createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) },
+    },
+    data: { body: parsed.data.body, editedAt: new Date() },
+  });
+  if (!result.count)
+    return apiError("NOT_FOUND", "Editable take not found.", 404);
+  return apiSuccess(
+    await db.take.findUniqueOrThrow({ where: { id: segments[1] } }),
+  );
+}
+
+async function handleDelete(_request: Request, context: Context) {
+  const { segments } = await context.params;
+  const userId = await identity();
+  if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  if (segments[0] === "takes" && segments[1]) {
+    const result = await db.take.updateMany({
+      where: {
+        id: segments[1],
+        authorId: userId,
+        status: ContentStatus.ACTIVE,
+      },
+      data: {
+        status: ContentStatus.AUTHOR_REMOVED,
+        body: "",
+        deletedAt: new Date(),
+      },
+    });
+    if (!result.count)
+      return apiError("NOT_FOUND", "Removable take not found.", 404);
+    return apiSuccess({ removed: true });
+  }
   if (segments[0] !== "account")
     return apiError("NOT_FOUND", "API operation not found.", 404);
   const pendingDeletionAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
@@ -774,4 +912,35 @@ export async function DELETE(_request: Request, context: Context) {
     status: "PENDING_DELETION",
     effectiveAt: pendingDeletionAt.toISOString(),
   });
+}
+
+async function safely(operation: () => Promise<Response>): Promise<Response> {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error("FanTakes API operation failed", {
+      errorType: error instanceof Error ? error.name : "UnknownError",
+    });
+    return apiError(
+      "INTERNAL_ERROR",
+      "The request could not be completed. Please try again.",
+      500,
+    );
+  }
+}
+
+export function GET(request: Request, context: Context) {
+  return safely(() => handleGet(request, context));
+}
+
+export function POST(request: Request, context: Context) {
+  return safely(() => handlePost(request, context));
+}
+
+export function PATCH(request: Request, context: Context) {
+  return safely(() => handlePatch(request, context));
+}
+
+export function DELETE(request: Request, context: Context) {
+  return safely(() => handleDelete(request, context));
 }
