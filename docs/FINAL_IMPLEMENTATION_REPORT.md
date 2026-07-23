@@ -44,7 +44,7 @@ polls/options/votes, predictions/results, social follows/blocks/mutes,
 notifications, badges, Fan Score ledger events, Hall of Flame entries, saved
 items, reports, and append-only moderation actions.
 
-The development seed creates sports, leagues, teams, three explicitly demo-only
+The idempotent development seed creates sports, leagues, teams, three explicitly demo-only
 users, live/upcoming games, a community, takes, an open debate, badges, a score
 event, and a Hall of Flame entry.
 
@@ -81,14 +81,15 @@ Unit and component coverage verifies controls, forms, modals, navigation,
 content cards, participation actions, API envelopes, rate limiting, Fan Score,
 Hall ranking, permissions, voting rules, and prediction locks. Playwright covers
 public discovery and navigation. Database-backed authentication and mutation
-flows are designed for a PostgreSQL-backed CI environment.
+tests require an isolated PostgreSQL connection and have not yet been executed
+on this workstation.
 
 Latest local verification:
 
 - Prisma Client generation: passed with Prisma 6.19.3.
 - Lint: passed with zero warnings.
 - Strict TypeScript: passed.
-- Vitest/React Testing Library: 23 tests passed across 9 files.
+- Vitest/React Testing Library: 25 tests passed across 9 files.
 - Playwright: 4 tests passed across desktop Chromium and mobile Chromium.
 - Production build: passed with development authentication disabled, as
   production policy requires.
@@ -99,14 +100,14 @@ Latest local verification:
 ## Environment variables
 
 See `.env.example` and the root README. Required production values are
-`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, and `NEXT_PUBLIC_APP_URL`, plus at
-least one configured Google or SMTP sign-in provider. `ENABLE_DEV_AUTH` must be
-false in production.
+`DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, `AUTH_URL`, and
+`NEXT_PUBLIC_APP_URL`, plus at least one configured Google or SMTP sign-in
+provider. `ENABLE_DEV_AUTH` must be false in production.
 
 ## Deployment
 
 Install with `npm ci`, generate Prisma Client, run all static/test/build gates,
-then execute `prisma migrate deploy` once in a protected release job. Deploy the
+then execute `npm run db:deploy` once in a protected release job. Deploy the
 Next.js output to Vercel with a pooled PostgreSQL runtime connection. Never run
 the development seed or development authentication in production.
 
