@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const schema = z.object({
   DATABASE_URL: z.string().url().startsWith("postgresql://"),
+  DIRECT_URL: z.string().url().startsWith("postgresql://"),
   AUTH_SECRET: z.string().min(16),
   AUTH_URL: z.string().url().optional(),
   AUTH_GOOGLE_ID: z.string().optional(),
@@ -10,6 +11,10 @@ const schema = z.object({
   EMAIL_FROM: z.string().default("FanTakes <no-reply@example.test>"),
   ENABLE_DEV_AUTH: z.enum(["true", "false"]).default("false"),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  NEXT_PUBLIC_ANALYTICS_ID: z.string().optional(),
+  SPORTS_API_BASE_URL: z.union([z.literal(""), z.string().url()]).optional(),
+  SPORTS_API_KEY: z.string().optional(),
+  ALLOW_PREVIEW_SEED: z.enum(["true", "false"]).default("false"),
 });
 
 export function getEnv() {
