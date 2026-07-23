@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
+import { JoinCommunityButton } from "@/components/actions/join-community-button";
+import { TakeComposer } from "@/components/actions/take-composer";
 import { PageHeading } from "@/components/layout/page-heading";
 import { TakeCard } from "@/components/takes/take-card";
-import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/db/client";
@@ -33,14 +34,7 @@ export default async function CommunityDetail({
         eyebrow={`${community._count.members} members`}
         title={community.name}
         description={community.description}
-        action={
-          <a
-            className={buttonStyles()}
-            href={`/auth/sign-in?callbackUrl=/communities/${slug}`}
-          >
-            Join community
-          </a>
-        }
+        action={<JoinCommunityButton communityId={community.id} />}
       />
       <Tabs defaultValue="feed">
         <TabsList>
@@ -54,6 +48,7 @@ export default async function CommunityDetail({
         </TabsList>
         <TabsContent value="feed">
           <div className="mt-5 grid gap-4">
+            <TakeComposer communityId={community.id} />
             {community.takes.length ? (
               community.takes.map((take) => (
                 <TakeCard

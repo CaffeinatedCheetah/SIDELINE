@@ -7,6 +7,7 @@ import { checkRateLimit } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
 import { recordFanScoreEvent } from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
+import { generateHallOfFlame } from "@/lib/services/hall-of-flame-job";
 
 type Context = { params: Promise<{ segments: string[] }> };
 
@@ -24,6 +25,16 @@ export async function GET(request: Request, context: Context) {
     take: limit + 1,
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   };
+
+  if (resource === "games" && segments[1]) {
+    const game = await db.game.findUnique({
+      where: { id: segments[1] },
+      include: { league: true, homeTeam: true, awayTeam: true },
+    });
+    return game
+      ? apiSuccess(game)
+      : apiError("NOT_FOUND", "Game not found.", 404);
+  }
 
   if (resource === "games")
     return apiSuccess(
@@ -289,6 +300,69 @@ export async function POST(request: Request, context: Context) {
     });
     return apiSuccess(take, 201);
   }
+  if (resource === "comments") {
+    const parsed = await parseJson(
+      request,
+      z
+        .object({
+          body: z.string().trim().min(1).max(1000),
+          takeId: z.string().uuid().optional(),
+          debateId: z.string().uuid().optional(),
+          parentId: z.string().uuid().optional(),
+        })
+        .refine(
+          (value) => Boolean(value.takeId) !== Boolean(value.debateId),
+          "Choose exactly one comment context.",
+        ),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid comment.",
+        400,
+        parsed.error.flatten(),
+      );
+    return apiSuccess(
+      await db.comment.create({ data: { authorId: userId, ...parsed.data } }),
+      201,
+    );
+  }
+  if (resource === "reactions") {
+    const parsed = await parseJson(
+      request,
+      z
+        .object({
+          takeId: z.string().uuid().optional(),
+          commentId: z.string().uuid().optional(),
+          kind: z.enum(["FIRE", "INSIGHTFUL", "FUNNY", "DISAGREE"]),
+        })
+        .refine(
+          (value) => Boolean(value.takeId) !== Boolean(value.commentId),
+          "Choose exactly one reaction target.",
+        ),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid reaction.",
+        400,
+        parsed.error.flatten(),
+      );
+    const existing = await db.reaction.findFirst({
+      where: {
+        userId,
+        takeId: parsed.data.takeId,
+        commentId: parsed.data.commentId,
+        kind: parsed.data.kind,
+      },
+    });
+    if (existing) {
+      await db.reaction.delete({ where: { id: existing.id } });
+      return apiSuccess({ active: false });
+    }
+    await db.reaction.create({ data: { userId, ...parsed.data } });
+    return apiSuccess({ active: true }, 201);
+  }
   if (resource === "debates") {
     const parsed = await parseJson(
       request,
@@ -371,6 +445,95 @@ export async function POST(request: Request, context: Context) {
       );
     }
   }
+  if (resource === "polls") {
+    const parsed = await parseJson(
+      request,
+      z.object({
+        question: z.string().trim().min(5).max(280),
+        options: z.array(z.string().trim().min(1).max(80)).min(2).max(8),
+        gameId: z.string().uuid().optional(),
+        communityId: z.string().uuid().optional(),
+        closesAt: z.coerce.date().optional(),
+      }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid poll.",
+        400,
+        parsed.error.flatten(),
+      );
+    if (parsed.data.communityId) {
+      const allowed = await db.communityMember.findFirst({
+        where: {
+          communityId: parsed.data.communityId,
+          userId,
+          status: "ACTIVE",
+          role: { in: ["OWNER", "MODERATOR"] },
+        },
+      });
+      if (!allowed)
+        return apiError(
+          "FORBIDDEN",
+          "Community moderator permission is required.",
+          403,
+        );
+    }
+    return apiSuccess(
+      await db.poll.create({
+        data: {
+          question: parsed.data.question,
+          gameId: parsed.data.gameId,
+          communityId: parsed.data.communityId,
+          closesAt: parsed.data.closesAt,
+          options: {
+            create: parsed.data.options.map((label, displayOrder) => ({
+              label,
+              displayOrder,
+            })),
+          },
+        },
+        include: { options: true },
+      }),
+      201,
+    );
+  }
+  if (resource === "poll-votes") {
+    const parsed = await parseJson(
+      request,
+      z.object({ pollId: z.string().uuid(), optionId: z.string().uuid() }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid poll vote.",
+        400,
+        parsed.error.flatten(),
+      );
+    const option = await db.pollOption.findFirst({
+      where: {
+        id: parsed.data.optionId,
+        pollId: parsed.data.pollId,
+        poll: { OR: [{ closesAt: null }, { closesAt: { gt: new Date() } }] },
+      },
+    });
+    if (!option)
+      return apiError(
+        "INVALID_OPTION",
+        "That poll option is unavailable.",
+        409,
+      );
+    try {
+      return apiSuccess(
+        await db.pollVote.create({
+          data: { pollId: parsed.data.pollId, pollOptionId: option.id, userId },
+        }),
+        201,
+      );
+    } catch {
+      return apiError("DUPLICATE_VOTE", "You already voted in this poll.", 409);
+    }
+  }
   if (resource === "predictions") {
     const parsed = await parseJson(
       request,
@@ -425,6 +588,80 @@ export async function POST(request: Request, context: Context) {
     });
     return apiSuccess({ read: true });
   }
+  if (resource === "follows") {
+    const parsed = await parseJson(
+      request,
+      z.object({ userId: z.string().uuid(), follow: z.boolean() }),
+    );
+    if (!parsed.success || parsed.data.userId === userId)
+      return apiError("INVALID_REQUEST", "Invalid follow request.", 400);
+    if (!parsed.data.follow) {
+      await db.follow.deleteMany({
+        where: { followerId: userId, followedId: parsed.data.userId },
+      });
+      return apiSuccess({ following: false });
+    }
+    await db.follow.upsert({
+      where: {
+        followerId_followedId: {
+          followerId: userId,
+          followedId: parsed.data.userId,
+        },
+      },
+      update: {},
+      create: { followerId: userId, followedId: parsed.data.userId },
+    });
+    return apiSuccess({ following: true }, 201);
+  }
+  if (resource === "saved-items") {
+    const parsed = await parseJson(
+      request,
+      z.object({
+        kind: z.enum(["TAKE", "DEBATE", "GAME", "COMMUNITY"]),
+        entityId: z.string().min(1).max(100),
+        save: z.boolean(),
+      }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid save request.",
+        400,
+        parsed.error.flatten(),
+      );
+    if (!parsed.data.save) {
+      await db.savedItem.deleteMany({
+        where: {
+          userId,
+          kind: parsed.data.kind,
+          entityId: parsed.data.entityId,
+        },
+      });
+      return apiSuccess({ saved: false });
+    }
+    await db.savedItem.upsert({
+      where: {
+        userId_kind_entityId: {
+          userId,
+          kind: parsed.data.kind,
+          entityId: parsed.data.entityId,
+        },
+      },
+      update: {},
+      create: {
+        userId,
+        kind: parsed.data.kind,
+        entityId: parsed.data.entityId,
+        ...(parsed.data.kind === "TAKE"
+          ? { takeId: parsed.data.entityId }
+          : {}),
+        ...(parsed.data.kind === "DEBATE"
+          ? { debateId: parsed.data.entityId }
+          : {}),
+      },
+    });
+    return apiSuccess({ saved: true }, 201);
+  }
   if (resource === "reports") {
     const parsed = await parseJson(
       request,
@@ -446,6 +683,75 @@ export async function POST(request: Request, context: Context) {
       await db.report.create({ data: { reporterId: userId, ...parsed.data } }),
       201,
     );
+  }
+  if (resource === "moderation-actions") {
+    const moderator = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!moderator || moderator.role === "USER")
+      return apiError("FORBIDDEN", "Moderator permission is required.", 403);
+    const parsed = await parseJson(
+      request,
+      z.object({
+        reportId: z.string().uuid().optional(),
+        targetType: z.string().min(1).max(30),
+        targetId: z.string().min(1).max(100),
+        action: z.enum([
+          "REMOVE_CONTENT",
+          "WARN_USER",
+          "TEMPORARY_MUTE",
+          "BAN_USER",
+          "RESTORE_CONTENT",
+        ]),
+        reason: z.string().min(5).max(500),
+        expiresAt: z.coerce.date().optional(),
+      }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid moderation action.",
+        400,
+        parsed.error.flatten(),
+      );
+    const action = await db.moderationAction.create({
+      data: { moderatorId: userId, ...parsed.data },
+    });
+    if (parsed.data.reportId)
+      await db.report.update({
+        where: { id: parsed.data.reportId },
+        data: {
+          state: "RESOLVED",
+          resolution: parsed.data.reason,
+          assignedModeratorId: userId,
+        },
+      });
+    return apiSuccess(action, 201);
+  }
+  if (resource === "jobs" && segments[1] === "hall-of-flame") {
+    const administrator = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (administrator?.role !== "ADMIN")
+      return apiError(
+        "FORBIDDEN",
+        "Administrator permission is required.",
+        403,
+      );
+    const parsed = await parseJson(
+      request,
+      z.object({ period: z.enum(["DAILY", "WEEKLY", "MONTHLY", "ALL_TIME"]) }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid ranking period.",
+        400,
+        parsed.error.flatten(),
+      );
+    return apiSuccess(await generateHallOfFlame(db, parsed.data.period));
   }
   return apiError("NOT_FOUND", "API operation not found.", 404);
 }

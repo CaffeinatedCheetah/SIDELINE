@@ -1,4 +1,7 @@
 import { notFound } from "next/navigation";
+import { PredictionForm } from "@/components/actions/prediction-form";
+import { TakeComposer } from "@/components/actions/take-composer";
+import { LiveGameRoom } from "@/components/games/live-game-room";
 import { PageHeading } from "@/components/layout/page-heading";
 import { PollCard } from "@/components/games/poll-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -50,6 +53,7 @@ export default async function GameRoom({
             : game.scheduledAt.toLocaleString()
         }
       />
+      <LiveGameRoom gameId={game.id} initialStatus={game.status} />
       <Tabs defaultValue="takes">
         <TabsList>
           {[
@@ -68,6 +72,7 @@ export default async function GameRoom({
         </TabsList>
         <TabsContent value="takes">
           <div className="mt-5 grid gap-4">
+            <TakeComposer gameId={game.id} />
             {game.takes.length ? (
               game.takes.map((take) => (
                 <TakeCard
@@ -108,18 +113,28 @@ export default async function GameRoom({
             ))}
           </div>
         </TabsContent>
-        {["chat", "predictions", "stats", "play-by-play", "highlights"].map(
-          (tab) => (
-            <TabsContent key={tab} value={tab}>
-              <div className="mt-5">
-                <EmptyState
-                  title={`${tab.replaceAll("-", " ")} is quiet`}
-                  description="Live updates appear here when available."
-                />
-              </div>
-            </TabsContent>
-          ),
-        )}
+        <TabsContent value="predictions">
+          <div className="mt-5 max-w-lg">
+            <PredictionForm
+              gameId={game.id}
+              homeTeam={game.homeTeam.name}
+              awayTeam={game.awayTeam.name}
+              locked={
+                game.status !== "SCHEDULED" || new Date() >= game.scheduledAt
+              }
+            />
+          </div>
+        </TabsContent>
+        {["chat", "stats", "play-by-play", "highlights"].map((tab) => (
+          <TabsContent key={tab} value={tab}>
+            <div className="mt-5">
+              <EmptyState
+                title={`${tab.replaceAll("-", " ")} is quiet`}
+                description="Live updates appear here when available."
+              />
+            </div>
+          </TabsContent>
+        ))}
       </Tabs>
     </div>
   );

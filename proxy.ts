@@ -20,5 +20,6 @@ export const config = {
     "/notifications/:path*",
     "/settings/:path*",
     "/onboarding/:path*",
+    "/moderation/:path*",
   ],
 };
