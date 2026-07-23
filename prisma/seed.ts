@@ -8,8 +8,13 @@ import {
 const db = new PrismaClient();
 
 async function main() {
-  if (process.env.NODE_ENV === "production")
-    throw new Error("Development seed is disabled in production.");
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.ALLOW_PREVIEW_SEED !== "true"
+  )
+    throw new Error(
+      "Production-mode seed is disabled. Set ALLOW_PREVIEW_SEED=true only for an approved preview database.",
+    );
 
   const football = await db.sport.upsert({
     where: { key: "football" },
@@ -167,16 +172,22 @@ async function main() {
     },
   });
 
-  const take = await db.take.create({
-    data: {
+  const take = await db.take.upsert({
+    where: { id: "00000000-0000-4000-8000-000000000101" },
+    update: {},
+    create: {
+      id: "00000000-0000-4000-8000-000000000101",
       authorId: demoUsers[2].id,
       gameId: liveGame.id,
       communityId: community.id,
       body: "Detroit's pressure packages are deciding this game before the snap.",
     },
   });
-  await db.take.create({
-    data: {
+  await db.take.upsert({
+    where: { id: "00000000-0000-4000-8000-000000000102" },
+    update: {},
+    create: {
+      id: "00000000-0000-4000-8000-000000000102",
       authorId: demoUsers[1].id,
       debateId: debate.id,
       body: "Consistency on third down puts Detroit ahead right now.",

@@ -18,7 +18,9 @@
     "test:e2e": "playwright test",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:preview": "NODE_ENV=production ALLOW_PREVIEW_SEED=true prisma db seed",
     "db:studio": "prisma studio"
   },
   "dependencies": {
