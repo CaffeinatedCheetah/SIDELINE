@@ -31,7 +31,9 @@ when `NODE_ENV=production`.
 
 ## Environment
 
-- `DATABASE_URL`: PostgreSQL runtime and migration connection.
+- `DATABASE_URL`: pooled PostgreSQL runtime connection. For Supabase, use the
+  transaction pooler on port 6543 with
+  `?pgbouncer=true&connection_limit=1`.
 - `DIRECT_URL`: direct PostgreSQL migration connection. It may match
   `DATABASE_URL` locally; use the provider's non-pooled URL in managed hosting.
 - `AUTH_SECRET`: random secret of at least 16 characters.
@@ -40,6 +42,8 @@ when `NODE_ENV=production`.
 - `EMAIL_SERVER` / `EMAIL_FROM`: optional SMTP transport for magic links.
 - `ENABLE_DEV_AUTH`: local seeded-account provider; must be `false` in production.
 - `NEXT_PUBLIC_APP_URL`: canonical public origin used by metadata and sitemap.
+- `PLAYWRIGHT_BASE_URL`: optional browser-test origin; it must use the same
+  hostname as `AUTH_URL` for authenticated flows.
 - `NEXT_PUBLIC_ANALYTICS_ID`: optional browser analytics destination identifier.
 - `SPORTS_API_BASE_URL` / `SPORTS_API_KEY`: optional live sports adapter
   configuration; blank values retain labeled demo data.
@@ -67,6 +71,8 @@ is maintained in [`docs/BUILD_PROGRESS.md`](docs/BUILD_PROGRESS.md).
 Create a Vercel project, provide production environment variables, use a pooled
 runtime `DATABASE_URL`, and run `prisma migrate deploy` once in a protected
 release job before promotion. Never enable development auth in production.
+Set `AUTH_URL` and `NEXT_PUBLIC_APP_URL` to the exact deployment origin. For
+Google login, register that origin's Auth.js callback URL in Google Cloud.
 
 Recommended release commands are:
 
