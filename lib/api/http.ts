@@ -10,10 +10,11 @@ export function apiError(
   message: string,
   status: number,
   details?: unknown,
+  headers?: HeadersInit,
 ) {
   return NextResponse.json(
     { error: { code, message, ...(details ? { details } : {}) } },
-    { status },
+    { status, headers },
   );
 }
 

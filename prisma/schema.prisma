@@ -134,6 +134,8 @@ model User {
   displayName          String             @default("New fan")
   role                 UserRole           @default(USER)
   status               UserStatus         @default(ACTIVE)
+  mutedUntil           DateTime?
+  bannedAt             DateTime?
   onboardedAt          DateTime?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
@@ -759,4 +761,13 @@ model ModerationAction {
   report      Report?              @relation(fields: [reportId], references: [id], onDelete: SetNull)
 
   @@index([targetType, targetId, createdAt])
+}
+
+model RateLimitBucket {
+  key       String   @id
+  count     Int
+  resetsAt DateTime
+  updatedAt DateTime @updatedAt
+
+  @@index([resetsAt])
 }
