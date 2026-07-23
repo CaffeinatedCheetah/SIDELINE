@@ -21,27 +21,27 @@ Last updated: 2026-07-22
 
 ## Feature ledger
 
-| Area                          | Route                                        | UI          | Backend     | Tests         | Status      | Notes                                                                           |
-| ----------------------------- | -------------------------------------------- | ----------- | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------- |
-| Tooling and application shell | all                                          | Complete    | Complete    | Basic checks  | Complete    | Responsive navigation and authenticated shell                                   |
-| Design system and primitives  | shared                                       | Complete    | N/A         | Unit coverage | Complete    | Semantic tokens and accessible shared controls                                  |
-| Database, migration, seed     | N/A                                          | N/A         | Complete    | Generate pass | Complete    | Live migrate/seed awaits a reachable PostgreSQL database                        |
-| Authentication and onboarding | `/auth/*`, `/onboarding`                     | Complete    | Complete    | DB pending    | In progress | Dev-safe credentials and conditional Google/email providers                     |
-| Public homepage               | `/`                                          | Complete    | Complete    | E2E pending   | In progress | Server-rendered database discovery                                               |
-| Games directory               | `/games`                                     | Complete    | Complete    | E2E pending   | In progress | League and status filters                                                       |
-| Game Room                     | `/games/[gameId]`                            | Complete    | In progress | E2E pending   | In progress | Tabs and persisted content; client polling remains                              |
-| My Arena                      | `/arena`                                     | Complete    | Complete    | DB pending    | In progress | Authenticated personalized queries                                              |
-| Debate Center/detail          | `/debates`, `/debates/[debateId]`            | Complete    | Complete    | Domain unit   | In progress | Positions and server-enforced votes                                             |
-| Community directory/detail    | `/communities`, `/communities/[slug]`        | Complete    | Complete    | DB pending    | In progress | Public communities only                                                         |
-| Public/editable profile       | `/users/[handle]`, `/settings`               | Complete    | Complete    | DB pending    | In progress | Fan identity and settings                                                       |
-| Hall of Flame                 | `/hall-of-flame`                             | Complete    | Complete    | Domain unit   | In progress | Deterministic multi-signal ranking                                              |
-| Notifications                 | `/notifications`                             | Complete    | Complete    | DB pending    | In progress | Read state and deep links                                                       |
-| Search                        | `/search`                                    | Complete    | Complete    | Pending       | In progress | Debounced multi-entity search                                                   |
-| Moderation and safety         | internal/API                                 | Not started | Not started | Not started   | Not started | Reports and audit actions                                                       |
-| Legal/help pages              | `/help`, `/guidelines`, `/terms`, `/privacy` | Complete    | N/A         | Pending       | In progress | Public static content                                                           |
-| API v1                        | `/api/v1/*`                                  | N/A         | In progress | Domain unit   | In progress | Zod, auth, errors, cursors, rate abstraction                                    |
-| Accessibility and SEO         | all                                          | In progress | In progress | Pending       | In progress | Landmarks, focus, metadata, sitemap, robots                                     |
-| Deployment and operations     | N/A                                          | N/A         | Not started | Not started   | Not started | Vercel-compatible config and runbook                                            |
+| Area                          | Route                                        | UI       | Backend  | Tests         | Status      | Notes                                                           |
+| ----------------------------- | -------------------------------------------- | -------- | -------- | ------------- | ----------- | --------------------------------------------------------------- |
+| Tooling and application shell | all                                          | Complete | Complete | Basic checks  | Complete    | Responsive navigation and authenticated shell                   |
+| Design system and primitives  | shared                                       | Complete | N/A      | Unit coverage | Complete    | Semantic tokens and accessible shared controls                  |
+| Database, migration, seed     | N/A                                          | N/A      | Complete | Generate pass | Complete    | Live migrate/seed awaits a reachable PostgreSQL database        |
+| Authentication and onboarding | `/auth/*`, `/onboarding`                     | Complete | Complete | DB blocked    | Blocked     | Runtime complete; integration awaits PostgreSQL                 |
+| Public homepage               | `/`                                          | Complete | Complete | E2E passed    | Complete    | Server-rendered database discovery                              |
+| Games directory               | `/games`                                     | Complete | Complete | Component     | Complete    | League and status filters                                       |
+| Game Room                     | `/games/[gameId]`                            | Complete | Complete | E2E pending   | Complete    | Polling cleanup, stale-request guard, takes, polls, predictions |
+| My Arena                      | `/arena`                                     | Complete | Complete | DB pending    | In progress | Authenticated personalized queries                              |
+| Debate Center/detail          | `/debates`, `/debates/[debateId]`            | Complete | Complete | Domain unit   | In progress | Positions and server-enforced votes                             |
+| Community directory/detail    | `/communities`, `/communities/[slug]`        | Complete | Complete | DB pending    | In progress | Public communities only                                         |
+| Public/editable profile       | `/users/[handle]`, `/settings`               | Complete | Complete | DB pending    | In progress | Fan identity and settings                                       |
+| Hall of Flame                 | `/hall-of-flame`                             | Complete | Complete | Domain unit   | In progress | Deterministic multi-signal ranking                              |
+| Notifications                 | `/notifications`                             | Complete | Complete | DB pending    | In progress | Read state and deep links                                       |
+| Search                        | `/search`                                    | Complete | Complete | Unit passed   | Complete    | Debounced multi-entity search                                   |
+| Moderation and safety         | `/moderation`, API                           | Complete | Complete | API unit      | Complete    | Role checks, reports, and append-only actions                   |
+| Legal/help pages              | `/help`, `/guidelines`, `/terms`, `/privacy` | Complete | N/A      | Pending       | In progress | Public static content                                           |
+| API v1                        | `/api/v1/*`                                  | N/A      | Complete | Domain unit   | Complete    | Zod, auth, errors, cursors, rate abstraction                    |
+| Accessibility and SEO         | all                                          | Complete | Complete | Component     | Complete    | Landmarks, focus, metadata, sitemap, robots                     |
+| Deployment and operations     | N/A                                          | N/A      | Complete | Build gate    | Complete    | Vercel-compatible scripts, environment, and runbook             |
 
 ## Explicitly deferred
 
