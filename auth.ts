@@ -6,30 +6,32 @@ import Nodemailer from "next-auth/providers/nodemailer";
 import { z } from "zod";
 
 import { db } from "@/lib/db/client";
+import { getEnv } from "@/lib/env";
 
 const providers = [];
+const environment = getEnv();
 
-if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
+if (environment.AUTH_GOOGLE_ID && environment.AUTH_GOOGLE_SECRET) {
   providers.push(
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      clientId: environment.AUTH_GOOGLE_ID,
+      clientSecret: environment.AUTH_GOOGLE_SECRET,
     }),
   );
 }
 
-if (process.env.EMAIL_SERVER) {
+if (environment.EMAIL_SERVER) {
   providers.push(
     Nodemailer({
-      server: process.env.EMAIL_SERVER,
-      from: process.env.EMAIL_FROM,
+      server: environment.EMAIL_SERVER,
+      from: environment.EMAIL_FROM,
     }),
   );
 }
 
 if (
   process.env.NODE_ENV !== "production" &&
-  process.env.ENABLE_DEV_AUTH === "true"
+  environment.ENABLE_DEV_AUTH === "true"
 ) {
   providers.push(
     Credentials({

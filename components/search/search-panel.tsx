@@ -69,32 +69,33 @@ export function SearchPanel() {
         </div>
       ) : (
         <div className="mt-6 grid gap-6">
-        {Object.entries(query.trim().length < 2 ? empty : results).map(([type, items]) =>
-            items.length ? (
-              <section key={type}>
-                <h2 className="font-display mb-2 text-xl font-black capitalize">
-                  {type}
-                </h2>
-                <ul className="grid gap-2">
-                  {items.map((item) => (
-                    <li
-                  key={String(
-                    ("id" in item && item.id) ||
-                    ("slug" in item && item.slug) ||
-                    ("handle" in item && item.handle)
-                  )}
-                    >
-                      <Link
-                        className="border-border-subtle bg-surface-1 hover:border-border-strong block rounded-sm border p-3"
-                        href={href(type, item)}
+          {Object.entries(query.trim().length < 2 ? empty : results).map(
+            ([type, items]) =>
+              items.length ? (
+                <section key={type}>
+                  <h2 className="font-display mb-2 text-xl font-black capitalize">
+                    {type}
+                  </h2>
+                  <ul className="grid gap-2">
+                    {items.map((item) => (
+                      <li
+                        key={String(
+                          ("id" in item && item.id) ||
+                            ("slug" in item && item.slug) ||
+                            ("handle" in item && item.handle),
+                        )}
                       >
-                        {label(item)}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null,
+                        <Link
+                          className="border-border-subtle bg-surface-1 hover:border-border-strong block rounded-sm border p-3"
+                          href={href(type, item)}
+                        >
+                          {label(item)}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null,
           )}
         </div>
       )}

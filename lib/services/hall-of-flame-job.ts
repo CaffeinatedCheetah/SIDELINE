@@ -45,16 +45,14 @@ export async function generateHallOfFlame(
     });
     if (!ranked.length) return [];
     await transaction.hallOfFlameEntry.createMany({
-      data: ranked
-        .slice(0, 100)
-        .map((entry) => ({
-          period,
-          periodStart,
-          rank: entry.rank,
-          score: entry.score,
-          takeId: entry.id,
-          reasons: { qualityConversationTrust: true },
-        })),
+      data: ranked.slice(0, 100).map((entry) => ({
+        period,
+        periodStart,
+        rank: entry.rank,
+        score: entry.score,
+        takeId: entry.id,
+        reasons: { qualityConversationTrust: true },
+      })),
     });
     return transaction.hallOfFlameEntry.findMany({
       where: { period, periodStart, leagueId: null, communityId: null },
