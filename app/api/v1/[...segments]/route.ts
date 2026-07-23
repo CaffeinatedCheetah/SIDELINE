@@ -755,3 +755,23 @@ export async function POST(request: Request, context: Context) {
   }
   return apiError("NOT_FOUND", "API operation not found.", 404);
 }
+
+export async function DELETE(_request: Request, context: Context) {
+  const { segments } = await context.params;
+  const userId = await identity();
+  if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  if (segments[0] !== "account")
+    return apiError("NOT_FOUND", "API operation not found.", 404);
+  const pendingDeletionAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+  await db.$transaction([
+    db.user.update({
+      where: { id: userId },
+      data: { status: "PENDING_DELETION", deletedAt: pendingDeletionAt },
+    }),
+    db.session.deleteMany({ where: { userId } }),
+  ]);
+  return apiSuccess({
+    status: "PENDING_DELETION",
+    effectiveAt: pendingDeletionAt.toISOString(),
+  });
+}

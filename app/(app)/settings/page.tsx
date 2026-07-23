@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
 import { PageHeading } from "@/components/layout/page-heading";
+import { AccountDangerZone } from "@/components/profile/account-danger-zone";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/foundations";
 import {
@@ -121,9 +122,7 @@ export default async function Settings() {
               Log out
             </Button>
           </form>
-          <Button className="mt-3" variant="danger" type="button">
-            Delete account
-          </Button>
+          <AccountDangerZone />
         </Card>
       </div>
     </>
