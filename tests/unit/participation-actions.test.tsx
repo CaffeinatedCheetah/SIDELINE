@@ -2,8 +2,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DebateVote } from "@/components/actions/debate-vote";
+import { DebateComposer } from "@/components/actions/debate-composer";
 import { JoinCommunityButton } from "@/components/actions/join-community-button";
 import { TakeComposer } from "@/components/actions/take-composer";
+
+const routerPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPush, refresh: vi.fn() }),
+}));
 
 afterEach(() => vi.unstubAllGlobals());
 function response(data: unknown) {
@@ -15,6 +21,32 @@ function response(data: unknown) {
   );
 }
 describe("participation actions", () => {
+  it("creates a debate through the JSON API", async () => {
+    const fetch = vi.fn(() => response({ id: "debate-1" }));
+    vi.stubGlobal("fetch", fetch);
+    render(<DebateComposer />);
+    await userEvent.type(
+      screen.getByLabelText("Question"),
+      "Who owns the fourth quarter?",
+    );
+    await userEvent.type(
+      screen.getByLabelText("Context"),
+      "Compare late-game execution from both teams.",
+    );
+    await userEvent.type(screen.getByLabelText("Option one"), "Detroit");
+    await userEvent.type(screen.getByLabelText("Option two"), "Chicago");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Publish debate" }),
+    );
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/debates",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"options":["Detroit","Chicago"]'),
+      }),
+    );
+  });
   it("posts a take through the authenticated API", async () => {
     const fetch = vi.fn(() => response({ id: "take-1" }));
     vi.stubGlobal("fetch", fetch);

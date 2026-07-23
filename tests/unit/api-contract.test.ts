@@ -23,6 +23,16 @@ describe("API contract", () => {
     );
     expect(result.success).toBe(false);
   });
+  it("reports malformed JSON as validation failure", async () => {
+    const result = await parseJson(
+      new Request("https://example.test", {
+        method: "POST",
+        body: "{not-json",
+      }),
+      z.object({ count: z.number() }),
+    );
+    expect(result.success).toBe(false);
+  });
   it("enforces bounded in-process rate limits", () => {
     const key = `test-${crypto.randomUUID()}`;
     expect(checkRateLimit(key, { limit: 1, windowMs: 1000 }).allowed).toBe(
