@@ -125,10 +125,12 @@ distributed adapter without changing handler policy.
 The production dependency audit currently reports advisories inherited from
 the latest stable Next.js/Auth.js dependency trees, including Nodemailer's raw
 message option and Next.js-bundled PostCSS/sharp versions. FanTakes never accepts
-or forwards caller-controlled raw email options. Compatible Prisma and
-Playwright security patches were applied; remaining advisories have no
-non-breaking upstream resolution available at this snapshot and must be
-rechecked before deployment.
+or forwards caller-controlled raw email options. The compatible Prisma security
+patch was applied. Playwright remains pinned to the newest release that executes
+on this macOS 11 workstation; newer advisory-fixed builds require macOS 12, so
+this test-only advisory must be resolved in CI on a supported operating system.
+Remaining production advisories have no non-breaking upstream resolution
+available at this snapshot and must be rechecked before deployment.
 
 ## Known limitations and deferred features
 
