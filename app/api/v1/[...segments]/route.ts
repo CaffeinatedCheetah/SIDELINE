@@ -3,7 +3,11 @@ import { z } from "zod";
 
 import { auth } from "@/auth";
 import { apiError, apiSuccess, cursorPage, parseJson } from "@/lib/api/http";
-import { checkRateLimit } from "@/lib/api/rate-limit";
+import {
+  checkRateLimit,
+  rateLimitKey,
+  rateLimitPolicy,
+} from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
 import { recordFanScoreEvent } from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
@@ -16,9 +20,64 @@ async function identity() {
   if (!session?.user?.id) return undefined;
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { status: true },
+    select: { status: true, bannedAt: true },
   });
-  return user?.status === "ACTIVE" ? session.user.id : undefined;
+  if (!user || user.status !== "ACTIVE" || user.bannedAt) return undefined;
+  return session.user.id;
+}
+
+async function mutationIdentity() {
+  const session = await auth();
+  if (!session?.user?.id)
+    return {
+      response: apiError("AUTH_REQUIRED", "Sign in to continue.", 401),
+    };
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { status: true, bannedAt: true, mutedUntil: true },
+  });
+  if (!user || user.status !== "ACTIVE" || user.bannedAt)
+    return {
+      response: apiError(
+        "ACCOUNT_RESTRICTED",
+        "This account cannot perform that action.",
+        403,
+      ),
+    };
+  if (user.mutedUntil && user.mutedUntil.getTime() > Date.now())
+    return {
+      response: apiError(
+        "ACCOUNT_MUTED",
+        "Posting is temporarily unavailable for this account.",
+        403,
+      ),
+    };
+  return { userId: session.user.id };
+}
+
+async function resolveModerationTarget(
+  targetType: "TAKE" | "COMMENT" | "USER",
+  targetId: string,
+) {
+  if (targetType === "USER") {
+    const user = await db.user.findUnique({
+      where: { id: targetId },
+      select: { id: true },
+    });
+    return user ? { userId: user.id } : undefined;
+  }
+  if (targetType === "TAKE") {
+    const take = await db.take.findUnique({
+      where: { id: targetId },
+      select: { authorId: true },
+    });
+    return take ? { userId: take.authorId } : undefined;
+  }
+  const comment = await db.comment.findUnique({
+    where: { id: targetId },
+    select: { authorId: true },
+  });
+  return comment ? { userId: comment.authorId } : undefined;
 }
 
 async function handleGet(request: Request, context: Context) {
@@ -184,10 +243,21 @@ async function handleGet(request: Request, context: Context) {
 async function handlePost(request: Request, context: Context) {
   const { segments } = await context.params;
   const resource = segments[0];
-  const userId = await identity();
-  if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
-  if (!checkRateLimit(`${userId}:${resource}`).allowed)
-    return apiError("RATE_LIMITED", "Please wait before trying again.", 429);
+  const actor = await mutationIdentity();
+  if (actor.response) return actor.response;
+  const userId = actor.userId;
+  const rateLimit = await checkRateLimit(
+    rateLimitKey(request, resource, userId),
+    rateLimitPolicy(resource),
+  );
+  if (!rateLimit.allowed)
+    return apiError(
+      "RATE_LIMITED",
+      "Please wait before trying again.",
+      429,
+      undefined,
+      { "Retry-After": String(rateLimit.retryAfterSeconds) },
+    );
 
   if (resource === "profile" && segments[1] === "complete") {
     const parsed = await parseJson(
@@ -842,8 +912,8 @@ async function handlePost(request: Request, context: Context) {
     const parsed = await parseJson(
       request,
       z.object({
-        targetType: z.string().min(1).max(30),
-        targetId: z.string().min(1).max(100),
+        targetType: z.enum(["TAKE", "COMMENT", "USER"]),
+        targetId: z.string().uuid(),
         reason: z.string().min(1).max(50),
         detail: z.string().max(1000).optional(),
       }),
@@ -855,6 +925,14 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
+    const targetExists =
+      parsed.data.targetType === "TAKE"
+        ? await db.take.count({ where: { id: parsed.data.targetId } })
+        : parsed.data.targetType === "COMMENT"
+          ? await db.comment.count({ where: { id: parsed.data.targetId } })
+          : await db.user.count({ where: { id: parsed.data.targetId } });
+    if (!targetExists)
+      return apiError("NOT_FOUND", "Report target not found.", 404);
     return apiSuccess(
       await db.report.create({ data: { reporterId: userId, ...parsed.data } }),
       201,
@@ -871,8 +949,8 @@ async function handlePost(request: Request, context: Context) {
       request,
       z.object({
         reportId: z.string().uuid().optional(),
-        targetType: z.string().min(1).max(30),
-        targetId: z.string().min(1).max(100),
+        targetType: z.enum(["TAKE", "COMMENT", "USER"]),
+        targetId: z.string().uuid(),
         action: z.enum([
           "REMOVE_CONTENT",
           "WARN_USER",
@@ -891,18 +969,122 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    const action = await db.moderationAction.create({
-      data: { moderatorId: userId, ...parsed.data },
-    });
-    if (parsed.data.reportId)
-      await db.report.update({
-        where: { id: parsed.data.reportId },
-        data: {
-          state: "RESOLVED",
-          resolution: parsed.data.reason,
-          assignedModeratorId: userId,
+    if (
+      parsed.data.action === "TEMPORARY_MUTE" &&
+      (!parsed.data.expiresAt || parsed.data.expiresAt <= new Date())
+    )
+      return apiError(
+        "INVALID_REQUEST",
+        "A future expiry is required for a temporary mute.",
+        400,
+      );
+    if (
+      ["REMOVE_CONTENT", "RESTORE_CONTENT"].includes(parsed.data.action) &&
+      parsed.data.targetType === "USER"
+    )
+      return apiError(
+        "INVALID_REQUEST",
+        "That action requires a content target.",
+        400,
+      );
+    const target = await resolveModerationTarget(
+      parsed.data.targetType,
+      parsed.data.targetId,
+    );
+    if (!target) return apiError("NOT_FOUND", "Target not found.", 404);
+    if (
+      ["WARN_USER", "TEMPORARY_MUTE", "BAN_USER"].includes(
+        parsed.data.action,
+      ) &&
+      target.userId === userId
+    )
+      return apiError(
+        "INVALID_REQUEST",
+        "Moderators cannot restrict their own account.",
+        400,
+      );
+    if (parsed.data.reportId) {
+      const report = await db.report.findFirst({
+        where: {
+          id: parsed.data.reportId,
+          targetType: parsed.data.targetType,
+          targetId: parsed.data.targetId,
         },
+        select: { id: true },
       });
+      if (!report)
+        return apiError(
+          "INVALID_REQUEST",
+          "The report does not match this target.",
+          400,
+        );
+    }
+    const action = await db.$transaction(async (transaction) => {
+      const created = await transaction.moderationAction.create({
+        data: { moderatorId: userId, ...parsed.data },
+      });
+      if (parsed.data.action === "REMOVE_CONTENT") {
+        if (parsed.data.targetType === "TAKE")
+          await transaction.take.update({
+            where: { id: parsed.data.targetId },
+            data: { status: "MODERATOR_REMOVED", deletedAt: new Date() },
+          });
+        if (parsed.data.targetType === "COMMENT")
+          await transaction.comment.update({
+            where: { id: parsed.data.targetId },
+            data: { status: "MODERATOR_REMOVED", deletedAt: new Date() },
+          });
+      }
+      if (parsed.data.action === "RESTORE_CONTENT") {
+        if (parsed.data.targetType === "TAKE")
+          await transaction.take.update({
+            where: { id: parsed.data.targetId },
+            data: { status: "ACTIVE", deletedAt: null },
+          });
+        if (parsed.data.targetType === "COMMENT")
+          await transaction.comment.update({
+            where: { id: parsed.data.targetId },
+            data: { status: "ACTIVE", deletedAt: null },
+          });
+      }
+      if (parsed.data.action === "TEMPORARY_MUTE")
+        await transaction.user.update({
+          where: { id: target.userId },
+          data: { mutedUntil: parsed.data.expiresAt },
+        });
+      if (parsed.data.action === "BAN_USER")
+        await transaction.user.update({
+          where: { id: target.userId },
+          data: { status: "SUSPENDED", bannedAt: new Date() },
+        });
+      if (
+        ["WARN_USER", "TEMPORARY_MUTE", "BAN_USER"].includes(parsed.data.action)
+      )
+        await transaction.notification.create({
+          data: {
+            recipientId: target.userId,
+            actorId: userId,
+            type: "MODERATION",
+            entityType: parsed.data.targetType,
+            entityId: parsed.data.targetId,
+            href: "/notifications",
+            payload: {
+              action: parsed.data.action,
+              reason: parsed.data.reason,
+            },
+          },
+        });
+      if (parsed.data.reportId)
+        await transaction.report.update({
+          where: { id: parsed.data.reportId },
+          data: {
+            state: "RESOLVED",
+            resolution: parsed.data.reason,
+            assignedModeratorId: userId,
+          },
+        });
+      return created;
+    });
     return apiSuccess(action, 201);
   }
   if (resource === "jobs" && segments[1] === "hall-of-flame") {
@@ -934,8 +1116,9 @@ async function handlePost(request: Request, context: Context) {
 
 async function handlePatch(request: Request, context: Context) {
   const { segments } = await context.params;
-  const userId = await identity();
-  if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  const actor = await mutationIdentity();
+  if (actor.response) return actor.response;
+  const userId = actor.userId;
   if (segments[0] === "profile") {
     const parsed = await parseJson(
       request,
@@ -1010,8 +1193,18 @@ async function handlePatch(request: Request, context: Context) {
   }
   if (segments[0] !== "takes" || !segments[1])
     return apiError("NOT_FOUND", "API operation not found.", 404);
-  if (!checkRateLimit(`${userId}:takes:update`).allowed)
-    return apiError("RATE_LIMITED", "Please wait before trying again.", 429);
+  const rateLimit = await checkRateLimit(
+    rateLimitKey(request, "takes:update", userId),
+    rateLimitPolicy("takes:update"),
+  );
+  if (!rateLimit.allowed)
+    return apiError(
+      "RATE_LIMITED",
+      "Please wait before trying again.",
+      429,
+      undefined,
+      { "Retry-After": String(rateLimit.retryAfterSeconds) },
+    );
   const parsed = await parseJson(
     request,
     z.object({ body: z.string().trim().min(1).max(1000) }),
@@ -1041,8 +1234,9 @@ async function handlePatch(request: Request, context: Context) {
 
 async function handleDelete(_request: Request, context: Context) {
   const { segments } = await context.params;
-  const userId = await identity();
-  if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  const actor = await mutationIdentity();
+  if (actor.response) return actor.response;
+  const userId = actor.userId;
   if (segments[0] === "takes" && segments[1]) {
     const result = await db.take.updateMany({
       where: {

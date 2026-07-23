@@ -146,6 +146,13 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
       },
     });
     await db.fanScoreEvent.deleteMany({ where: { userId: { in: testUsers } } });
+    await db.rateLimitBucket.deleteMany({
+      where: {
+        OR: testUsers.map((userId) => ({
+          key: { startsWith: `user:${userId}:` },
+        })),
+      },
+    });
     await db.savedItem.deleteMany({ where: { userId: { in: testUsers } } });
     await db.pollVote.deleteMany({ where: { userId: { in: testUsers } } });
     if (ids.poll) await db.poll.deleteMany({ where: { id: ids.poll } });
@@ -568,7 +575,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     );
   });
 
-  it("enforces moderation roles and records an audit action", async () => {
+  it("enforces moderation roles, content state, warnings, mutes, and bans", async () => {
     const reportTarget = await db.take.create({
       data: {
         authorId: ids.secondUser,
@@ -613,6 +620,105 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         where: { reportId: ids.report, moderatorId: ids.moderator },
       }),
     ).toBe(1);
+    expect(
+      (
+        await db.notification.findFirstOrThrow({
+          where: {
+            recipientId: ids.secondUser,
+            type: "MODERATION",
+          },
+          orderBy: { createdAt: "desc" },
+        })
+      ).payload,
+    ).toMatchObject({ action: "WARN_USER" });
+
+    expect(
+      (
+        await request("POST", "moderation-actions", {
+          targetType: "TAKE",
+          targetId: ids.reportTarget,
+          action: "REMOVE_CONTENT",
+          reason: "Remove the reported integration content.",
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await db.take.findUniqueOrThrow({
+          where: { id: ids.reportTarget },
+        })
+      ).status,
+    ).toBe("MODERATOR_REMOVED");
+    expect(
+      (
+        await request("POST", "moderation-actions", {
+          targetType: "TAKE",
+          targetId: ids.reportTarget,
+          action: "RESTORE_CONTENT",
+          reason: "Restore after the integration review.",
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await db.take.findUniqueOrThrow({
+          where: { id: ids.reportTarget },
+        })
+      ).status,
+    ).toBe("ACTIVE");
+
+    const mutedUntil = new Date(Date.now() + 60_000);
+    expect(
+      (
+        await request("POST", "moderation-actions", {
+          targetType: "USER",
+          targetId: ids.secondUser,
+          action: "TEMPORARY_MUTE",
+          reason: "Temporary integration safety restriction.",
+          expiresAt: mutedUntil.toISOString(),
+        })
+      ).status,
+    ).toBe(201);
+    authState.userId = ids.secondUser;
+    expect(
+      (
+        await request("POST", "reports", {
+          targetType: "TAKE",
+          targetId: ids.reportTarget,
+          reason: "HARASSMENT",
+        })
+      ).status,
+    ).toBe(403);
+    await db.user.update({
+      where: { id: ids.secondUser },
+      data: { mutedUntil: null },
+    });
+
+    authState.userId = ids.moderator;
+    expect(
+      (
+        await request("POST", "moderation-actions", {
+          targetType: "USER",
+          targetId: ids.secondUser,
+          action: "BAN_USER",
+          reason: "Integration ban enforcement verification.",
+        })
+      ).status,
+    ).toBe(201);
+    authState.userId = ids.secondUser;
+    expect(
+      (
+        await request("POST", "reports", {
+          targetType: "TAKE",
+          targetId: ids.reportTarget,
+          reason: "HARASSMENT",
+        })
+      ).status,
+    ).toBe(403);
+    await db.user.update({
+      where: { id: ids.secondUser },
+      data: { status: "ACTIVE", bannedAt: null },
+    });
   });
 
   it("starts account deletion and blocks subsequent mutations", async () => {
@@ -629,6 +735,6 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
           follow: true,
         })
       ).status,
-    ).toBe(401);
+    ).toBe(403);
   });
 });
