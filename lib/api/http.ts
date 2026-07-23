@@ -18,8 +18,12 @@ export function apiError(
 }
 
 export async function parseJson<T>(request: Request, schema: ZodType<T>) {
-  const value: unknown = await request.json();
-  return schema.safeParse(value);
+  try {
+    const value: unknown = await request.json();
+    return schema.safeParse(value);
+  } catch {
+    return schema.safeParse(undefined);
+  }
 }
 
 export function cursorPage(searchParams: URLSearchParams) {
