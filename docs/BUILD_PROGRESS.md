@@ -21,27 +21,27 @@ Last updated: 2026-07-22
 
 ## Feature ledger
 
-| Area | Route | UI | Backend | Tests | Status | Notes |
-|---|---|---|---|---|---|---|
-| Tooling and application shell | all | In progress | Complete | Basic checks | In progress | Next.js scaffold, scripts, environment and build pass; shell UI follows |
-| Design system and primitives | shared | Not started | N/A | Not started | Not started | Tokens before pages |
-| Database, migration, seed | N/A | N/A | Not started | Not started | Not started | PostgreSQL/Prisma |
-| Authentication and onboarding | `/auth/*`, `/onboarding` | Not started | Not started | Not started | Not started | Dev-safe credentials adapter plus Google/email config |
-| Public homepage | `/` | Not started | Not started | Not started | Not started | Server-rendered discovery |
-| Games directory | `/games` | Not started | Not started | Not started | Not started | Date/league/status filters |
-| Game Room | `/games/[gameId]` | Not started | Not started | Not started | Not started | Polling, takes, predictions, polls |
-| My Arena | `/arena` | Not started | Not started | Not started | Not started | Authenticated personalized queries |
-| Debate Center/detail | `/debates`, `/debates/[debateId]` | Not started | Not started | Not started | Not started | Positions, votes, replies |
-| Community directory/detail | `/communities`, `/communities/[slug]` | Not started | Not started | Not started | Not started | Public communities only |
-| Public/editable profile | `/users/[handle]`, `/settings` | Not started | Not started | Not started | Not started | Fan identity and privacy |
-| Hall of Flame | `/hall-of-flame` | Not started | Not started | Not started | Not started | Transparent scheduled ranking |
-| Notifications | `/notifications` | Not started | Not started | Not started | Not started | Read state, filters, preferences |
-| Search | `/search` | Not started | Not started | Not started | Not started | Debounced accessible search |
-| Moderation and safety | internal/API | Not started | Not started | Not started | Not started | Reports and audit actions |
-| Legal/help pages | `/help`, `/guidelines`, `/terms`, `/privacy` | Not started | N/A | Not started | Not started | Public static content |
-| API v1 | `/api/v1/*` | N/A | Not started | Not started | Not started | Zod, auth, errors, cursors, rate abstraction |
-| Accessibility and SEO | all | Not started | Not started | Not started | Not started | WCAG 2.2 AA, metadata, sitemap, robots |
-| Deployment and operations | N/A | N/A | Not started | Not started | Not started | Vercel-compatible config and runbook |
+| Area                          | Route                                        | UI          | Backend     | Tests         | Status      | Notes                                                                           |
+| ----------------------------- | -------------------------------------------- | ----------- | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------- |
+| Tooling and application shell | all                                          | In progress | Complete    | Basic checks  | In progress | Next.js scaffold, scripts, environment and build pass; navigation shell follows |
+| Design system and primitives  | shared                                       | Complete    | N/A         | Unit coverage | Complete    | Semantic tokens and accessible shared controls                                  |
+| Database, migration, seed     | N/A                                          | N/A         | Not started | Not started   | Not started | PostgreSQL/Prisma                                                               |
+| Authentication and onboarding | `/auth/*`, `/onboarding`                     | Not started | Not started | Not started   | Not started | Dev-safe credentials adapter plus Google/email config                           |
+| Public homepage               | `/`                                          | Not started | Not started | Not started   | Not started | Server-rendered discovery                                                       |
+| Games directory               | `/games`                                     | Not started | Not started | Not started   | Not started | Date/league/status filters                                                      |
+| Game Room                     | `/games/[gameId]`                            | Not started | Not started | Not started   | Not started | Polling, takes, predictions, polls                                              |
+| My Arena                      | `/arena`                                     | Not started | Not started | Not started   | Not started | Authenticated personalized queries                                              |
+| Debate Center/detail          | `/debates`, `/debates/[debateId]`            | Not started | Not started | Not started   | Not started | Positions, votes, replies                                                       |
+| Community directory/detail    | `/communities`, `/communities/[slug]`        | Not started | Not started | Not started   | Not started | Public communities only                                                         |
+| Public/editable profile       | `/users/[handle]`, `/settings`               | Not started | Not started | Not started   | Not started | Fan identity and privacy                                                        |
+| Hall of Flame                 | `/hall-of-flame`                             | Not started | Not started | Not started   | Not started | Transparent scheduled ranking                                                   |
+| Notifications                 | `/notifications`                             | Not started | Not started | Not started   | Not started | Read state, filters, preferences                                                |
+| Search                        | `/search`                                    | Not started | Not started | Not started   | Not started | Debounced accessible search                                                     |
+| Moderation and safety         | internal/API                                 | Not started | Not started | Not started   | Not started | Reports and audit actions                                                       |
+| Legal/help pages              | `/help`, `/guidelines`, `/terms`, `/privacy` | Not started | N/A         | Not started   | Not started | Public static content                                                           |
+| API v1                        | `/api/v1/*`                                  | N/A         | Not started | Not started   | Not started | Zod, auth, errors, cursors, rate abstraction                                    |
+| Accessibility and SEO         | all                                          | Not started | Not started | Not started   | Not started | WCAG 2.2 AA, metadata, sitemap, robots                                          |
+| Deployment and operations     | N/A                                          | N/A         | Not started | Not started   | Not started | Vercel-compatible config and runbook                                            |
 
 ## Explicitly deferred
 
@@ -52,7 +52,7 @@ Last updated: 2026-07-22
 
 ## Blockers
 
-- No system Node.js/npm installation was available; an official Node.js 24 LTS
+- No system Node.js/npm installation was available; an official Node.js 22 LTS
   binary is being used for this build session.
 - PostgreSQL is not installed locally. Migration and seed verification require a
   reachable development/test `DATABASE_URL`; container tooling is also absent.
