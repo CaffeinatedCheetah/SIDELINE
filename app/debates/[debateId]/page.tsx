@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { DebateVote } from "@/components/actions/debate-vote";
+import { TakeComposer } from "@/components/actions/take-composer";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Card, EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
@@ -37,6 +39,7 @@ export default async function DebateDetail({
           <h2 id="positions" className="font-display text-2xl font-black">
             Choose your position
           </h2>
+          <DebateVote debateId={debate.id} options={debate.options} />
           {debate.options.map((option) => (
             <Card key={option.id} className="flex items-center justify-between">
               <div>
@@ -53,6 +56,7 @@ export default async function DebateDetail({
           <h2 className="font-display mt-6 text-2xl font-black">
             Counter-takes
           </h2>
+          <TakeComposer debateId={debate.id} />
           {debate.takes.length ? (
             debate.takes.map((take) => (
               <Card key={take.id}>

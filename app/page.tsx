@@ -206,7 +206,7 @@ export default async function Home() {
               slug={community.slug}
               name={community.name}
               description={community.description}
-                  members={community._count.members}
+              members={community._count.members}
             />
           ))}
         </Section>
@@ -221,7 +221,10 @@ export default async function Home() {
               <ProfileCard
                 handle={data.leader.handle}
                 displayName={data.leader.displayName}
-                bio={data.leader.profile?.bio ?? "Building a fan identity one take at a time."}
+                bio={
+                  data.leader.profile?.bio ??
+                  "Building a fan identity one take at a time."
+                }
                 fanScore={data.leader.profile?.reputation ?? 0}
               />
             ) : (

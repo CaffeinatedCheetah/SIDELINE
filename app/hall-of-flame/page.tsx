@@ -6,7 +6,12 @@ import type { Prisma } from "@prisma/client";
 
 type HallListItem = Prisma.HallOfFlameEntryGetPayload<{
   include: {
-    take: { select: { body: true; author: { select: { handle: true; displayName: true } } } };
+    take: {
+      select: {
+        body: true;
+        author: { select: { handle: true; displayName: true } };
+      };
+    };
     league: { select: { abbreviation: true } };
   };
 }>;
