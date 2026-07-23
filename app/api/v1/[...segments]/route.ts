@@ -458,7 +458,16 @@ async function handlePost(request: Request, context: Context) {
   if (resource === "votes") {
     const parsed = await parseJson(
       request,
-      z.object({ debateId: z.string().uuid(), optionId: z.string().uuid() }),
+      z.union([
+        z.object({
+          debateId: z.string().uuid(),
+          optionId: z.string().uuid(),
+        }),
+        z.object({
+          takeId: z.string().uuid(),
+          kind: z.enum(["AGREE", "DISAGREE"]),
+        }),
+      ]),
     );
     if (!parsed.success)
       return apiError(
@@ -467,6 +476,35 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
+    if ("takeId" in parsed.data) {
+      const take = await db.take.findFirst({
+        where: { id: parsed.data.takeId, status: ContentStatus.ACTIVE },
+        select: { id: true },
+      });
+      if (!take) return apiError("NOT_FOUND", "Take not found.", 404);
+      const vote = await db.vote.upsert({
+        where: {
+          userId_takeId: { userId, takeId: take.id },
+        },
+        update: { kind: parsed.data.kind },
+        create: {
+          userId,
+          takeId: take.id,
+          kind: parsed.data.kind,
+        },
+      });
+      const grouped = await db.vote.groupBy({
+        by: ["kind"],
+        where: { takeId: take.id },
+        _count: { _all: true },
+      });
+      return apiSuccess({
+        vote,
+        totals: Object.fromEntries(
+          grouped.map((entry) => [entry.kind, entry._count._all]),
+        ),
+      });
+    }
     const option = await db.debateOption.findFirst({
       where: {
         id: parsed.data.optionId,
@@ -477,15 +515,38 @@ async function handlePost(request: Request, context: Context) {
     if (!option)
       return apiError("INVALID_OPTION", "That option is not available.", 409);
     try {
+      const vote = await db.vote.create({
+        data: {
+          userId,
+          debateId: parsed.data.debateId,
+          debateOptionId: option.id,
+          kind: VoteKind.DEBATE_OPTION,
+        },
+      });
+      const options = await db.debateOption.findMany({
+        where: { debateId: parsed.data.debateId },
+        orderBy: { displayOrder: "asc" },
+        select: {
+          id: true,
+          _count: { select: { votes: true } },
+        },
+      });
+      const total = options.reduce(
+        (sum, debateOption) => sum + debateOption._count.votes,
+        0,
+      );
       return apiSuccess(
-        await db.vote.create({
-          data: {
-            userId,
-            debateId: parsed.data.debateId,
-            debateOptionId: option.id,
-            kind: VoteKind.DEBATE_OPTION,
-          },
-        }),
+        {
+          vote,
+          total,
+          results: options.map((debateOption) => ({
+            optionId: debateOption.id,
+            votes: debateOption._count.votes,
+            percentage: total
+              ? Number(((debateOption._count.votes / total) * 100).toFixed(2))
+              : 0,
+          })),
+        },
         201,
       );
     } catch (error) {
@@ -687,16 +748,45 @@ async function handlePost(request: Request, context: Context) {
       });
       return apiSuccess({ following: false });
     }
-    await db.follow.upsert({
+    const existing = await db.follow.findUnique({
       where: {
         followerId_followedId: {
           followerId: userId,
           followedId: parsed.data.userId,
         },
       },
-      update: {},
-      create: { followerId: userId, followedId: parsed.data.userId },
     });
+    if (!existing) {
+      const actor = await db.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { handle: true },
+      });
+      try {
+        await db.$transaction([
+          db.follow.create({
+            data: { followerId: userId, followedId: parsed.data.userId },
+          }),
+          db.notification.create({
+            data: {
+              recipientId: parsed.data.userId,
+              actorId: userId,
+              type: "FOLLOW",
+              entityType: "USER",
+              entityId: userId,
+              href: `/users/${actor.handle}`,
+            },
+          }),
+        ]);
+      } catch (error) {
+        if (
+          !(
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          )
+        )
+          throw error;
+      }
+    }
     return apiSuccess({ following: true }, 201);
   }
   if (resource === "saved-items") {
@@ -846,6 +936,78 @@ async function handlePatch(request: Request, context: Context) {
   const { segments } = await context.params;
   const userId = await identity();
   if (!userId) return apiError("AUTH_REQUIRED", "Sign in to continue.", 401);
+  if (segments[0] === "profile") {
+    const parsed = await parseJson(
+      request,
+      z.object({
+        displayName: z.string().trim().min(2).max(50),
+        bio: z.string().trim().max(300),
+        favoriteSports: z.array(z.string().uuid()).max(10),
+        favoriteTeams: z.array(z.string().uuid()).max(20),
+        privacySettings: z
+          .object({
+            profileDiscoverable: z.boolean(),
+            showActivity: z.boolean(),
+          })
+          .strict(),
+      }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid profile settings.",
+        400,
+        parsed.error.flatten(),
+      );
+    const [sportCount, teamCount] = await Promise.all([
+      db.sport.count({ where: { id: { in: parsed.data.favoriteSports } } }),
+      db.team.count({ where: { id: { in: parsed.data.favoriteTeams } } }),
+    ]);
+    if (
+      sportCount !== new Set(parsed.data.favoriteSports).size ||
+      teamCount !== new Set(parsed.data.favoriteTeams).size
+    )
+      return apiError(
+        "INVALID_REQUEST",
+        "One or more selected interests are unavailable.",
+        400,
+      );
+    const user = await db.user.update({
+      where: { id: userId },
+      data: {
+        displayName: parsed.data.displayName,
+        profile: {
+          upsert: {
+            create: {
+              bio: parsed.data.bio,
+              favoriteSports: parsed.data.favoriteSports,
+              favoriteTeams: parsed.data.favoriteTeams,
+            },
+            update: {
+              bio: parsed.data.bio,
+              favoriteSports: parsed.data.favoriteSports,
+              favoriteTeams: parsed.data.favoriteTeams,
+            },
+          },
+        },
+        preferences: {
+          upsert: {
+            create: { privacySettings: parsed.data.privacySettings },
+            update: { privacySettings: parsed.data.privacySettings },
+          },
+        },
+      },
+      select: {
+        id: true,
+        handle: true,
+        displayName: true,
+        image: true,
+        profile: true,
+        preferences: true,
+      },
+    });
+    return apiSuccess(user);
+  }
   if (segments[0] !== "takes" || !segments[1])
     return apiError("NOT_FOUND", "API operation not found.", 404);
   if (!checkRateLimit(`${userId}:takes:update`).allowed)
