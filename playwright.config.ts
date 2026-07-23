@@ -9,7 +9,7 @@ export default defineConfig({
   use: { baseURL: "http://127.0.0.1:3000", trace: "on-first-retry" },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["iPhone 13"] } },
+    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
     command: "npm run dev",
