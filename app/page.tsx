@@ -270,9 +270,12 @@ function Section({
 }) {
   return (
     <section>
-      <div className="mb-5 flex items-end justify-between">
-        <h2 className="font-display text-3xl font-black">{title}</h2>
-        <Link href={href} className="text-brand font-bold hover:underline">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <h2 className="font-display min-w-0 text-3xl font-black">{title}</h2>
+        <Link
+          href={href}
+          className="text-brand shrink-0 font-bold hover:underline"
+        >
           View all
         </Link>
       </div>
