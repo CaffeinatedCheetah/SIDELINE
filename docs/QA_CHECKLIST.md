@@ -1,94 +1,56 @@
-# FanTakes preview QA checklist
+# FanTakes — Manual QA Checklist (Shell + Purple Rebrand)
 
-Last updated: 2026-07-23
+Automated browser, visual regression, and accessibility (axe) execution is
+not available in the environment this branch was built in. This checklist
+is the external verification step referenced in the engineering report for
+PR `claude/shell-purple-rebrand`.
 
-## Evidence states
+## How to use this
+Open the Preview deployment and go through each route at each breakpoint.
+Check off each row; note any failure with the route + breakpoint + what broke.
 
-- **Passed locally**: exercised through the Next.js development server against
-  Supabase.
-- **Pending preview**: requires a successful Vercel deployment URL.
-- **Blocked**: cannot run because Vercel blocks deployment before build.
+## Breakpoints
+320, 360, 375, 390, 414, 430, 768, 1024, 1280, 1440px
 
-## Public routes
+## Routes and what to verify
 
-The following passed local Chromium route checks with no HTTP error or browser
-console error:
+| Route | Shell (sidebar) expected? | Check |
+|---|---|---|
+| `/` (Homepage) | Yes | Hero, Today's Schedule, Trending Takes, Debates, Communities, Hall of Flame preview all render; purple accents; no red bleeding through except semantic states |
+| `/games` | Yes | League/status filters work; LIVE badge is red/danger tone, not purple — confirm semantic red preserved |
+| `/games/[gameId]` (Game Room) | Yes | Chat/Takes/Polls/Stats tabs; right rail renders if content registered |
+| `/debates` | Yes | List renders; vote bars use purple |
+| `/debates/[debateId]` | Yes | Voting works; focus ring visible on keyboard nav |
+| `/debates/new` | Yes | Form controls consistent with design system |
+| `/communities` | Yes | Cards consistent with GameCard/DebateCard styling |
+| `/communities/[slug]` | Yes | Join button purple; tabs consistent |
+| `/hall-of-flame` | Yes | Rank vs. score terminology matches homepage preview fix |
+| `/users/[handle]` (Profile) | Yes | Follow button purple; stats readable |
+| `/arena` (My Arena) | Yes | Sidebar active state highlights "My Arena" |
+| `/notifications` | Yes | Sidebar active state highlights correctly |
+| `/search` | Yes | Sidebar active state; keyboard focus on result list |
+| `/settings` | Yes | Form controls, no dead toggles |
+| `/moderation` | Yes | Reports list; action buttons consistent |
+| `/help` | No (full-bleed, intentional) | Content readable without sidebar; search works |
+| `/terms`, `/privacy`, `/guidelines` | No (full-bleed, intentional) | Long-document readability; headings hierarchy |
+| `/auth/sign-in`, `/auth/sign-up`, `/auth/error` | No (full-bleed, intentional) | Forms centered; no orphaned sidebar space |
 
-- Homepage
-- Games and seeded game detail
-- Debate Center and seeded debate detail
-- Communities and seeded community detail
-- Hall of Flame
-- Seeded public profile
-- Login and signup
-- Help
-- Community Guidelines
-- Terms
-- Privacy
+## Cross-cutting checks (every page)
+- [ ] Left sidebar active state matches current route
+- [ ] Mobile bottom nav active state matches current route
+- [ ] Tab key reaches every interactive control in visual order
+- [ ] Focus ring (`--focus`, purple) visible on every focusable element
+- [ ] No emoji or placeholder/Lorem-ipsum text
+- [ ] No dead links (every link resolves)
+- [ ] Loading state does not flash unstyled content
+- [ ] Empty state copy is specific, not a generic "No data"
+- [ ] Error state (simulate by blocking API calls) shows a real message, not a blank page
+- [ ] Red is only used for errors/destructive/live-alerts, never as a brand accent
+- [ ] Green only for success/positive deltas
+- [ ] Yellow/orange only for warnings/streaks/flame features
 
-Repeat every route against the Vercel preview after the access block is removed.
-
-## Authenticated routes
-
-Development login, session persistence, My Arena, Settings logout, and
-protected-route redirection passed locally against Supabase.
-
-The following remain pending preview or broader browser coverage:
-
-- Fresh-user onboarding
-- Game Room participation
-- Debate creation and voting
-- Community join/participation
-- Profile editing
-- Notification deep links
-- Moderator action UI
-
-Their server-authoritative mutation behavior is covered by the PostgreSQL
-integration suite, but that is not equivalent to complete browser-flow evidence.
-
-## Responsive sizes
-
-Local Chromium checks passed at 320, 375, 390, 430, 768, 1024, 1280, and
-1440 pixels with no homepage horizontal overflow. Desktop and mobile public
-navigation smoke tests also pass.
-
-After deployment, repeat at every width and verify:
-
-- Navigation and mobile bottom actions remain reachable.
-- Forms and dialogs fit the viewport.
-- Sticky navigation does not hide content.
-- Touch targets remain at least 44 by 44 pixels.
-- Game Room controls remain reachable.
-- Text and statistics do not clip or overlap.
-
-## Safety and data
-
-- Supabase migrations are additive and current.
-- Seed execution is not part of deployment.
-- Distributed rate limits use PostgreSQL and return `Retry-After`.
-- Reports validate target existence.
-- Normal users cannot execute moderation actions.
-- Removal and restoration update content state transactionally.
-- Warnings create moderation notifications.
-- Temporary mutes block mutations until expiry.
-- Bans block authenticated mutations.
-- Every moderation effect creates an audit record.
-
-## Deployment checklist
-
-- [ ] Vercel GitHub identity/project access restored.
-- [ ] Preview deployment succeeds.
-- [ ] Required Preview environment keys are present.
-- [ ] At least one production-safe authentication provider is configured.
-- [ ] `ENABLE_DEV_AUTH=false`.
-- [ ] `ALLOW_PREVIEW_SEED=false`.
-- [ ] Runtime Supabase query succeeds.
-- [ ] Auth callback and secure-cookie behavior pass on the preview origin.
-- [ ] Public route sweep passes against preview.
-- [ ] Authenticated route sweep passes against preview.
-- [ ] Responsive sweep passes against preview.
-- [ ] Build logs contain no secret values.
-- [ ] Build logs contain no migration or seed execution.
-
-Until these boxes are complete, the branch is locally preview-ready but the
-hosted preview is not validated.
+## Known gap
+- `/games/[gameId]` Game Room right-rail content (Live Stats / Trending Fans /
+  Predictions) depends on `useRightRail` being called by that page's own
+  components — confirm it's actually wired there, since this checklist can't
+  execute the page to verify at write time.
