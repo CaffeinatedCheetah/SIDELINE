@@ -11,20 +11,27 @@
   --text-primary: #f7f7f7;
   --text-secondary: #b8b8b8;
   --text-muted: #8a8a8a;
-  --brand: #e50914;
-  --brand-hover: #ff2631;
-  --brand-active: #bc0710;
+  --brand: #7c3aed;
+  --brand-hover: #8b5cf6;
+  --brand-active: #5b21b6;
+  --brand-light: #a78bfa;
+  --brand-surface: rgba(124, 58, 237, 0.12);
+  --brand-border: rgba(139, 92, 246, 0.3);
   --success: #2fcb78;
   --warning: #f6b73c;
   --danger: #ff4d5a;
   --info: #4da3ff;
-  --focus: #ffffff;
+  --focus: #a78bfa;
   --radius-sm: 0.375rem;
   --radius-md: 0.625rem;
   --radius-lg: 1rem;
   --shadow-overlay: 0 12px 32px rgb(0 0 0 / 36%);
   --font-ui: Inter, system-ui, "Segoe UI", sans-serif;
   --font-display: "Arial Narrow", Arial, sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --sidebar-width: 240px;
+  --rail-width: 280px;
 }
 
 @theme inline {
@@ -40,6 +47,9 @@
   --color-brand: var(--brand);
   --color-brand-hover: var(--brand-hover);
   --color-brand-active: var(--brand-active);
+  --color-brand-light: var(--brand-light);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-border: var(--brand-border);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);
@@ -121,6 +131,12 @@ select {
 }
 .skip-link:focus {
   top: 1rem;
+}
+.safe-bottom {
+  padding-bottom: var(--safe-bottom);
+}
+.safe-top {
+  padding-top: var(--safe-top);
 }
 
 @media (min-width: 48rem) {
