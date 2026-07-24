@@ -11,9 +11,11 @@ export async function HallOfFlamePreviewSection() {
   );
 
   return (
-    <section>
-      <div className="mb-5 flex items-end justify-between">
-        <h2 className="font-display text-3xl font-black">Hall of Flame</h2>
+    <section aria-labelledby="hall-of-flame-heading">
+      <div className="mb-2 flex items-end justify-between">
+        <h2 id="hall-of-flame-heading" className="font-display text-3xl font-black">
+          Hall of Flame
+        </h2>
         <Link
           href="/hall-of-flame"
           className="text-brand font-bold hover:underline"
@@ -21,20 +23,32 @@ export async function HallOfFlamePreviewSection() {
           View Hall of Flame
         </Link>
       </div>
+      <p id="hall-of-flame-rank-explainer" className="text-text-muted mb-5 text-sm">
+        Rank reflects the quality of a fan&apos;s single best take, scored by
+        the Hall of Flame ranking job. Fan Score is a separate, ongoing
+        measure of that fan&apos;s overall reputation — a higher Fan Score
+        does not change their rank here.
+      </p>
       {failed ? (
         <EmptyState
           title="Rankings are unavailable"
           description="We couldn't load the leaderboard right now."
         />
       ) : entries.length ? (
-        <ol className="grid gap-3">
+        <ol
+          className="grid gap-3"
+          aria-describedby="hall-of-flame-rank-explainer"
+        >
           {entries.map((entry) => {
             const author = entry.take.author;
             const badge = author.badges[0]?.badge;
             return (
               <li key={entry.id}>
                 <Card className="grid grid-cols-[2rem_auto_1fr_auto] items-center gap-4">
-                  <strong className="font-display text-brand text-2xl">
+                  <strong
+                    className="font-display text-brand text-2xl"
+                    aria-label={`Rank ${entry.rank}, by take quality`}
+                  >
                     #{entry.rank}
                   </strong>
                   {author.image ? (
@@ -66,9 +80,19 @@ export async function HallOfFlamePreviewSection() {
                       </span>
                     )}
                   </div>
-                  <div className="text-right">
-                    <strong>{author.profile?.reputation ?? 0}</strong>
-                    <p className="text-text-muted text-xs">Fan Score</p>
+                  <div className="grid gap-1 text-right text-sm">
+                    <div>
+                      <strong>{Number(entry.score).toFixed(0)}</strong>
+                      <span className="text-text-muted ml-1 text-xs">
+                        Top Take
+                      </span>
+                    </div>
+                    <div>
+                      <strong>{author.profile?.reputation ?? 0}</strong>
+                      <span className="text-text-muted ml-1 text-xs">
+                        Fan Score
+                      </span>
+                    </div>
                   </div>
                 </Card>
               </li>
