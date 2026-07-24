@@ -1,0 +1,125 @@
+import {
+  Bell,
+  Flame,
+  Home,
+  Menu,
+  MessageSquare,
+  Search,
+  Trophy,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { buttonStyles } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const links = [
+  { href: "/games", label: "Games", icon: Trophy },
+  { href: "/debates", label: "Debates", icon: MessageSquare },
+  { href: "/communities", label: "Communities", icon: Users },
+  { href: "/hall-of-flame", label: "Hall of Flame", icon: Flame },
+];
+export function Navbar({
+  authenticated = false,
+  unread = 0,
+}: {
+  authenticated?: boolean;
+  unread?: number;
+}) {
+  return (
+    <>
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <header className="border-border-subtle bg-surface-1/95 sticky top-0 z-40 border-b backdrop-blur">
+        <div className="page-container flex h-16 items-center gap-6">
+          <Link
+            href="/"
+            aria-label="FanTakes home"
+            className="display text-2xl"
+          >
+            <span className="text-brand">FAN</span>TAKES
+          </Link>
+          <nav
+            aria-label="Primary"
+            className="hidden items-center gap-1 lg:flex"
+          >
+            {links.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-text-secondary hover:bg-surface-3 hover:text-text-primary flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm font-bold"
+              >
+                <Icon aria-hidden className="size-4" />
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-1">
+            <Link
+              href="/search"
+              aria-label="Search"
+              className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm"
+            >
+              <Search aria-hidden className="size-5" />
+            </Link>
+            {authenticated ? (
+              <>
+                <Link
+                  href="/notifications"
+                  aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+                  className="hover:bg-surface-3 relative grid size-11 place-items-center rounded-sm"
+                >
+                  <Bell aria-hidden className="size-5" />
+                  {unread > 0 && (
+                    <span className="bg-brand absolute top-1 right-1 rounded-full px-1 text-[10px] font-bold">
+                      {unread > 99 ? "99+" : unread}
+                    </span>
+                  )}
+                </Link>
+                <Link
+                  href="/arena"
+                  className={cn(buttonStyles({ variant: "secondary" }))}
+                >
+                  My Arena
+                </Link>
+              </>
+            ) : (
+              <Link href="/auth/sign-in" className={cn(buttonStyles())}>
+                Sign in
+              </Link>
+            )}
+            <button
+              aria-label="Open menu"
+              className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm lg:hidden"
+            >
+              <Menu aria-hidden className="size-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+      <nav
+        aria-label="Mobile"
+        className="border-border-subtle bg-surface-1 fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
+      >
+        {[
+          { href: "/", label: "Home", icon: Home },
+          ...links.slice(0, 3),
+          {
+            href: authenticated ? "/notifications" : "/auth/sign-in",
+            label: authenticated ? "Alerts" : "Sign in",
+            icon: Bell,
+          },
+        ].map(({ href, label, icon: Icon }) => (
+          <Link
+            key={label}
+            href={href}
+            className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
+          >
+            <Icon aria-hidden className="size-5" />
+            {label}
+          </Link>
+        ))}
+      </nav>
+    </>
+  );
+}

@@ -1,0 +1,86 @@
+import { notFound } from "next/navigation";
+import { DebateVote } from "@/components/actions/debate-vote";
+import { TakeComposer } from "@/components/actions/take-composer";
+import { PageHeading } from "@/components/layout/page-heading";
+import { Card, EmptyState } from "@/components/ui/foundations";
+import { db } from "@/lib/db/client";
+export const dynamic = "force-dynamic";
+export default async function DebateDetail({
+  params,
+}: {
+  params: Promise<{ debateId: string }>;
+}) {
+  const { debateId } = await params;
+  const debate = await db.debate.findFirst({
+    where: { OR: [{ id: debateId }, { slug: debateId }] },
+    include: {
+      creator: true,
+      options: {
+        orderBy: { displayOrder: "asc" },
+        include: { _count: { select: { votes: true } } },
+      },
+      takes: { where: { status: "ACTIVE" }, include: { author: true } },
+    },
+  });
+  if (!debate) notFound();
+  const total = debate.options.reduce(
+    (sum, option) => sum + option._count.votes,
+    0,
+  );
+  return (
+    <div className="page-container py-10">
+      <PageHeading
+        eyebrow={`${debate.status} debate`}
+        title={debate.title}
+        description={debate.prompt}
+      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <section className="grid gap-3" aria-labelledby="positions">
+          <h2 id="positions" className="font-display text-2xl font-black">
+            Choose your position
+          </h2>
+          <DebateVote debateId={debate.id} options={debate.options} />
+          {debate.options.map((option) => (
+            <Card key={option.id} className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold">{option.label}</h3>
+                <p className="text-text-secondary text-sm">
+                  {option.description}
+                </p>
+              </div>
+              <strong>
+                {total ? Math.round((option._count.votes / total) * 100) : 0}%
+              </strong>
+            </Card>
+          ))}
+          <h2 className="font-display mt-6 text-2xl font-black">
+            Counter-takes
+          </h2>
+          <TakeComposer debateId={debate.id} />
+          {debate.takes.length ? (
+            debate.takes.map((take) => (
+              <Card key={take.id}>
+                <p>{take.body}</p>
+                <p className="text-text-muted mt-2 text-sm">
+                  — {take.author.displayName}
+                </p>
+              </Card>
+            ))
+          ) : (
+            <EmptyState
+              title="No counter-takes yet"
+              description="Sign in to add evidence or challenge an assumption."
+            />
+          )}
+        </section>
+        <aside>
+          <Card>
+            <p className="text-text-secondary text-sm">Created by</p>
+            <p className="font-bold">{debate.creator.displayName}</p>
+            <p className="text-text-secondary mt-4 text-sm">{total} votes</p>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
