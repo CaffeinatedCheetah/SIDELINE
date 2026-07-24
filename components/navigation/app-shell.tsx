@@ -31,7 +31,7 @@ function isActive(pathname: string, href: string) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <div className="page-container flex flex-1 items-start gap-6 py-6">
+    <div className="mx-auto flex w-full max-w-[90rem] flex-1 items-start gap-6 px-4 py-6 sm:px-6 lg:px-8">
       <aside className="hidden shrink-0 lg:block lg:w-[var(--sidebar-width)]">
         <nav aria-label="Application" className="sticky top-22 grid gap-1">
           {destinations.map(([label, href, Icon]) => {
