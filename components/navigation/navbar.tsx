@@ -124,7 +124,15 @@ export function Navbar({
                 </Link>
               </>
             ) : (
-              <Link href="/auth/sign-in" className={cn(buttonStyles())}>
+              // Hidden below 360px: at that width there isn't room for
+              // search + Sign in + the mobile menu button to coexist
+              // (the true cause of the 320px horizontal-overflow defect).
+              // The mobile bottom nav's own "Sign in" entry remains the
+              // access point at those widths, so nothing is lost.
+              <Link
+                href="/auth/sign-in"
+                className={cn(buttonStyles(), "max-[359px]:hidden")}
+              >
                 Sign in
               </Link>
             )}
