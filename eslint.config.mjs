@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Preserved main-line legacy SPA/serverless sources are outside the
+    // FanTakes Next.js TypeScript application and retain their own lifecycle.
+    "api/**/*.js",
+    "script.js",
   ]),
 ]);
 
