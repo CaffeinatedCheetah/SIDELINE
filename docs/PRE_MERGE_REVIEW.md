@@ -15,7 +15,11 @@ dedicated Supabase project using pooled runtime and direct migration
 connections. No database was reset, and disposable integration records were
 cleaned after each run.
 
-## Requirement matrix
+## Initial finding matrix
+
+This matrix preserves the findings at the start of database validation. The
+database-backed verification update and current release matrix below are
+authoritative where they supersede an initial row.
 
 | Requirement                             | Implementation status                           | Route or file                                             | Test coverage                      | Remaining gap                                                                 | Severity                  | Merge recommendation                      |
 | --------------------------------------- | ----------------------------------------------- | --------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- | ------------------------- | ----------------------------------------- |
@@ -98,6 +102,21 @@ These results establish database and controlled-preview readiness. They do not
 convert the remaining partial UI and product-policy rows into completed Version
 1 features.
 
+## Current release matrix
+
+| Requirement                         | Current status                    | Evidence                                                                              | Remaining gap                                                                                | Severity | Recommendation                         |
+| ----------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------- | -------------------------------------- |
+| Database migration, seed, and drift | Complete                          | Two applied migrations, repeated seed, zero drift                                     | Existing Supabase project is shared with preview rather than per-branch isolated             | Low      | Accept for controlled preview          |
+| Authentication and sessions         | Locally verified                  | Authenticated Playwright and PostgreSQL integration                                   | Vercel provider variables and callbacks cannot be inspected until project access is restored | Blocker  | Restore Vercel access                  |
+| Public routes                       | Locally verified                  | 15-route Chromium sweep, no console/HTTP errors                                       | Repeat against deployed preview                                                              | Blocker  | Restore Vercel access                  |
+| Responsive behavior                 | Locally verified                  | No homepage overflow at all eight required widths                                     | Full deployed-page sweep remains pending                                                     | High     | Complete after preview exists          |
+| Distributed rate limiting           | Complete                          | Atomic PostgreSQL buckets, route policies, hashed anonymous keys, `Retry-After` tests | Periodic expired-bucket cleanup may be added operationally                                   | Low      | Accept                                 |
+| Moderation enforcement              | Complete at backend boundary      | PostgreSQL tests for report, reject, remove, restore, warn, mute, ban, and audit      | Moderator action controls remain absent from the queue UI                                    | High     | Complete UI before Version 1 release   |
+| Critical mutation persistence       | Complete at API/database boundary | 11 PostgreSQL integration flows                                                       | Several browser controls remain unwired                                                      | High     | Do not claim UI completion             |
+| Authenticated browser coverage      | Partial                           | Login/session/logout flow passes                                                      | Fresh onboarding and nine mutation/moderation flows remain incomplete                        | High     | Expand before Version 1 merge          |
+| Dependency advisories               | Mitigated, unresolved upstream    | 15 complete / 9 production-only audit findings                                        | No compatible non-breaking fix for Auth.js/Next paths                                        | High     | Monitor upstream; do not force-upgrade |
+| Vercel deployment                   | Blocked before build              | GitHub Vercel status links to account-block page                                      | GitHub Login Connection/project contributor access                                           | Blocker  | Dashboard action required              |
+
 ## Assumptions and decisions
 
 - `DATABASE_URL` is the pooled runtime connection and `DIRECT_URL` is the direct
@@ -111,11 +130,10 @@ convert the remaining partial UI and product-policy rows into completed Version
 
 ## Merge recommendation
 
-**Safe to push for a controlled Vercel preview; not yet safe to merge as a
-complete FanTakes Version 1 release.** Database migration, repeatable seed,
-schema drift, core authentication, persistence, authorization, and idempotency
-now have real Supabase evidence. Remaining high-severity gaps are product
-completeness issues already recorded in the matrix: unwired interaction UI,
-incomplete moderation effects, a process-local rate limiter, and incomplete
-authenticated browser coverage. Preview access should remain limited and demo
-content must remain labeled.
+**Not yet deployable or merge-ready.** Database migration, repeatable seed,
+schema drift, core authentication, persistence, authorization, distributed
+limits, and moderation enforcement have real Supabase evidence. Vercel blocks
+the connected Git deployment before build because the GitHub identity lacks
+recognized project access. After that dashboard issue is corrected, deployed
+route/auth/responsive QA is still required. Remaining Version 1 product gaps
+are moderator action UI and broader authenticated mutation browser coverage.
