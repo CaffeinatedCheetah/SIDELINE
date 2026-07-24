@@ -67,7 +67,11 @@ export async function getHallOfFlamePreview(
     })) as HallOfFlamePreviewEntry[];
 
     return { entries, failed: false };
-  } catch {
+  } catch (error) {
+    console.error(
+      "[getHallOfFlamePreview] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : "unknown error",
+    );
     return { entries: [], failed: true };
   }
 }
