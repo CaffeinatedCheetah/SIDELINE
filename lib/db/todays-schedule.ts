@@ -65,7 +65,11 @@ export async function getTodaysSchedule(
     });
 
     return { games: sorted.slice(0, limit), failed: false };
-  } catch {
+  } catch (error) {
+    console.error(
+      "[getTodaysSchedule] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : "unknown error",
+    );
     return { games: [], failed: true };
   }
 }
