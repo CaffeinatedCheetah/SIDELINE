@@ -7,6 +7,8 @@ export interface GameCardProps {
   league: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
   homeScore?: number;
   awayScore?: number;
   status: "SCHEDULED" | "LIVE" | "FINAL" | "POSTPONED" | "CANCELED";
@@ -38,8 +40,30 @@ export function GameCard(p: GameCardProps) {
       </Link>
       <div className="grid grid-cols-[1fr_auto] items-center gap-3">
         <div className="grid gap-3">
-          <div className="font-bold">{p.awayTeam}</div>
-          <div className="font-bold">{p.homeTeam}</div>
+          <div className="flex items-center gap-2 font-bold">
+            {p.awayTeamLogo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={p.awayTeamLogo}
+                alt=""
+                aria-hidden
+                className="size-6 shrink-0 object-contain"
+              />
+            )}
+            {p.awayTeam}
+          </div>
+          <div className="flex items-center gap-2 font-bold">
+            {p.homeTeamLogo && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={p.homeTeamLogo}
+                alt=""
+                aria-hidden
+                className="size-6 shrink-0 object-contain"
+              />
+            )}
+            {p.homeTeam}
+          </div>
         </div>
         <div className="font-display grid gap-1 text-right text-3xl font-black tabular-nums">
           {hasScore ? (
