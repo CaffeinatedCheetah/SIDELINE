@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Bell,
   Flame,
@@ -9,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { buttonStyles } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +21,11 @@ const links = [
   { href: "/communities", label: "Communities", icon: Users },
   { href: "/hall-of-flame", label: "Hall of Flame", icon: Flame },
 ];
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Navbar({
   authenticated = false,
   unread = 0,
@@ -25,6 +33,8 @@ export function Navbar({
   authenticated?: boolean;
   unread?: number;
 }) {
+  const pathname = usePathname() ?? "";
+
   return (
     <>
       <a href="#main-content" className="skip-link">
@@ -43,16 +53,25 @@ export function Navbar({
             aria-label="Primary"
             className="hidden items-center gap-1 lg:flex"
           >
-            {links.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="text-text-secondary hover:bg-surface-3 hover:text-text-primary flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm font-bold"
-              >
-                <Icon aria-hidden className="size-4" />
-                {label}
-              </Link>
-            ))}
+            {links.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm font-bold transition",
+                    active
+                      ? "bg-brand-surface text-brand-light"
+                      : "text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <Icon aria-hidden className="size-4" />
+                  {label}
+                </Link>
+              );
+            })}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             <Link
@@ -99,7 +118,7 @@ export function Navbar({
       </header>
       <nav
         aria-label="Mobile"
-        className="border-border-subtle bg-surface-1 fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
+        className="border-border-subtle bg-surface-1 safe-bottom fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
       >
         {[
           { href: "/", label: "Home", icon: Home },
@@ -109,16 +128,23 @@ export function Navbar({
             label: authenticated ? "Alerts" : "Sign in",
             icon: Bell,
           },
-        ].map(({ href, label, icon: Icon }) => (
-          <Link
-            key={label}
-            href={href}
-            className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
-          >
-            <Icon aria-hidden className="size-5" />
-            {label}
-          </Link>
-        ))}
+        ].map(({ href, label, icon: Icon }) => {
+          const active = isActive(pathname, href);
+          return (
+            <Link
+              key={label}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+                active ? "text-brand-light font-bold" : "text-text-secondary",
+              )}
+            >
+              <Icon aria-hidden className="size-5" />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
     </>
   );
