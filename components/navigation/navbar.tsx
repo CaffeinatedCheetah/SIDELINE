@@ -6,13 +6,17 @@ import {
   Home,
   Menu,
   MessageSquare,
+  Plus,
   Search,
   Trophy,
+  User,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { TakeComposer } from "@/components/actions/take-composer";
 import { buttonStyles } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -81,6 +85,23 @@ export function Navbar({
             >
               <Search aria-hidden className="size-5" />
             </Link>
+            {authenticated && (
+              <Modal
+                title="Create a take"
+                description="Make a clear claim and explain why."
+                trigger={
+                  <button
+                    aria-label="Create a take"
+                    className={cn(buttonStyles({ variant: "secondary" }))}
+                  >
+                    <Plus aria-hidden className="size-4" />
+                    Take
+                  </button>
+                }
+              >
+                <TakeComposer />
+              </Modal>
+            )}
             {authenticated ? (
               <>
                 <Link
@@ -120,31 +141,89 @@ export function Navbar({
         aria-label="Mobile"
         className="border-border-subtle bg-surface-1 safe-bottom fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
       >
-        {[
-          { href: "/", label: "Home", icon: Home },
-          ...links.slice(0, 3),
-          {
-            href: authenticated ? "/notifications" : "/auth/sign-in",
-            label: authenticated ? "Alerts" : "Sign in",
-            icon: Bell,
-          },
-        ].map(({ href, label, icon: Icon }) => {
-          const active = isActive(pathname, href);
-          return (
-            <Link
-              key={label}
-              href={href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
-                active ? "text-brand-light font-bold" : "text-text-secondary",
-              )}
-            >
-              <Icon aria-hidden className="size-5" />
-              {label}
-            </Link>
-          );
-        })}
+        <Link
+          href="/"
+          aria-current={pathname === "/" ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            pathname === "/"
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Home aria-hidden className="size-5" />
+          Home
+        </Link>
+        <Link
+          href="/games"
+          aria-current={isActive(pathname, "/games") ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/games")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Trophy aria-hidden className="size-5" />
+          Games
+        </Link>
+        {authenticated ? (
+          <Modal
+            title="Create a take"
+            description="Make a clear claim and explain why."
+            trigger={
+              <button
+                aria-label="Create a take"
+                className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
+              >
+                <span className="bg-brand grid size-9 place-items-center rounded-full text-white">
+                  <Plus aria-hidden className="size-5" />
+                </span>
+                Take
+              </button>
+            }
+          >
+            <TakeComposer />
+          </Modal>
+        ) : (
+          <Link
+            href="/auth/sign-in"
+            className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
+          >
+            <span className="bg-brand grid size-9 place-items-center rounded-full text-white">
+              <Plus aria-hidden className="size-5" />
+            </span>
+            Take
+          </Link>
+        )}
+        <Link
+          href={authenticated ? "/notifications" : "/auth/sign-in"}
+          aria-current={
+            isActive(pathname, "/notifications") ? "page" : undefined
+          }
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/notifications")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Bell aria-hidden className="size-5" />
+          {authenticated ? "Alerts" : "Sign in"}
+        </Link>
+        <Link
+          href={authenticated ? "/arena" : "/auth/sign-in"}
+          aria-current={isActive(pathname, "/arena") ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/arena")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <User aria-hidden className="size-5" />
+          Profile
+        </Link>
       </nav>
     </>
   );
