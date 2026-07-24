@@ -12,18 +12,24 @@ export async function HallOfFlamePreviewSection() {
 
   return (
     <section aria-labelledby="hall-of-flame-heading">
-      <div className="mb-2 flex items-end justify-between">
-        <h2 id="hall-of-flame-heading" className="font-display text-3xl font-black">
+      <div className="mb-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <h2
+          id="hall-of-flame-heading"
+          className="font-display min-w-0 text-3xl font-black"
+        >
           Hall of Flame
         </h2>
         <Link
           href="/hall-of-flame"
-          className="text-brand font-bold hover:underline"
+          className="text-brand shrink-0 font-bold hover:underline"
         >
           View Hall of Flame
         </Link>
       </div>
-      <p id="hall-of-flame-rank-explainer" className="text-text-muted mb-5 text-sm">
+      <p
+        id="hall-of-flame-rank-explainer"
+        className="text-text-muted mb-5 text-sm"
+      >
         Rank reflects the quality of a fan&apos;s single best take, scored by
         the Hall of Flame ranking job. Fan Score is a separate, ongoing
         measure of that fan&apos;s overall reputation — a higher Fan Score
