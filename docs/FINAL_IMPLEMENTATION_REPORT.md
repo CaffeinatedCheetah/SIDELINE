@@ -111,10 +111,16 @@ provider. `ENABLE_DEV_AUTH` must be false in production.
 
 ## Deployment
 
-Install with `npm ci`, generate Prisma Client, run all static/test/build gates,
-then execute `npm run db:deploy` once in a protected release job. Deploy the
-Next.js output to Vercel with a pooled PostgreSQL runtime connection. Never run
-the development seed or development authentication in production.
+`vercel.json` fixes the framework to Next.js and uses `npm ci` followed by
+`npm run build`. Node.js 22 is declared in `package.json`, and `postinstall`
+generates Prisma Client. Migrations and seeds are deliberately absent from the
+normal build.
+
+The feature branch reaches the connected Vercel integration, but Vercel blocks
+deployment before installation because the GitHub/Vercel project contributor
+relationship is not authorized. The latest commits are correctly associated
+with `CaffeinatedCheetah`; Vercel Login Connections/project membership remains
+the external blocker. No preview URL exists yet.
 
 ## Security notes
 
@@ -124,19 +130,25 @@ Prediction locks are checked server-side. Community moderation and global
 moderation use stored roles. Public projections omit Auth.js tokens and private
 settings. Account deletion enters the specified 14-day pending state.
 
-The in-memory rate limiter is an abstraction suitable for one development
-process, not a shared production quota store. Production should attach a
-distributed adapter without changing handler policy.
+Rate limiting uses an atomic PostgreSQL bucket shared across serverless
+instances. Policies are route-specific, keys support authenticated and
+privacy-hashed anonymous callers, and rejected requests include `Retry-After`.
+Database failure fails the mutation closed through the API error boundary.
 
-The production dependency audit currently reports advisories inherited from
-the latest stable Next.js/Auth.js dependency trees, including Nodemailer's raw
-message option and Next.js-bundled PostCSS/sharp versions. FanTakes never accepts
-or forwards caller-controlled raw email options. The compatible Prisma security
-patch was applied. Playwright remains pinned to the newest release that executes
-on this macOS 11 workstation; newer advisory-fixed builds require macOS 12, so
-this test-only advisory must be resolved in CI on a supported operating system.
-Remaining production advisories have no non-breaking upstream resolution
-available at this snapshot and must be rechecked before deployment.
+Moderation actions are transactional: removal/restoration changes content
+state, warnings notify the affected user, temporary mutes block mutations until
+expiry, bans suspend the account, and every action remains in the append-only
+audit log.
+
+The complete dependency audit reports 15 advisories (4 moderate, 10 high, 1
+critical); the production-only audit reports 9 high advisories. Runtime paths
+are Auth.js → Nodemailer and Next.js → bundled PostCSS/sharp. FanTakes never
+accepts caller-controlled Nodemailer raw message options, CSS source maps, or
+image-processing input. Auth.js currently permits Nodemailer 7 or 8, so the
+patched Nodemailer 9 line is not a compatible update. npm proposes an invalid
+breaking Next downgrade for its bundled dependencies. The remaining
+esbuild/Vitest and Playwright findings are development tooling; the local
+Playwright pin is required by macOS 11. Do not run `npm audit fix --force`.
 
 ## Known limitations and deferred features
 
@@ -153,14 +165,15 @@ available at this snapshot and must be rechecked before deployment.
   deferred by the product specification.
 - Google OAuth, email delivery, and Vercel deployment require external service
   credentials.
+- Hosted preview route, callback, cookie, and responsive QA remain blocked by
+  Vercel project access.
 
 ## Recommended next steps
 
-1. Add the opt-in PostgreSQL integration and authenticated Playwright flows to
-   protected CI using an isolated database.
-2. Select a sports-data provider and implement the documented adapter contract.
-3. Replace the development rate limiter with a distributed production adapter.
-4. Complete the remaining UI wiring identified in `PRE_MERGE_REVIEW.md`.
+1. Link the GitHub identity to the owning Vercel account/project and redeploy.
+2. Add the opt-in PostgreSQL and authenticated Playwright flows to protected CI.
+3. Complete the remaining UI wiring identified in `PRE_MERGE_REVIEW.md`.
+4. Select a sports-data provider and implement the documented adapter contract.
 5. Complete legal review of Terms, Privacy, retention, and data export behavior.
 
 ## Local commands

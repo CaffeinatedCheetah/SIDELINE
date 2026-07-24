@@ -65,6 +65,9 @@ npm run build
 
 Product contracts live in [`docs/`](docs/README.md), and implementation status
 is maintained in [`docs/BUILD_PROGRESS.md`](docs/BUILD_PROGRESS.md).
+Deployment and preview verification are documented in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) and
+[`docs/QA_CHECKLIST.md`](docs/QA_CHECKLIST.md).
 
 ## Deployment
 
@@ -95,3 +98,12 @@ To seed an approved disposable preview database, set both database URLs to that
 preview instance and run `npm run db:seed:preview`. Never add this command to the
 production deployment pipeline and never set `ALLOW_PREVIEW_SEED=true` as a
 persistent production environment variable.
+
+Database-backed verification is opt-in:
+
+```bash
+RUN_DATABASE_TESTS=true node --env-file=.env.local \
+  node_modules/vitest/vitest.mjs run tests/integration/database-flows.test.ts
+RUN_DATABASE_E2E=true node --env-file=.env.local \
+  node_modules/@playwright/test/cli.js test
+```
