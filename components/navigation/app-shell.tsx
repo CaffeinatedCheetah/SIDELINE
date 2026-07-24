@@ -31,8 +31,13 @@ function isActive(pathname: string, href: string) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   return (
-    <div className="mx-auto flex w-full max-w-[90rem] flex-1 items-start gap-6 px-4 py-6 sm:px-6 lg:px-8">
-      <aside className="hidden shrink-0 lg:block lg:w-[var(--sidebar-width)]">
+    // No horizontal padding or max-width on this wrapper: each page
+    // already constrains and centers its own content via .page-container.
+    // Adding inset here would compound with that and shrink content
+    // below the viewport's true width, which is what caused the
+    // 320px horizontal-overflow defect.
+    <div className="flex flex-1 items-start gap-6">
+      <aside className="hidden shrink-0 py-6 pl-4 sm:pl-6 lg:block lg:w-[var(--sidebar-width)] lg:pl-8">
         <nav aria-label="Application" className="sticky top-22 grid gap-1">
           {destinations.map(([label, href, Icon]) => {
             const active = isActive(pathname, href);
