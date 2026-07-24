@@ -4,6 +4,8 @@ import Link from "next/link";
 import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
+import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-preview-section";
+import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
 import { ProfileCard } from "@/components/profile/profile-card";
 import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
@@ -167,6 +169,7 @@ export default async function Home() {
             />
           ))}
         </Section>
+        <TodaysScheduleSection />
         <Section title="Trending takes" href="/games">
           {data.takes.map((take) => (
             <TakeCard
@@ -210,6 +213,7 @@ export default async function Home() {
             />
           ))}
         </Section>
+        <HallOfFlamePreviewSection />
         <section>
           <h2 className="font-display text-3xl font-black">Fan identity</h2>
           <p className="text-text-secondary mt-2">
