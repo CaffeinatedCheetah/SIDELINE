@@ -2,8 +2,9 @@ import Link from "next/link";
 import { DebateCard } from "@/components/debates/debate-card";
 import { PageHeading } from "@/components/layout/page-heading";
 import { buttonStyles } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/foundations";
+import { EmptyState, ErrorState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import { withTimeout } from "@/lib/db/with-timeout";
 import type { Prisma } from "@prisma/client";
 
 type DebateListItem = Prisma.DebateGetPayload<{
@@ -15,19 +16,29 @@ type DebateListItem = Prisma.DebateGetPayload<{
 export const dynamic = "force-dynamic";
 export default async function DebatesPage() {
   let debates: DebateListItem[] = [];
+  let failed = false;
   try {
-    debates = (await db.debate.findMany({
-      where: { status: "OPEN" },
-      orderBy: { createdAt: "desc" },
-      include: {
-        options: {
-          orderBy: { displayOrder: "asc" },
-          include: { _count: { select: { votes: true } } },
+    debates = (await withTimeout(
+      db.debate.findMany({
+        where: { status: "OPEN" },
+        orderBy: { createdAt: "desc" },
+        include: {
+          options: {
+            orderBy: { displayOrder: "asc" },
+            include: { _count: { select: { votes: true } } },
+          },
+          _count: { select: { comments: true } },
         },
-        _count: { select: { comments: true } },
-      },
-    })) as typeof debates;
-  } catch {}
+      }),
+      "DebatesPage.findMany",
+    )) as typeof debates;
+  } catch (error) {
+    failed = true;
+    console.error(
+      "[DebatesPage] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : error,
+    );
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -40,7 +51,12 @@ export default async function DebatesPage() {
           </Link>
         }
       />
-      {debates.length ? (
+      {failed ? (
+        <ErrorState
+          title="Debates are unavailable"
+          description="We couldn't load the Debate Center right now. Try again shortly."
+        />
+      ) : debates.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {debates.map((debate) => (
             <DebateCard
