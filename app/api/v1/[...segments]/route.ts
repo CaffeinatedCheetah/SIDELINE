@@ -280,30 +280,44 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    const result = await db.user.update({
-      where: { id: userId },
-      data: {
-        displayName: parsed.data.displayName,
-        handle: parsed.data.handle,
-        normalizedHandle: parsed.data.handle.toLowerCase(),
-        image: parsed.data.avatarUrl,
-        onboardedAt: new Date(),
-        profile: {
-          upsert: {
-            create: {
-              favoriteSports: parsed.data.favoriteSports,
-              favoriteTeams: parsed.data.favoriteTeams,
-              avatarUrl: parsed.data.avatarUrl,
-            },
-            update: {
-              favoriteSports: parsed.data.favoriteSports,
-              favoriteTeams: parsed.data.favoriteTeams,
-              avatarUrl: parsed.data.avatarUrl,
+    let result;
+    try {
+      result = await db.user.update({
+        where: { id: userId },
+        data: {
+          displayName: parsed.data.displayName,
+          handle: parsed.data.handle.toLowerCase(),
+          normalizedHandle: parsed.data.handle.toLowerCase(),
+          image: parsed.data.avatarUrl,
+          onboardedAt: new Date(),
+          profile: {
+            upsert: {
+              create: {
+                favoriteSports: parsed.data.favoriteSports,
+                favoriteTeams: parsed.data.favoriteTeams,
+                avatarUrl: parsed.data.avatarUrl,
+              },
+              update: {
+                favoriteSports: parsed.data.favoriteSports,
+                favoriteTeams: parsed.data.favoriteTeams,
+                avatarUrl: parsed.data.avatarUrl,
+              },
             },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+        return apiError(
+          "HANDLE_TAKEN",
+          "That fan handle is already taken.",
+          409,
+        );
+      throw error;
+    }
     return apiSuccess({ id: result.id, handle: result.handle }, 201);
   }
   if (resource === "community-membership") {

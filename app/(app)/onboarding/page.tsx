@@ -1,13 +1,19 @@
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/foundations";
 import { Checkbox, Field, Input } from "@/components/ui/form-controls";
 import { db } from "@/lib/db/client";
 export const dynamic = "force-dynamic";
-export default async function Onboarding() {
+export default async function Onboarding({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/auth/sign-in?callbackUrl=/onboarding");
+  const { error } = await searchParams;
   const [sports, teams] = await Promise.all([
     db.sport.findMany({ where: { active: true } }),
     db.team.findMany({ take: 20, include: { league: true } }),
@@ -24,33 +30,50 @@ export default async function Onboarding() {
       redirect("/onboarding?error=details");
     const favoriteSports = formData.getAll("sports").map(String);
     const favoriteTeams = formData.getAll("teams").map(String);
-    await db.user.update({
-      where: { id: current.user.id },
-      data: {
-        displayName,
-        handle,
-        normalizedHandle: handle,
-        onboardedAt: new Date(),
-        profile: {
-          upsert: {
-            create: { favoriteSports, favoriteTeams },
-            update: { favoriteSports, favoriteTeams },
+    try {
+      await db.user.update({
+        where: { id: current.user.id },
+        data: {
+          displayName,
+          handle,
+          normalizedHandle: handle,
+          onboardedAt: new Date(),
+          profile: {
+            upsert: {
+              create: { favoriteSports, favoriteTeams },
+              update: { favoriteSports, favoriteTeams },
+            },
+          },
+          preferences: {
+            upsert: {
+              create: { onboardingStep: 5 },
+              update: { onboardingStep: 5 },
+            },
           },
         },
-        preferences: {
-          upsert: {
-            create: { onboardingStep: 5 },
-            update: { onboardingStep: 5 },
-          },
-        },
-      },
-    });
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        redirect("/onboarding?error=handle-taken");
+      }
+      throw err;
+    }
     redirect("/arena");
   }
   return (
     <div className="mx-auto w-full max-w-3xl">
       <PageHeadingSimple />
       <Card>
+        {error && (
+          <p role="alert" className="text-danger mb-4 text-sm">
+            {error === "handle-taken"
+              ? "That fan handle is already taken. Try another."
+              : "Please double-check your display name and fan handle."}
+          </p>
+        )}
         <form action={complete} className="grid gap-7">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Display name" htmlFor="displayName">
