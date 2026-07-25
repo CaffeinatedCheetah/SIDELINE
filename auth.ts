@@ -29,10 +29,15 @@ if (environment.EMAIL_SERVER) {
   );
 }
 
-if (
-  process.env.NODE_ENV !== "production" &&
-  environment.ENABLE_DEV_AUTH === "true"
-) {
+// Dev credentials provider: available in local dev (NODE_ENV !== "production")
+// AND on Vercel Preview deployments (VERCEL_ENV === "preview") when opted in.
+// Never available in Vercel Production — lib/env.ts throws if ENABLE_DEV_AUTH
+// is "true" when VERCEL_ENV === "production".
+const isNonProdRuntime =
+  process.env.NODE_ENV !== "production" ||
+  process.env.VERCEL_ENV === "preview";
+
+if (isNonProdRuntime && environment.ENABLE_DEV_AUTH === "true") {
   providers.push(
     Credentials({
       id: "development",

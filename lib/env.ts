@@ -23,8 +23,14 @@ export function getEnv() {
     throw new Error(
       `Invalid environment: ${result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ")}`,
     );
+  // Block dev auth in Vercel Production (VERCEL_ENV is set by Vercel itself,
+  // not user-configurable). Also block when NODE_ENV is "production" and we're
+  // NOT on a Vercel Preview — covers non-Vercel production hosts.
+  const isVercelProduction = process.env.VERCEL_ENV === "production";
+  const isNonVercelProduction =
+    process.env.NODE_ENV === "production" && !process.env.VERCEL_ENV;
   if (
-    process.env.NODE_ENV === "production" &&
+    (isVercelProduction || isNonVercelProduction) &&
     result.data.ENABLE_DEV_AUTH === "true"
   )
     throw new Error("ENABLE_DEV_AUTH must be false in production.");
