@@ -1,58 +1,98 @@
 # Phase 1 Audit — Task List for Claude Code
 
-Source: full 30-phase launch-readiness audit spec (see conversation/ticket). This file scopes
-the FIRST, evidence-backed batch of work found by a live logged-out crawl of
-https://sideline-wheat.vercel.app, a repo read, and a direct query against the Supabase
-project (SIDELINE, ref wleunpfiokcdbuydkhho). Work top to bottom. Do not merge to
-`main` without review. Return findings/diffs per item before moving to the next.
+Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
+without review. Return findings/diffs per item before moving to the next.
 
-## CRITICAL — do this first
+## ✅ RESOLVED
 
-### 1. `/games`, `/hall-of-flame`, `/communities` hang on the loading skeleton for logged-out visitors
-- **Files:** `app/games/page.tsx`, `app/hall-of-flame/page.tsx`, `app/communities/page.tsx`, `app/loading.tsx`, `lib/db/client.ts`, `prisma/schema.prisma`
-- **Evidence (live crawl):** logged-out navigation to all three routes hit `app/loading.tsx`'s skeleton and it did not resolve during the session; `/communities` resolved to real content only on a second visit.
-- **Evidence (Supabase, checked directly):** the data itself is fine and fast — direct SQL against the DB returns instantly: 2 rows in `Game`, 1 in `HallOfFlameEntry`, 1 in `Community`, 2 in `League`, 3 in `User`. So this is NOT an empty-data problem and the Postgres server itself is healthy (12 total connections, mostly idle, nothing stuck running a query). The stall is therefore almost certainly on the app's connection path, not the query logic or the data.
-- **Root cause hypothesis (verify, don't assume):** All three pages are `export const dynamic = "force-dynamic"` async Server Components that call `db.<model>.findMany(...)` wrapped in a bare `try { } catch {}`. If the query *throws*, it silently falls back to an empty array and renders the EmptyState — that's not what was observed. What was observed is consistent with the connection *hanging* rather than erroring, which keeps Next's Suspense/`loading.tsx` boundary up indefinitely.
-  - `prisma/schema.prisma` uses `env("DATABASE_URL")` for `url` and `env("DIRECT_URL")` for `directUrl`. Vercel has a manually-set `DATABASE_URL`/`DIRECT_URL` pair (type: sensitive) that is SEPARATE from the Supabase-provisioned vars already sitting in the same env (`POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, etc., type: encrypted). Compare the actual values — `DATABASE_URL` should be the pooled/pgbouncer string (port 6543, `?pgbouncer=true&connection_limit=1`, per the repo's own `.env.example` comment), not a raw direct connection.
-  - Corroborating signal from Supabase's own performance advisor: the project's Auth server is capped at an **absolute 10 connections** (not percentage-based), and current total Postgres connections were already at 12 during a quiet/idle period. On serverless (Vercel), every cold invocation can open a new direct connection if `DATABASE_URL` isn't actually pooled — that's exactly the kind of setup that hangs waiting for a free connection slot under any concurrent load, rather than failing fast.
-- **Fix:**
-  1. Confirm/fix the `DATABASE_URL` mapping in Vercel (Production + Preview) so it's the pooled connection string, and `DIRECT_URL` is the non-pooling one — diff against `POSTGRES_PRISMA_URL` / `POSTGRES_URL_NON_POOLING` which Supabase already provisioned correctly.
-  2. Remove the silent `catch {}` in these three pages (and any others using the same pattern) — log the error server-side and render a distinct "something went wrong loading this page" error state; never conflate a DB failure with a true empty state (Phase 20 requirement).
-  3. Add a query/connection timeout so a hang degrades to an error state instead of an infinite skeleton.
-  4. Add a Playwright check asserting these routes resolve past the skeleton within N seconds, logged-out.
+### 1. `/games`, `/hall-of-flame`, `/communities`, `/debates` hung on the loading skeleton
+Fixed and verified live. Root cause: `DATABASE_URL`/`DIRECT_URL` were not the pooled Supabase
+connection, and the app's own `lib/env.ts` Zod validator requires the `postgresql://` scheme
+(Supabase issues `postgres://`), which also caused a failed deploy along the way. Both are now
+fixed directly in Vercel (Production + Preview) and confirmed live: `/games` resolves in ~2s
+logged-out instead of hanging indefinitely. Code-side fix (timeout wrapper, error state, tests,
+and the same pattern in `/debates`) is in PR #5, awaiting review/merge.
+**Follow-up still open:** right after the env fix deployed, `/games` rendered "No games match"
+despite 2 real rows in `Game`. Worth a quick check once PR #5 merges — could be stale cache from
+the redeploy, could be something else (e.g. a status/date filter silently excluding both rows).
 
-### 2. Two auth systems' env vars coexist — resolve which one is real
-- **Files:** check `middleware.ts`, `lib/auth/*`, any `app/auth/*` routes, `package.json` dependencies
-- **Evidence:** Vercel env vars include both `CLERK_PUBLISHABLE_KEY` (Clerk) and `AUTH_SECRET`/`AUTH_URL`/`ENABLE_DEV_AUTH` (Auth.js/NextAuth-style, matching `.env.example`). The live `/auth/sign-in` page rendered a real sign-in form during the crawl, consistent with Auth.js.
-- **Fix:** Confirm which system is actually wired in. If Clerk is a leftover from an earlier attempt, remove its env vars and any dead code. Also verify `ENABLE_DEV_AUTH` cannot be true in the Production Vercel env (it's currently set for both `production` and `preview` targets — confirm the value, not just that the key exists; `.env.example` says "Production validation rejects true", confirm that validation code actually exists and runs).
+### 6–8. Supabase performance/security items
+Applied directly via migration: ~23 missing FK indexes added, ~26 RLS policies rewritten to use
+`(select auth.<function>())` instead of re-evaluating per row, RLS enabled on `_prisma_migrations`
+(was the one ERROR-level security finding — a publicly-exposed Prisma metadata table). Verified
+clean via `get_advisors` before/after. Only remaining INFO-level items: `Session` has no primary
+key (needs a real migration, left for you), and a few newly-created indexes show as "unused" simply
+because there's no traffic yet.
+
+## CRITICAL — do this next
+
+### 2. Auth.js in Production has **zero configured providers** — sign-in is likely completely non-functional
+This is bigger than the "two auth systems" framing suggested. Confirmed by reading `auth.ts` and
+the actual Vercel env inventory:
+- `auth.ts` only pushes a provider into the `providers[]` array if `AUTH_GOOGLE_ID`+`AUTH_GOOGLE_SECRET`
+  are set, or `EMAIL_SERVER` is set, or (`NODE_ENV !== "production"` AND `ENABLE_DEV_AUTH === "true"`)
+  for the dev Credentials provider.
+- **None of `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, or `EMAIL_SERVER` exist at all** in the Vercel
+  project's env vars (checked the full 36-entry list — they're simply not there, not even empty).
+- Vercel sets `NODE_ENV=production` for every optimized build regardless of Preview vs Production
+  *target* — this is a well-known Next.js/Vercel behavior, not something specific to this app. So
+  the dev Credentials provider's `NODE_ENV !== "production"` guard is very likely false everywhere
+  Vercel deploys, Preview included.
+- **Net effect: `providers` is probably `[]` in every deployed environment.** The `/auth/sign-in`
+  page rendering a form (confirmed in the live crawl) doesn't mean it works — there's a real chance
+  submitting it has nothing to authenticate against.
+- **Verify this first**, don't just trust the reasoning: deploy a temporary log of
+  `providers.length` (or check the rendered sign-in page for which provider buttons/fields actually
+  appear — NextAuth renders differently with zero providers), or run the Playwright auth flow
+  against a Preview deployment and see what actually happens on submit.
+- If confirmed: this is THE launch blocker, above everything else in this file. Fix by either (a)
+  setting up real Google OAuth credentials and adding `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`, (b)
+  setting up a real `EMAIL_SERVER` for magic-link sign-in, or (c) both. Whichever you pick, add a
+  Playwright test that actually completes a sign-in, not just one that checks the form renders.
+
+### 2b. Clerk is fully dead code — safe to remove
+- Confirmed: `clerk` does not appear anywhere in a full-repo GitHub code search, and
+  `package.json` has no Clerk dependency at all (only `next-auth` + `@auth/prisma-adapter`).
+- It's referenced in exactly two places, both harmless leftovers: the `CLERK_PUBLISHABLE_KEY`
+  Vercel env var, and `*.clerk.accounts.dev` in the CSP `script-src`/`frame-src` directives in
+  `vercel.json`.
+- Fix: delete the `CLERK_PUBLISHABLE_KEY` env var (both targets) and remove the two
+  `https://*.clerk.accounts.dev` entries from the CSP in `vercel.json`. Low risk, quick win.
 
 ### 3. `ADMIN_PASSWORD` env var
 - **Evidence:** Present in Vercel prod+preview env, type "sensitive" (not Supabase-provisioned).
-- **Fix:** Find where it's read. A single shared admin password checked in app code is a Phase 22 red flag (no per-user accountability, no audit trail). The DB already has a `ModerationAction` table with RLS enabled but zero policies defined (see item 5) — that's the more likely correct mechanism; confirm whether `ADMIN_PASSWORD` should be retired in favor of it.
+- **Fix:** Find where it's read. A single shared admin password checked in app code is a Phase 22
+  red flag (no per-user accountability, no audit trail). The DB already has a `ModerationAction`
+  table (RLS enabled, policies now need to be added per item 5 below) — confirm whether
+  `ADMIN_PASSWORD` should be retired in favor of real role-based moderator accounts.
 
 ## HIGH
 
 ### 4. Confirm real vs. seeded sports data source
-- **Evidence:** `BALLDONTLIE_KEY` exists as a Vercel env var (balldontlie.io — real NBA/NFL/MLB API), and `.env.example` says leaving `SPORTS_API_*` blank falls back to "deterministic demo sports data." Only 2 rows currently exist in `Game` and 2 in `League` in the live DB — confirm whether that's a live-sync gap (real integration exists but isn't populating) or the app is still on demo data.
+- **Evidence:** `BALLDONTLIE_KEY` exists as a Vercel env var (balldontlie.io — real NBA/NFL/MLB
+  API), and `.env.example` says leaving `SPORTS_API_*` blank falls back to "deterministic demo
+  sports data." Only 2 rows exist in `Game` and 2 in `League` in the live DB — confirm whether
+  that's a live-sync gap (real integration exists but isn't populating) or the app is still on demo
+  data.
 - **File:** wherever `BALLDONTLIE_KEY` / `SPORTS_API_KEY` is consumed (search the repo for it).
 
 ### 5. Three tables have RLS enabled but zero policies
-- **Evidence (Supabase security advisor):** `ModerationAction`, `RateLimitBucket`, and `VerificationToken` all have RLS turned on with no policies attached, meaning any query through the Supabase client/PostgREST (as opposed to the direct Prisma connection) against these tables returns nothing for every role. If any client-side code expects to read/write these via Supabase directly, it's silently broken; if everything only goes through Prisma with the service-role-equivalent direct connection, it's low risk but still worth an explicit policy for defense in depth.
-- **Fix:** Decide the intended access pattern for each table and add matching policies (or confirm they're Prisma-only and document why RLS is a no-op there).
+- **Evidence (Supabase security advisor):** `ModerationAction`, `RateLimitBucket`, and
+  `VerificationToken` all have RLS on with no policies, meaning any Supabase-client/PostgREST
+  access to them returns nothing for every role. If everything only goes through Prisma's direct
+  connection this is low-risk, but still worth an explicit policy for defense in depth — especially
+  once item 3 (ADMIN_PASSWORD → real moderator roles) is resolved and `ModerationAction` starts
+  being written to from more places.
+- **Fix:** Decide the intended access pattern for each table and add matching policies (or confirm
+  they're Prisma-only and document why RLS is a no-op there).
 
-## MEDIUM — performance, not blocking
+## MEDIUM — not blocking
 
-### 6. Missing indexes on ~20 foreign key columns
-- **Evidence (Supabase performance advisor):** foreign keys without covering indexes on `Block`, `Comment`, `Community`, `Debate`, `GameFollow`, `GameParticipant`, `HallOfFlameEntry`, `ModerationAction`, `Notification`, `Poll`, `PollVote`, `Reaction`, `Report`, `SavedItem`, `UserBadge`, `Vote`. Fine at current data volume (single digits of rows) but will slow down as real users arrive — add before Phase 25 performance work, not after.
-
-### 7. RLS policies re-evaluate `auth.*()` per row instead of once per query
-- **Evidence:** ~25 policies (User, Account, Session, UserPreference, Notification, SavedItem, Block, Mute, Take, Vote, Comment, Reaction, Follow, CommunityMember, Report, Prediction, PollVote, GameFollow, Profile, Debate, Poll) call `auth.<function>()` directly instead of `(select auth.<function>())`. Cheap fix, meaningful at scale — batch-update all of them together.
-
-### 8. `Session` table has no primary key
-- Standard Prisma/NextAuth session table shape sometimes omits one; confirm if intentional or an oversight.
+### `Session` table has no primary key
+Standard Prisma/NextAuth session table shape sometimes omits one; confirm if intentional (Supabase
+linter flags it as INFO) or an oversight worth a real migration.
 
 ## Next batches (not yet crawled — pick up after the above)
 Homepage hero/live-games/schedule/trending sections, Debate Center detail pages, Create Take flow,
-authenticated navigation (My Arena, Settings — confirmed auth-gated correctly), full responsive/accessibility
-passes. Re-run the logged-out crawl after fixing #1 since the skeleton stall may have been hiding
-other defects on those three pages.
+authenticated navigation (My Arena, Settings — confirmed auth-gated correctly, though item 2 may
+make "authenticated" moot until fixed), full responsive/accessibility passes.
