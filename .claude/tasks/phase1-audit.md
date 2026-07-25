@@ -16,20 +16,41 @@ for data that definitely exists and definitely matches the query's own filters:
   that env var change + redeploy, a fresh crawl of both `/games` and `/debates` now shows empty
   results.
 - **This looks like a regression introduced by the pooled-connection switch, not missing data.**
-  Because PR #5's error-surfacing fix (replacing the silent `catch {}` with a distinct error state)
-  hasn't merged yet, production is still silently swallowing whatever is now failing and showing
-  the generic empty-state copy, so there's no visible error to go on.
+  Because PR #5's error-surfacing fix hasn't merged yet, production is still silently swallowing
+  whatever is now failing and showing the generic empty-state copy, so there's no visible error to
+  go on directly from those two pages.
+- **NEW, concrete evidence pinning this down — read `app/page.tsx`'s `discovery()` function:**
+  it runs `db.game.findMany`, `db.take.findMany`, `db.debate.findMany`, `db.community.findMany`,
+  and `db.user.findFirst` together inside a single `Promise.all(...)`, wrapped in ONE try/catch.
+  If even one of those five queries fails, the catch fires and **all five results are blanked to
+  `[]`/`null` with `failed: true`** — which is exactly why the homepage crawl showed "Live right
+  now," "Today's schedule," AND "Hall of Flame preview" all reporting "data unavailable"
+  simultaneously. One failing query is taking down the whole homepage. This is almost certainly
+  the same underlying failure as the `/games` and `/debates` emptiness — investigate as one root
+  cause, not three separate bugs.
 - **Suspect:** something about the new pooled connection string
   (`...pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1`).
   Known common failure mode with Prisma + PgBouncer in transaction-pooling mode: prepared
-  statement handling. `pgbouncer=true` is supposed to tell Prisma to disable prepared statements,
-  but worth confirming that's actually taking effect, and whether `connection_limit=1` is too
-  restrictive under this app's query patterns (e.g. multiple `db.*` calls per request needing
-  more than one connection at once).
-- **Do this first:** merge (or at least deploy from) PR #5 so the real error actually surfaces
-  server-side, or add a temporary `console.error` with the full error object in the existing
-  `catch` blocks and check Vercel function runtime logs after hitting `/games` and `/debates`.
-  Don't guess — get the actual Prisma error message before changing the connection string again.
+  statement handling (`pgbouncer=true` should disable them in Prisma — confirm it's actually
+  taking effect for this Prisma version), or `connection_limit=1` being too restrictive for a
+  `Promise.all` of 5 concurrent queries against the SAME connection pool (this is very plausibly
+  the actual mechanism: 5 concurrent queries fighting over 1 allowed connection).
+- **Do this first:** merge/deploy PR #5's logging so the real error surfaces, or add a temporary
+  `console.error(error)` in the catch blocks of `app/page.tsx`, `app/games/page.tsx`, and the
+  debates page, then hit all three routes and read Vercel function runtime logs. Get the actual
+  Prisma error message before changing the connection string again. If it turns out to be the
+  `connection_limit=1` + concurrent-query theory, try raising it (e.g. 3–5) as the fix, and also
+  consider splitting `app/page.tsx`'s single `Promise.all`/single try-catch into five independent
+  try/catches (mirrors the fix already applied to the individual pages) so one failing query can't
+  blank the entire homepage even if this exact cause recurs later.
+
+### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
+Separate, smaller bug in `app/page.tsx`: the shared `Section` component just renders `{children}`
+with no fallback. When `data.takes` or `data.communities` is an empty array, those two sections
+render as a bare heading + "View all" link with a blank grid underneath — no message at all,
+unlike every other section on the page which has a real `EmptyState`. Add one for consistency
+(and so it's distinguishable from a loading/broken state once 1b is fixed and these can be
+genuinely empty vs. genuinely broken).
 
 ## ✅ RESOLVED (partially — see 1b above for a possible regression)
 
@@ -37,9 +58,8 @@ for data that definitely exists and definitely matches the query's own filters:
 The infinite-hang part is fixed and verified: `DATABASE_URL`/`DIRECT_URL` are now the pooled
 Supabase connection with the `postgresql://` scheme the app's `lib/env.ts` validator requires.
 Pages resolve in ~2s instead of hanging. Code-side fix (timeout wrapper, error state, tests, same
-pattern in `/debates`) is in PR #5, awaiting review/merge. See item 1b: something about this same
-change may have introduced a new empty-results problem that needs to be root-caused before this
-item is fully closed out.
+pattern in `/debates`) is in PR #5, awaiting review/merge. See items 1b/1c above for what's still
+open before this item is fully closed out.
 
 ### 6–8. Supabase performance/security items
 Applied directly via migration: ~23 missing FK indexes added, ~26 RLS policies rewritten to use
@@ -94,9 +114,4 @@ once item 3 pushes more traffic through `ModerationAction`.
 Supabase linter flags it as INFO only; confirm if intentional or worth a real migration.
 
 ## Next batches (not yet crawled)
-Homepage sections (`Live right now`, `Today's schedule`, `Hall of Flame preview`) already show a
-proper "data unavailable" error state rather than hanging or faking data — that pattern already
-exists somewhere in the codebase and is worth reusing for item 1b's fix instead of building a new
-one. `Trending Takes` and `Find your crowd` sections render as fully empty (no cards, no error, no
-empty-state message) — worth checking whether that's correct empty-state handling or another gap.
 Create Take flow, authenticated navigation, full responsive/accessibility passes still pending.
