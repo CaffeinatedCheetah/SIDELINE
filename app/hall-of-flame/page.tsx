@@ -18,6 +18,7 @@ type HallListItem = Prisma.HallOfFlameEntryGetPayload<{
 export const dynamic = "force-dynamic";
 export default async function HallPage() {
   let entries: HallListItem[] = [];
+  let dbError = false;
   try {
     entries = (await db.hallOfFlameEntry.findMany({
       take: 50,
@@ -32,7 +33,10 @@ export default async function HallPage() {
         league: { select: { abbreviation: true } },
       },
     })) as typeof entries;
-  } catch {}
+  } catch (error) {
+    dbError = true;
+    console.error("[HallPage] failed to load Hall of Flame entries:", error);
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -54,7 +58,12 @@ export default async function HallPage() {
         </Select>
         <button className="bg-brand rounded-sm px-4 font-bold">Apply</button>
       </form>
-      {entries.length ? (
+      {dbError ? (
+        <EmptyState
+          title="Something went wrong loading the Hall of Flame"
+          description="We couldn't reach the database. Try refreshing in a moment."
+        />
+      ) : entries.length ? (
         <ol className="grid gap-3">
           {entries.map((entry) => (
             <li key={entry.id}>
