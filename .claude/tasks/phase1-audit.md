@@ -3,96 +3,100 @@
 Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
 without review. Return findings/diffs per item before moving to the next.
 
-## ✅ RESOLVED
+## 🚨 URGENT — likely regression from the connection-string fix, investigate before anything else
+
+### 1b. `/games` and `/debates` now return empty results that should have data
+Both `/games` and `/debates` are showing empty states ("No games match" / "No open debates")
+for data that definitely exists and definitely matches the query's own filters:
+- `Game` table has 2 rows: one `status = 'LIVE'`, one `status = 'SCHEDULED'` — both pass the
+  page's default (no-filter) query, which should return both with an empty `where: {}`.
+- `Debate` table has 1 row: `status = 'OPEN'`, title "Who has the NFC North's best defense?".
+- Earlier in this session, `/debates` loaded this exact debate card successfully (confirmed via
+  live crawl, before the `DATABASE_URL`/`DIRECT_URL` connection-string change in item 1). After
+  that env var change + redeploy, a fresh crawl of both `/games` and `/debates` now shows empty
+  results.
+- **This looks like a regression introduced by the pooled-connection switch, not missing data.**
+  Because PR #5's error-surfacing fix (replacing the silent `catch {}` with a distinct error state)
+  hasn't merged yet, production is still silently swallowing whatever is now failing and showing
+  the generic empty-state copy, so there's no visible error to go on.
+- **Suspect:** something about the new pooled connection string
+  (`...pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true&connection_limit=1`).
+  Known common failure mode with Prisma + PgBouncer in transaction-pooling mode: prepared
+  statement handling. `pgbouncer=true` is supposed to tell Prisma to disable prepared statements,
+  but worth confirming that's actually taking effect, and whether `connection_limit=1` is too
+  restrictive under this app's query patterns (e.g. multiple `db.*` calls per request needing
+  more than one connection at once).
+- **Do this first:** merge (or at least deploy from) PR #5 so the real error actually surfaces
+  server-side, or add a temporary `console.error` with the full error object in the existing
+  `catch` blocks and check Vercel function runtime logs after hitting `/games` and `/debates`.
+  Don't guess — get the actual Prisma error message before changing the connection string again.
+
+## ✅ RESOLVED (partially — see 1b above for a possible regression)
 
 ### 1. `/games`, `/hall-of-flame`, `/communities`, `/debates` hung on the loading skeleton
-Fixed and verified live. Root cause: `DATABASE_URL`/`DIRECT_URL` were not the pooled Supabase
-connection, and the app's own `lib/env.ts` Zod validator requires the `postgresql://` scheme
-(Supabase issues `postgres://`), which also caused a failed deploy along the way. Both are now
-fixed directly in Vercel (Production + Preview) and confirmed live: `/games` resolves in ~2s
-logged-out instead of hanging indefinitely. Code-side fix (timeout wrapper, error state, tests,
-and the same pattern in `/debates`) is in PR #5, awaiting review/merge.
-**Follow-up still open:** right after the env fix deployed, `/games` rendered "No games match"
-despite 2 real rows in `Game`. Worth a quick check once PR #5 merges — could be stale cache from
-the redeploy, could be something else (e.g. a status/date filter silently excluding both rows).
+The infinite-hang part is fixed and verified: `DATABASE_URL`/`DIRECT_URL` are now the pooled
+Supabase connection with the `postgresql://` scheme the app's `lib/env.ts` validator requires.
+Pages resolve in ~2s instead of hanging. Code-side fix (timeout wrapper, error state, tests, same
+pattern in `/debates`) is in PR #5, awaiting review/merge. See item 1b: something about this same
+change may have introduced a new empty-results problem that needs to be root-caused before this
+item is fully closed out.
 
 ### 6–8. Supabase performance/security items
 Applied directly via migration: ~23 missing FK indexes added, ~26 RLS policies rewritten to use
 `(select auth.<function>())` instead of re-evaluating per row, RLS enabled on `_prisma_migrations`
-(was the one ERROR-level security finding — a publicly-exposed Prisma metadata table). Verified
-clean via `get_advisors` before/after. Only remaining INFO-level items: `Session` has no primary
-key (needs a real migration, left for you), and a few newly-created indexes show as "unused" simply
+(was the one ERROR-level security finding). Verified clean via `get_advisors` before/after. Only
+remaining INFO-level items: `Session` has no primary key, and new indexes show "unused" simply
 because there's no traffic yet.
 
-## CRITICAL — do this next
+## CRITICAL
 
 ### 2. Auth.js in Production has **zero configured providers** — sign-in is likely completely non-functional
-This is bigger than the "two auth systems" framing suggested. Confirmed by reading `auth.ts` and
-the actual Vercel env inventory:
-- `auth.ts` only pushes a provider into the `providers[]` array if `AUTH_GOOGLE_ID`+`AUTH_GOOGLE_SECRET`
-  are set, or `EMAIL_SERVER` is set, or (`NODE_ENV !== "production"` AND `ENABLE_DEV_AUTH === "true"`)
-  for the dev Credentials provider.
-- **None of `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, or `EMAIL_SERVER` exist at all** in the Vercel
-  project's env vars (checked the full 36-entry list — they're simply not there, not even empty).
+Confirmed by reading `auth.ts` and the actual Vercel env inventory:
+- `auth.ts` only pushes a provider if `AUTH_GOOGLE_ID`+`AUTH_GOOGLE_SECRET` are set, or
+  `EMAIL_SERVER` is set, or (`NODE_ENV !== "production"` AND `ENABLE_DEV_AUTH === "true"`).
+- **None of `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, or `EMAIL_SERVER` exist at all** in Vercel's
+  env vars.
 - Vercel sets `NODE_ENV=production` for every optimized build regardless of Preview vs Production
-  *target* — this is a well-known Next.js/Vercel behavior, not something specific to this app. So
-  the dev Credentials provider's `NODE_ENV !== "production"` guard is very likely false everywhere
-  Vercel deploys, Preview included.
-- **Net effect: `providers` is probably `[]` in every deployed environment.** The `/auth/sign-in`
-  page rendering a form (confirmed in the live crawl) doesn't mean it works — there's a real chance
-  submitting it has nothing to authenticate against.
-- **Verify this first**, don't just trust the reasoning: deploy a temporary log of
-  `providers.length` (or check the rendered sign-in page for which provider buttons/fields actually
-  appear — NextAuth renders differently with zero providers), or run the Playwright auth flow
-  against a Preview deployment and see what actually happens on submit.
-- If confirmed: this is THE launch blocker, above everything else in this file. Fix by either (a)
-  setting up real Google OAuth credentials and adding `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`, (b)
-  setting up a real `EMAIL_SERVER` for magic-link sign-in, or (c) both. Whichever you pick, add a
-  Playwright test that actually completes a sign-in, not just one that checks the form renders.
+  target, so the dev-Credentials guard is very likely false everywhere.
+- **Net effect: `providers` is probably `[]` in every deployed environment.** Verify with an actual
+  Playwright sign-in attempt against a Preview deployment before assuming the reasoning is right.
+- If confirmed: this is THE launch blocker. Fix needs real credentials from Babs (Google OAuth
+  and/or SMTP) — propose the options, don't just pick one.
 
 ### 2b. Clerk is fully dead code — safe to remove
-- Confirmed: `clerk` does not appear anywhere in a full-repo GitHub code search, and
-  `package.json` has no Clerk dependency at all (only `next-auth` + `@auth/prisma-adapter`).
-- It's referenced in exactly two places, both harmless leftovers: the `CLERK_PUBLISHABLE_KEY`
-  Vercel env var, and `*.clerk.accounts.dev` in the CSP `script-src`/`frame-src` directives in
-  `vercel.json`.
-- Fix: delete the `CLERK_PUBLISHABLE_KEY` env var (both targets) and remove the two
-  `https://*.clerk.accounts.dev` entries from the CSP in `vercel.json`. Low risk, quick win.
+Confirmed zero references anywhere in the repo and no Clerk dependency in `package.json` (only
+`next-auth` + `@auth/prisma-adapter`). Only two leftovers: the `CLERK_PUBLISHABLE_KEY` Vercel env
+var, and two `https://*.clerk.accounts.dev` entries in the CSP in `vercel.json`. Low-risk, go ahead
+and remove both.
 
 ### 3. `ADMIN_PASSWORD` env var
-- **Evidence:** Present in Vercel prod+preview env, type "sensitive" (not Supabase-provisioned).
-- **Fix:** Find where it's read. A single shared admin password checked in app code is a Phase 22
-  red flag (no per-user accountability, no audit trail). The DB already has a `ModerationAction`
-  table (RLS enabled, policies now need to be added per item 5 below) — confirm whether
-  `ADMIN_PASSWORD` should be retired in favor of real role-based moderator accounts.
+Present in Vercel prod+preview env, type "sensitive". Find where it's read — a single shared admin
+password is a Phase 22 red flag (no per-user accountability, no audit trail). `ModerationAction`
+table (RLS enabled, needs policies per item 5) is the more likely correct mechanism; confirm
+whether `ADMIN_PASSWORD` should be retired in favor of it.
 
 ## HIGH
 
 ### 4. Confirm real vs. seeded sports data source
-- **Evidence:** `BALLDONTLIE_KEY` exists as a Vercel env var (balldontlie.io — real NBA/NFL/MLB
-  API), and `.env.example` says leaving `SPORTS_API_*` blank falls back to "deterministic demo
-  sports data." Only 2 rows exist in `Game` and 2 in `League` in the live DB — confirm whether
-  that's a live-sync gap (real integration exists but isn't populating) or the app is still on demo
-  data.
-- **File:** wherever `BALLDONTLIE_KEY` / `SPORTS_API_KEY` is consumed (search the repo for it).
+`BALLDONTLIE_KEY` exists (real NBA/NFL/MLB API). `.env.example` says blank `SPORTS_API_*` falls
+back to "deterministic demo sports data." Only 2 rows exist in `Game`, 2 in `League` — confirm
+whether that's a live-sync gap or still demo data. Search the repo for where the key is consumed.
 
 ### 5. Three tables have RLS enabled but zero policies
-- **Evidence (Supabase security advisor):** `ModerationAction`, `RateLimitBucket`, and
-  `VerificationToken` all have RLS on with no policies, meaning any Supabase-client/PostgREST
-  access to them returns nothing for every role. If everything only goes through Prisma's direct
-  connection this is low-risk, but still worth an explicit policy for defense in depth — especially
-  once item 3 (ADMIN_PASSWORD → real moderator roles) is resolved and `ModerationAction` starts
-  being written to from more places.
-- **Fix:** Decide the intended access pattern for each table and add matching policies (or confirm
-  they're Prisma-only and document why RLS is a no-op there).
+`ModerationAction`, `RateLimitBucket`, `VerificationToken` — RLS on, no policies, so any
+Supabase-client/PostgREST access returns nothing for every role. Low risk if everything goes
+through Prisma's direct connection, but worth an explicit policy for defense in depth, especially
+once item 3 pushes more traffic through `ModerationAction`.
 
 ## MEDIUM — not blocking
 
 ### `Session` table has no primary key
-Standard Prisma/NextAuth session table shape sometimes omits one; confirm if intentional (Supabase
-linter flags it as INFO) or an oversight worth a real migration.
+Supabase linter flags it as INFO only; confirm if intentional or worth a real migration.
 
-## Next batches (not yet crawled — pick up after the above)
-Homepage hero/live-games/schedule/trending sections, Debate Center detail pages, Create Take flow,
-authenticated navigation (My Arena, Settings — confirmed auth-gated correctly, though item 2 may
-make "authenticated" moot until fixed), full responsive/accessibility passes.
+## Next batches (not yet crawled)
+Homepage sections (`Live right now`, `Today's schedule`, `Hall of Flame preview`) already show a
+proper "data unavailable" error state rather than hanging or faking data — that pattern already
+exists somewhere in the codebase and is worth reusing for item 1b's fix instead of building a new
+one. `Trending Takes` and `Find your crowd` sections render as fully empty (no cards, no error, no
+empty-state message) — worth checking whether that's correct empty-state handling or another gap.
+Create Take flow, authenticated navigation, full responsive/accessibility passes still pending.
