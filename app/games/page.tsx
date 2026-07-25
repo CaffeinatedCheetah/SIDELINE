@@ -28,6 +28,7 @@ export default async function GamesPage({
 }) {
   const filters = await searchParams;
   let games: GameListItem[] = [];
+  let dbError = false;
   try {
     games = (await db.game.findMany({
       where: {
@@ -45,7 +46,10 @@ export default async function GamesPage({
         _count: { select: { takes: true } },
       },
     })) as typeof games;
-  } catch {}
+  } catch (error) {
+    dbError = true;
+    console.error("[GamesPage] failed to load games:", error);
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -75,7 +79,12 @@ export default async function GamesPage({
           Apply filters
         </button>
       </form>
-      {games.length ? (
+      {dbError ? (
+        <EmptyState
+          title="Something went wrong loading games"
+          description="We couldn't reach the database. Try refreshing in a moment."
+        />
+      ) : games.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {games.map((game) => (
             <GameCard
