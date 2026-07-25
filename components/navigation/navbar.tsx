@@ -1,15 +1,22 @@
+"use client";
+
 import {
   Bell,
   Flame,
   Home,
   Menu,
   MessageSquare,
+  Plus,
   Search,
   Trophy,
+  User,
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { TakeComposer } from "@/components/actions/take-composer";
 import { buttonStyles } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -18,6 +25,11 @@ const links = [
   { href: "/communities", label: "Communities", icon: Users },
   { href: "/hall-of-flame", label: "Hall of Flame", icon: Flame },
 ];
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Navbar({
   authenticated = false,
   unread = 0,
@@ -25,6 +37,8 @@ export function Navbar({
   authenticated?: boolean;
   unread?: number;
 }) {
+  const pathname = usePathname() ?? "";
+
   return (
     <>
       <a href="#main-content" className="skip-link">
@@ -43,16 +57,25 @@ export function Navbar({
             aria-label="Primary"
             className="hidden items-center gap-1 lg:flex"
           >
-            {links.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="text-text-secondary hover:bg-surface-3 hover:text-text-primary flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm font-bold"
-              >
-                <Icon aria-hidden className="size-4" />
-                {label}
-              </Link>
-            ))}
+            {links.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm font-bold transition",
+                    active
+                      ? "bg-brand-surface text-brand-light"
+                      : "text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <Icon aria-hidden className="size-4" />
+                  {label}
+                </Link>
+              );
+            })}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             <Link
@@ -62,6 +85,23 @@ export function Navbar({
             >
               <Search aria-hidden className="size-5" />
             </Link>
+            {authenticated && (
+              <Modal
+                title="Create a take"
+                description="Make a clear claim and explain why."
+                trigger={
+                  <button
+                    aria-label="Create a take"
+                    className={cn(buttonStyles({ variant: "secondary" }))}
+                  >
+                    <Plus aria-hidden className="size-4" />
+                    Take
+                  </button>
+                }
+              >
+                <TakeComposer />
+              </Modal>
+            )}
             {authenticated ? (
               <>
                 <Link
@@ -84,7 +124,15 @@ export function Navbar({
                 </Link>
               </>
             ) : (
-              <Link href="/auth/sign-in" className={cn(buttonStyles())}>
+              // Hidden below 360px: at that width there isn't room for
+              // search + Sign in + the mobile menu button to coexist
+              // (the true cause of the 320px horizontal-overflow defect).
+              // The mobile bottom nav's own "Sign in" entry remains the
+              // access point at those widths, so nothing is lost.
+              <Link
+                href="/auth/sign-in"
+                className={cn(buttonStyles(), "max-[359px]:hidden")}
+              >
                 Sign in
               </Link>
             )}
@@ -99,26 +147,91 @@ export function Navbar({
       </header>
       <nav
         aria-label="Mobile"
-        className="border-border-subtle bg-surface-1 fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
+        className="border-border-subtle bg-surface-1 safe-bottom fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
       >
-        {[
-          { href: "/", label: "Home", icon: Home },
-          ...links.slice(0, 3),
-          {
-            href: authenticated ? "/notifications" : "/auth/sign-in",
-            label: authenticated ? "Alerts" : "Sign in",
-            icon: Bell,
-          },
-        ].map(({ href, label, icon: Icon }) => (
+        <Link
+          href="/"
+          aria-current={pathname === "/" ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            pathname === "/"
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Home aria-hidden className="size-5" />
+          Home
+        </Link>
+        <Link
+          href="/games"
+          aria-current={isActive(pathname, "/games") ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/games")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Trophy aria-hidden className="size-5" />
+          Games
+        </Link>
+        {authenticated ? (
+          <Modal
+            title="Create a take"
+            description="Make a clear claim and explain why."
+            trigger={
+              <button
+                aria-label="Create a take"
+                className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
+              >
+                <span className="bg-brand grid size-9 place-items-center rounded-full text-white">
+                  <Plus aria-hidden className="size-5" />
+                </span>
+                Take
+              </button>
+            }
+          >
+            <TakeComposer />
+          </Modal>
+        ) : (
           <Link
-            key={label}
-            href={href}
+            href="/auth/sign-in"
             className="text-text-secondary grid min-h-11 place-items-center content-center gap-1 text-[11px]"
           >
-            <Icon aria-hidden className="size-5" />
-            {label}
+            <span className="bg-brand grid size-9 place-items-center rounded-full text-white">
+              <Plus aria-hidden className="size-5" />
+            </span>
+            Take
           </Link>
-        ))}
+        )}
+        <Link
+          href={authenticated ? "/notifications" : "/auth/sign-in"}
+          aria-current={
+            isActive(pathname, "/notifications") ? "page" : undefined
+          }
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/notifications")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <Bell aria-hidden className="size-5" />
+          {authenticated ? "Alerts" : "Sign in"}
+        </Link>
+        <Link
+          href={authenticated ? "/arena" : "/auth/sign-in"}
+          aria-current={isActive(pathname, "/arena") ? "page" : undefined}
+          className={cn(
+            "grid min-h-11 place-items-center content-center gap-1 text-[11px]",
+            isActive(pathname, "/arena")
+              ? "text-brand-light font-bold"
+              : "text-text-secondary",
+          )}
+        >
+          <User aria-hidden className="size-5" />
+          Profile
+        </Link>
       </nav>
     </>
   );
