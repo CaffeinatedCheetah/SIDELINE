@@ -74,21 +74,46 @@ posts to `/api/v1/takes` via a shared `apiAction()` helper that correctly redire
 `/auth/sign-in?callbackUrl=...` on a 401. Confirmed live, logged-out: both the bottom-nav "Take"
 link and the Debates page's "Start a debate" button redirect to sign-in with the callback URL
 preserved — matches the Phase 8 requirement. Could not test the full logged-in post-and-see-it-
-appear flow from this session (no credentials, and no live game/debate visible to attach a take to
-while item 1b is unresolved) — worth a real authenticated Playwright pass once 1b is fixed.
+appear flow from this session (no test-user credentials, and no live game/debate visible to attach
+a take to while item 1b is unresolved) — do a real authenticated Playwright pass once 1b and
+item 2 (auth providers) are both fixed and a test account exists.
 
-**New finding while checking this:** there's an orphaned legacy `api/takes.js` (and `api/fan-takes.js`)
-at the repo root — NOT under `app/api/`, these are separate Vercel serverless functions (same
-convention as `api/agent-scout.js`, which is in the deployment's `functions` config and has a daily
-cron in `vercel.json`). `api/takes.js` stores takes in an in-memory `globalThis.__SL_TAKES` array
-with zero Prisma/database involvement — data that vanishes on every cold start and every deploy.
-Confirmed the real UI does NOT call this (it calls `/api/v1/takes` instead), so it's dead code, but
-it's still a live, unauthenticated, publicly-reachable POST endpoint with no real validation. Low
-risk but worth deleting for hygiene, or investigating why it exists first — it and `api/fan-takes.js`
-look like leftovers from a pre-Prisma prototype. Also worth a quick look: `vercel.json` schedules six
-daily cron jobs (`agent-scout`, `agent-pulse`, `agent-social`, `agent-hunter`, `push-notify`,
-`agent-rivals`) — haven't investigated what these do yet; flagging in case they're also writing to
-the legacy in-memory store instead of the real DB.
+### `api/takes.js` / `api/fan-takes.js` — genuinely dead, separate from SCOUT (see below)
+Two small root-level files that store data in a bare `globalThis` array with NO KV/DB backing and
+NO relation to the SCOUT system. Confirmed the real UI does not call them (it calls `/api/v1/takes`
+instead). These look like leftovers from an earlier prototype, unrelated to anything else in this
+file. Low-risk cleanup: delete them, or confirm nothing external depends on them first.
+
+## IMPORTANT ARCHITECTURAL FINDING (not a bug by itself — needs a decision)
+
+### "SCOUT" — a real, KV-persisted AI content system, fully separate from the Prisma app
+While investigating `api/takes.js` I found this is one small file among a much bigger system:
+`api/agent-scout.js`, `api/agent-pulse.js`, `api/agent-social.js`, `api/agent-hunter.js`,
+`api/agent-rivals.js`, and `api/push-notify.js`, all scheduled as daily/hourly crons in
+`vercel.json` and all sharing state via `api/_scout-memory.js`. This is clearly the "AI sports
+commentary bot" feature and is a real, intentional part of the product — not dead code:
+- It's properly persisted: `_scout-memory.js` writes to Vercel KV (`KV_REST_API_URL`/
+  `KV_REST_API_TOKEN`, both present in the Vercel env) with a 24h TTL, falling back to in-memory
+  only when KV isn't configured. Not ephemeral in practice.
+- `agent-pulse.js` calls the Anthropic API (via `ANTHROPIC_API_KEY`, present in env) to generate
+  debate prompts, an "editor note" banner string, and personalized content — comment says it's
+  "the main brain of fantakes.app," called live on every page load for a banner + personalization.
+- `agent-hunter.js` and `agent-rivals.js` scan 13 RSS/Reddit sources plus rival outlets (ESPN,
+  Bleacher Report, Yahoo, CBS Sports) for breaking news and exclusive angles.
+- `agent-social.js` monitors a hardcoded watchlist of real, named athletes' X accounts (LeBron
+  James, Steph Curry, Mahomes, Ronaldo, Neymar, Ohtani, etc.), and has Claude auto-write full
+  "Sideline articles" about their posts (marked `aiGenerated: true`), plus a "tweet publisher."
+  **Worth a conscious decision, not just a bug fix:** generating and (if the publisher is live)
+  posting AI-written content framed around real, named public figures without their involvement
+  carries real reputational/legal exposure — flag this to Babs rather than silently shipping it as
+  part of "launch readiness," separate from any technical audit finding.
+- **The actual open question for Phase 1 purposes:** none of the pages crawled so far (`/`, `/games`,
+  `/debates`, `/communities`, `/hall-of-flame`) show any banner, editor note, AI-written article, or
+  SCOUT-generated debate prompt anywhere. Either this output surfaces somewhere not yet crawled, or
+  SCOUT is running on cron (burning Anthropic API calls every 5–30 minutes) and its output is never
+  actually rendered to users. Find where (if anywhere) `agent-pulse`'s personalization/banner and
+  `agent-hunter`'s breaking news are consumed in the frontend before deciding whether this is
+  working-but-unsurfaced or genuinely dead weight.
 
 ## CRITICAL
 
@@ -103,7 +128,8 @@ Confirmed by reading `auth.ts` and the actual Vercel env inventory:
 - **Net effect: `providers` is probably `[]` in every deployed environment.** Verify with an actual
   Playwright sign-in attempt against a Preview deployment before assuming the reasoning is right.
 - If confirmed: this is THE launch blocker. Fix needs real credentials from Babs (Google OAuth
-  and/or SMTP) — propose the options, don't just pick one.
+  and/or SMTP) — propose the options, don't just pick one. Babs has said they'll do manual test-
+  account verification once this is working, so ping them as soon as a real sign-in path exists.
 
 ### 2b. Clerk is fully dead code — safe to remove
 Confirmed zero references anywhere in the repo and no Clerk dependency in `package.json` (only
@@ -123,6 +149,7 @@ whether `ADMIN_PASSWORD` should be retired in favor of it.
 `BALLDONTLIE_KEY` exists (real NBA/NFL/MLB API). `.env.example` says blank `SPORTS_API_*` falls
 back to "deterministic demo sports data." Only 2 rows exist in `Game`, 2 in `League` — confirm
 whether that's a live-sync gap or still demo data. Search the repo for where the key is consumed.
+Note: this is about the Prisma `Game` table specifically, separate from the SCOUT system above.
 
 ### 5. Three tables have RLS enabled but zero policies
 `ModerationAction`, `RateLimitBucket`, `VerificationToken` — RLS on, no policies, so any
@@ -130,11 +157,8 @@ Supabase-client/PostgREST access returns nothing for every role. Low risk if eve
 through Prisma's direct connection, but worth an explicit policy for defense in depth, especially
 once item 3 pushes more traffic through `ModerationAction`.
 
-### 9. Orphaned legacy in-memory API routes (`api/takes.js`, `api/fan-takes.js`)
-See "Create Take — partially verified" above. Dead code, not called by the current UI, but still
-live and publicly reachable. Delete or gate them, and check what the six daily cron jobs
-(`agent-scout`, `agent-pulse`, `agent-social`, `agent-hunter`, `push-notify`, `agent-rivals`) in
-`vercel.json` actually write to before assuming they're harmless.
+### 9. Delete `api/takes.js` / `api/fan-takes.js`
+See "RESOLVED" section above — genuinely dead, unrelated to SCOUT. Quick cleanup.
 
 ## MEDIUM — not blocking
 
@@ -142,4 +166,5 @@ live and publicly reachable. Delete or gate them, and check what the six daily c
 Supabase linter flags it as INFO only; confirm if intentional or worth a real migration.
 
 ## Next batches (not yet crawled)
-Authenticated navigation, full responsive/accessibility passes still pending.
+Authenticated navigation, full responsive/accessibility passes still pending. Also: find where (if
+anywhere) SCOUT's output actually renders in the frontend — see the architectural finding above.
