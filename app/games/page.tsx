@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { GameCard } from "@/components/games/game-card";
 import { PageHeading } from "@/components/layout/page-heading";
-import { EmptyState } from "@/components/ui/foundations";
+import { EmptyState, ErrorState } from "@/components/ui/foundations";
 import { Select } from "@/components/ui/form-controls";
 import { db } from "@/lib/db/client";
+import { withTimeout } from "@/lib/db/with-timeout";
 import type { Prisma } from "@prisma/client";
 
 type GameListItem = Prisma.GameGetPayload<{
@@ -28,24 +29,34 @@ export default async function GamesPage({
 }) {
   const filters = await searchParams;
   let games: GameListItem[] = [];
+  let failed = false;
   try {
-    games = (await db.game.findMany({
-      where: {
-        ...(filters.status &&
-        ["LIVE", "SCHEDULED", "FINAL"].includes(filters.status)
-          ? { status: filters.status as "LIVE" | "SCHEDULED" | "FINAL" }
-          : {}),
-        ...(filters.league ? { league: { key: filters.league } } : {}),
-      },
-      orderBy: { scheduledAt: "asc" },
-      include: {
-        league: true,
-        homeTeam: true,
-        awayTeam: true,
-        _count: { select: { takes: true } },
-      },
-    })) as typeof games;
-  } catch {}
+    games = (await withTimeout(
+      db.game.findMany({
+        where: {
+          ...(filters.status &&
+          ["LIVE", "SCHEDULED", "FINAL"].includes(filters.status)
+            ? { status: filters.status as "LIVE" | "SCHEDULED" | "FINAL" }
+            : {}),
+          ...(filters.league ? { league: { key: filters.league } } : {}),
+        },
+        orderBy: { scheduledAt: "asc" },
+        include: {
+          league: true,
+          homeTeam: true,
+          awayTeam: true,
+          _count: { select: { takes: true } },
+        },
+      }),
+      "GamesPage.findMany",
+    )) as typeof games;
+  } catch (error) {
+    failed = true;
+    console.error(
+      "[GamesPage] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : error,
+    );
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -75,7 +86,12 @@ export default async function GamesPage({
           Apply filters
         </button>
       </form>
-      {games.length ? (
+      {failed ? (
+        <ErrorState
+          title="Games are unavailable"
+          description="We couldn't load the schedule right now. Try again shortly."
+        />
+      ) : games.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {games.map((game) => (
             <GameCard

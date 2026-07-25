@@ -1,8 +1,9 @@
 import { CommunityCard } from "@/components/communities/community-card";
 import { PageHeading } from "@/components/layout/page-heading";
-import { EmptyState } from "@/components/ui/foundations";
+import { EmptyState, ErrorState } from "@/components/ui/foundations";
 import { Input } from "@/components/ui/form-controls";
 import { db } from "@/lib/db/client";
+import { withTimeout } from "@/lib/db/with-timeout";
 import type { Prisma } from "@prisma/client";
 
 type CommunityListItem = Prisma.CommunityGetPayload<{
@@ -16,16 +17,26 @@ export default async function CommunitiesPage({
 }) {
   const { q } = await searchParams;
   let communities: CommunityListItem[] = [];
+  let failed = false;
   try {
-    communities = (await db.community.findMany({
-      where: {
-        status: "ACTIVE",
-        ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
-      },
-      orderBy: { name: "asc" },
-      include: { _count: { select: { members: true, takes: true } } },
-    })) as typeof communities;
-  } catch {}
+    communities = (await withTimeout(
+      db.community.findMany({
+        where: {
+          status: "ACTIVE",
+          ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+        },
+        orderBy: { name: "asc" },
+        include: { _count: { select: { members: true, takes: true } } },
+      }),
+      "CommunitiesPage.findMany",
+    )) as typeof communities;
+  } catch (error) {
+    failed = true;
+    console.error(
+      "[CommunitiesPage] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : error,
+    );
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -42,7 +53,12 @@ export default async function CommunitiesPage({
         />
         <button className="bg-brand rounded-sm px-5 font-bold">Search</button>
       </form>
-      {communities.length ? (
+      {failed ? (
+        <ErrorState
+          title="Communities are unavailable"
+          description="We couldn't load communities right now. Try again shortly."
+        />
+      ) : communities.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {communities.map((community) => (
             <CommunityCard
