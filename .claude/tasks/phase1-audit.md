@@ -92,6 +92,11 @@ redirect fires correctly, which it does.
 across 10 viewport/page combinations at 375px and 1440px. **Keyboard nav is clean** on the
 homepage — logical tab order, visible focus on every stop, no traps.
 
+**Fixed in draft PR #7 (`claude/phase1-audit-followups`, awaiting review/merge):** the High finding
+below, all three Medium findings, the Low CSP finding, item 2b, and 1c. Item 3 investigated, not
+changed (see below). Verified: typecheck/lint/build/vitest all clean; sign-up-copy and not-found
+changes manually smoke-tested against a local dev server.
+
 ### High: `/auth/sign-up` silently redirects to sign-in with sign-in copy
 Confirmed via source (`app/auth/sign-up/page.tsx`): it's an unconditional
 `redirect("/auth/sign-in?callbackUrl=/onboarding")`, no distinct sign-up page exists at all. A
@@ -147,14 +152,33 @@ never registered outside dev, so every real submission throws and redirects to `
 fixing providers alone won't produce working sign-in while PrismaAdapter points at an empty
 database.
 
-### 2b. Clerk is fully dead code — safe to remove
-Confirmed zero references anywhere in the repo, no Clerk dependency in `package.json`. Remove
-`CLERK_PUBLISHABLE_KEY` (Vercel env) and the two `https://*.clerk.accounts.dev` CSP entries in
-`vercel.json`. Not blocked by anything above, safe to do any time.
+### 2b. Clerk — DONE
+Correction: Clerk does still appear in the repo (legacy root-level `index.html`/`login.html`/
+`onboarding.html`/`script.js`/`api/config.js`), contrary to the original "zero references" claim —
+but all of those pages are confirmed unreachable (404) under the current Next.js-framework Vercel
+deployment, so the original "safe to remove" conclusion holds for the live product. Done:
+`CLERK_PUBLISHABLE_KEY` removed from Vercel (both targets), the two `*.clerk.accounts.dev` CSP
+entries removed from `vercel.json` in PR #7. The legacy files themselves are untouched — that's
+part of the broader legacy-static-site question below, not this item specifically.
 
-### 3. `ADMIN_PASSWORD` env var
-Find where it's read; likely should be retired in favor of real moderator roles via
-`ModerationAction` (RLS enabled, needs policies per item 5). Not blocked by 1b/2.
+### 3. `ADMIN_PASSWORD` env var — investigated, not changed
+Only gates the legacy `admin.html` panel via `api/admin-auth.js`/`api/articles-store.js` — unrelated
+to the real app's `ModerationAction` table entirely. `admin.html` itself 404s in Production (the
+Next.js framework build doesn't serve root-level static HTML), so this is currently unreachable —
+same "dead but the API endpoint behind it is still live and callable" pattern as 2b. Not deleted
+here; folding into the standing legacy-cleanup decision below rather than a one-off removal.
+
+### Standing decision needed: what to do with the whole legacy static site + API layer
+Beyond Clerk and `ADMIN_PASSWORD`: `index.html`, `script.js`, `login.html`, `onboarding.html`,
+`admin.html`, `blog.html`, and their backing `api/*.js` serverless functions (`config.js`,
+`admin-auth.js`, `articles-store.js`, `takes.js`, `fan-takes.js`, and more) are a full parallel
+legacy product living in the same repo as the real Next.js app. The HTML pages are confirmed
+unreachable (Vercel's `framework: nextjs` build doesn't serve root-level static files), but the
+`api/*.js` functions deploy independently of that and several are confirmed still live and callable
+right now (`/api/config` returns 200 with the — now removed — Clerk key; presumably others too).
+This is dead weight at best and unnecessary live attack surface at best-case-not-dead (e.g.
+`/api/admin-auth` is a real, callable, rate-limited password-guess endpoint with no UI in front of
+it). Worth an explicit call from Babs: delete the whole legacy layer, or is any of it still needed?
 
 ## HIGH
 
