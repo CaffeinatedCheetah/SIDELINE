@@ -16,6 +16,7 @@ export default async function CommunitiesPage({
 }) {
   const { q } = await searchParams;
   let communities: CommunityListItem[] = [];
+  let dbError = false;
   try {
     communities = (await db.community.findMany({
       where: {
@@ -25,7 +26,10 @@ export default async function CommunitiesPage({
       orderBy: { name: "asc" },
       include: { _count: { select: { members: true, takes: true } } },
     })) as typeof communities;
-  } catch {}
+  } catch (error) {
+    dbError = true;
+    console.error("[CommunitiesPage] failed to load communities:", error);
+  }
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -42,7 +46,12 @@ export default async function CommunitiesPage({
         />
         <button className="bg-brand rounded-sm px-5 font-bold">Search</button>
       </form>
-      {communities.length ? (
+      {dbError ? (
+        <EmptyState
+          title="Something went wrong loading communities"
+          description="We couldn't reach the database. Try refreshing in a moment."
+        />
+      ) : communities.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {communities.map((community) => (
             <CommunityCard
