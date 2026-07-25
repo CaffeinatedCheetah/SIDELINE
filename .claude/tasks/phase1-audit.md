@@ -3,24 +3,33 @@
 Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
 without review. Return findings/diffs per item before moving to the next.
 
-## 🚨 BLOCKING — needs a decision from Babs before any DB-touching work continues
+## 🚨 NEEDS A FOLLOW-UP FIX — Production is resolved, Preview is not
 
-### 1b. DATABASE_URL/DIRECT_URL point at the WRONG Supabase project (not a pooling bug)
-Claude Code found the real root cause of the `/games`/`/debates` emptiness: `DATABASE_URL` was
-pointed at Vercel's auto-provisioned Supabase integration project (`sbdqmqzgtegemskpewaq`), which
-has **zero tables** — confirmed via a reproducible `P2021: table "public.Game" does not exist`.
-The schema, migrations, RLS policies, and seed data used throughout this audit all live in a
-**different** Supabase project, `wleunpfiokcdbuydkhho`, which is NOT the one wired into Vercel.
-**Two separate Supabase projects exist and only one has real data.**
-- Waiting on Babs to confirm `wleunpfiokcdbuydkhho` is the intended production database (strong
-  signal it is: full `_prisma_migrations` history, real seed data, matches the app's schema) and to
-  either retrieve its Postgres connection string from the Supabase dashboard (Project Settings →
-  Database) or reset its DB password so a fresh one can be generated.
-- Do not change `DATABASE_URL`/`DIRECT_URL` again until that string is confirmed — guessing a
-  third time risks another silent misconfiguration.
-- Once confirmed: this single fix should resolve 1b, and item 2 (auth) partially, since
-  PrismaAdapter was hitting the same empty database — sign-in was never going to persist users
-  even with providers configured.
+### 1b. DATABASE_URL/DIRECT_URL point at the WRONG Supabase project — RESOLVED on Production, still broken on Preview
+**Production is confirmed fixed.** Independently re-verified live (not just reasoning from env
+vars): `curl https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all now return the
+real rows from `wleunpfiokcdbuydkhho` — Detroit Lions/Chicago Bears (LIVE), Boston Celtics @
+Detroit Pistons (SCHEDULED), the real "Who has the NFC North's best defense?" debate, a populated
+Hall of Flame. This matches exactly what was in the correct project earlier in this audit, so
+`DATABASE_URL`/`DIRECT_URL` on the Production target were corrected at some point during this
+session (not by Claude Code — most likely Babs, directly in Vercel). Original root cause for
+context: `DATABASE_URL` was pointed at Vercel's auto-provisioned Supabase integration project
+(`sbdqmqzgtegemskpewaq`, zero tables) instead of `wleunpfiokcdbuydkhho` (the one with real schema,
+data, and the item 6–8 migrations).
+
+**Preview is NOT fixed — same bug, different target.** Confirmed via direct request (with the
+project's automation-bypass header) against the PR #5 preview deployment
+(`sideline-bbqnhj7vm-team-sideline.vercel.app/games`): still renders the "Games are unavailable"
+error state (PR #5's own fix correctly surfacing the underlying failure, which is itself a good
+sign the fix works — but the underlying DB problem persists on this target). **Action needed:**
+apply the same `DATABASE_URL`/`DIRECT_URL` correction to the Preview environment target in Vercel
+(Production and Preview can hold different values for the same key — that's very likely why only
+one target got fixed). Re-verify both `/games` and `/debates` on a fresh Preview deployment after.
+
+### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
+Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
+`{children}` with no fallback — add an `EmptyState` like every other section has. Not blocked by
+anything, safe to do any time.
 
 ### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
 Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
@@ -64,6 +73,68 @@ items 1b and 2.
 Bare `globalThis` storage, no KV, unrelated to SCOUT, not called by the real UI (which uses
 `/api/v1/takes`). Safe cleanup whenever convenient.
 
+## PHASE 1 — SITE CRAWL AND INTERACTION AUDIT (complete, verified)
+Full Playwright crawl (system Chrome, sandboxed Chromium download never completed) of 23 routes on
+Production, logged-out, plus an interactive-element scan of 138 links/buttons across 7 pages, a
+375px/1440px responsive spot-check, and a keyboard spot-check on the homepage. Every finding below
+was independently re-verified via curl/header inspection or by reading the source, not taken on
+the crawl's word alone.
+
+**Route inventory: all 23 routes return correct status codes.** Zero 500s, zero dead routes, zero
+broken image/asset requests. All 5 auth-gated routes (`/arena`, `/settings`, `/notifications`,
+`/moderation`, `/onboarding`) correctly redirect logged-out visitors to `/auth/sign-in` with
+`callbackUrl` preserved. Authenticated-state crawling remains impossible on any live deployment
+(item 2 — zero providers) — every gated route's *only* testable behavior right now is that the
+redirect fires correctly, which it does.
+
+**Interactive elements: zero broken links/buttons found** across 138 scanned elements (no dead
+`href="#"`, no `javascript:void`, no falsely-disabled controls). **Zero horizontal overflow**
+across 10 viewport/page combinations at 375px and 1440px. **Keyboard nav is clean** on the
+homepage — logical tab order, visible focus on every stop, no traps.
+
+### High: `/auth/sign-up` silently redirects to sign-in with sign-in copy
+Confirmed via source (`app/auth/sign-up/page.tsx`): it's an unconditional
+`redirect("/auth/sign-in?callbackUrl=/onboarding")`, no distinct sign-up page exists at all. A
+browser following this (confirmed via Playwright) lands on a page reading "Welcome back" / "Return
+to your games, communities, and fan identity" — shown to brand-new visitors who clicked "Join
+FanTakes." This may be intentional (passwordless email-link auth doesn't need a separate form —
+same action for new or returning users), but the copy is actively wrong for that case. Cheapest
+fix that doesn't wait on the item 2 auth-provider decision: make the sign-in page's copy neutral
+when arrived at via a signup-intent path (e.g. check `callbackUrl=/onboarding` or add a `?new=1`
+param from the "Join"/"Create a fan profile" links) instead of unconditionally "welcome back."
+
+### Medium: auth-gate redirect crosses origins when accessed via the `.vercel.app` host
+Confirmed via response headers: `curl -D- https://sideline-wheat.vercel.app/arena` returns
+`Location: https://www.fantakes.app/auth/sign-in?callbackUrl=%2Farena` — a different origin than
+the one the request came in on. `proxy.ts` builds the redirect from `request.nextUrl.origin`, which
+should be same-origin; something (likely `AUTH_URL` normalization inside the `auth()` wrapper, or a
+platform-level canonical-domain behavior) is forcing it to the custom domain regardless of request
+host. Practical effect: Next's `<Link>` prefetching for `/arena`/`/settings` (visible in the sidebar
+in every auth state) fires a cross-origin fetch that fails CORS preflight, logging a real, visible
+console error on almost every page (confirmed on `/`, `/games`, `/games/[id]`, `/debates`,
+`/communities`, `/hall-of-flame`, `/search`, `/users/[handle]`). Doesn't block real navigation
+(full-page loads still redirect correctly), but it's a reproducible error Phase 1 explicitly asks
+to catch. Needs investigation into why `nextUrl.origin` isn't respecting the request host inside
+`proxy.ts`/`auth()` before picking a fix.
+
+### Medium: invalid game IDs render the generic, unstyled Next.js not-found page
+`/games/<invalid-uuid>` falls through to the global "404: This page could not be found" with no app
+shell styling, no branded copy, no way back to `/games`. Add a route-level `not-found.tsx` for
+`app/games/[gameId]/` (call `notFound()` when the game lookup returns null) so it matches the rest
+of the product.
+
+### Medium: several routes are missing per-page `<title>`/metadata
+`/games/[gameId]`, `/debates`, `/communities`, `/hall-of-flame`, `/search` all render the generic
+`<title>FanTakes</title>` instead of something like "Chicago Bears @ Detroit Lions | FanTakes."
+(`/games` itself already does this correctly — "Games | FanTakes" — so there's a working pattern to
+copy.) Minor for users, bad for bookmarks/tabs/SEO/social sharing.
+
+### Low: Preview's CSP blocks Vercel's own review-feedback widget
+`vercel.live/_next-live/feedback/feedback.js` is blocked by the CSP `script-src` on Preview
+deployments (doesn't allow `vercel.live`). Preview-only, doesn't affect real users, breaks Vercel's
+built-in PR review tooling. Add `https://vercel.live` to `script-src` (and likely `connect-src`) in
+`vercel.json` alongside the item 2b Clerk-CSP cleanup.
+
 ## CRITICAL
 
 ### 2. Auth.js in Production has zero configured providers — CONFIRMED
@@ -105,5 +176,7 @@ See above. Quick cleanup, not blocked.
 Supabase linter flags it as INFO only.
 
 ## Next batches (not yet crawled)
-Authenticated navigation, full responsive/accessibility passes — all blocked on 1b/2 (need a
-working database + working sign-in to test anything requiring a logged-in user).
+Phase 1 (logged-out crawl) is complete — see the PHASE 1 section above. Authenticated navigation,
+full Phase 23 accessibility audit (axe scans), and full Phase 24 responsive matrix are still
+pending — authenticated coverage is blocked on item 2 only now (DB is fixed on Production), the
+others are just not yet run.
