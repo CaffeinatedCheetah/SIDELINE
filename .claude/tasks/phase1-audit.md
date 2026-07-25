@@ -48,9 +48,7 @@ for data that definitely exists and definitely matches the query's own filters:
 Separate, smaller bug in `app/page.tsx`: the shared `Section` component just renders `{children}`
 with no fallback. When `data.takes` or `data.communities` is an empty array, those two sections
 render as a bare heading + "View all" link with a blank grid underneath — no message at all,
-unlike every other section on the page which has a real `EmptyState`. Add one for consistency
-(and so it's distinguishable from a loading/broken state once 1b is fixed and these can be
-genuinely empty vs. genuinely broken).
+unlike every other section on the page which has a real `EmptyState`. Add one for consistency.
 
 ## ✅ RESOLVED (partially — see 1b above for a possible regression)
 
@@ -67,6 +65,30 @@ Applied directly via migration: ~23 missing FK indexes added, ~26 RLS policies r
 (was the one ERROR-level security finding). Verified clean via `get_advisors` before/after. Only
 remaining INFO-level items: `Session` has no primary key, and new indexes show "unused" simply
 because there's no traffic yet.
+
+### Create Take — partially verified
+The real create-take path is well-built: `app/api/v1/[...segments]/route.ts` checks auth session,
+verifies the user is `ACTIVE` and not banned/muted, applies rate limiting, and writes through
+Prisma with fan-score/moderation hooks. `TakeComposer` (`components/actions/take-composer.tsx`)
+posts to `/api/v1/takes` via a shared `apiAction()` helper that correctly redirects to
+`/auth/sign-in?callbackUrl=...` on a 401. Confirmed live, logged-out: both the bottom-nav "Take"
+link and the Debates page's "Start a debate" button redirect to sign-in with the callback URL
+preserved — matches the Phase 8 requirement. Could not test the full logged-in post-and-see-it-
+appear flow from this session (no credentials, and no live game/debate visible to attach a take to
+while item 1b is unresolved) — worth a real authenticated Playwright pass once 1b is fixed.
+
+**New finding while checking this:** there's an orphaned legacy `api/takes.js` (and `api/fan-takes.js`)
+at the repo root — NOT under `app/api/`, these are separate Vercel serverless functions (same
+convention as `api/agent-scout.js`, which is in the deployment's `functions` config and has a daily
+cron in `vercel.json`). `api/takes.js` stores takes in an in-memory `globalThis.__SL_TAKES` array
+with zero Prisma/database involvement — data that vanishes on every cold start and every deploy.
+Confirmed the real UI does NOT call this (it calls `/api/v1/takes` instead), so it's dead code, but
+it's still a live, unauthenticated, publicly-reachable POST endpoint with no real validation. Low
+risk but worth deleting for hygiene, or investigating why it exists first — it and `api/fan-takes.js`
+look like leftovers from a pre-Prisma prototype. Also worth a quick look: `vercel.json` schedules six
+daily cron jobs (`agent-scout`, `agent-pulse`, `agent-social`, `agent-hunter`, `push-notify`,
+`agent-rivals`) — haven't investigated what these do yet; flagging in case they're also writing to
+the legacy in-memory store instead of the real DB.
 
 ## CRITICAL
 
@@ -108,10 +130,16 @@ Supabase-client/PostgREST access returns nothing for every role. Low risk if eve
 through Prisma's direct connection, but worth an explicit policy for defense in depth, especially
 once item 3 pushes more traffic through `ModerationAction`.
 
+### 9. Orphaned legacy in-memory API routes (`api/takes.js`, `api/fan-takes.js`)
+See "Create Take — partially verified" above. Dead code, not called by the current UI, but still
+live and publicly reachable. Delete or gate them, and check what the six daily cron jobs
+(`agent-scout`, `agent-pulse`, `agent-social`, `agent-hunter`, `push-notify`, `agent-rivals`) in
+`vercel.json` actually write to before assuming they're harmless.
+
 ## MEDIUM — not blocking
 
 ### `Session` table has no primary key
 Supabase linter flags it as INFO only; confirm if intentional or worth a real migration.
 
 ## Next batches (not yet crawled)
-Create Take flow, authenticated navigation, full responsive/accessibility passes still pending.
+Authenticated navigation, full responsive/accessibility passes still pending.
