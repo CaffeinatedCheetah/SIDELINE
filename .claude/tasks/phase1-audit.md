@@ -3,7 +3,47 @@
 Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
 without review. Return findings/diffs per item before moving to the next.
 
-## 🚨 URGENT — likely regression from the connection-string fix, investigate before anything else
+## 🚨 URGENT — root cause of 1b found, it is NOT a pooler/connection_limit issue
+
+### 1b-ROOT-CAUSE. `DATABASE_URL`/`DIRECT_URL` point at a completely different, empty Supabase project
+Verified directly, without needing a redeploy: pulled the current `POSTGRES_PRISMA_URL` from Vercel
+Production and ran the exact `games.findMany()`/`debates.findMany()` queries against it locally with
+a real Prisma Client (same schema, same query shape as `app/games/page.tsx`/`app/debates/page.tsx`).
+Every single call — sequential, 8-way concurrent, and 5 fresh-client repeats — failed identically
+with **`P2021: The table 'public.Game' does not exist in the current database`**, and a direct
+`information_schema.tables` query on that same connection returns **zero tables**. This is 100%
+reproducible, not intermittent, and rules out the connection_limit/prepared-statement theories below
+(those would produce connection or protocol errors, not "table does not exist").
+
+Cross-checked against the Supabase project reachable via this session's Supabase MCP connection
+(project ref `wleunpfiokcdbuydkhho`, `db.wleunpfiokcdbuydkhho.supabase.co`, region us-west-2) — this
+is the project with the real schema and data: `Game` (2 rows), `Debate` (1 row), `User` (3 rows),
+etc., and it's the project the "items 6–8" RLS/index migrations were actually applied to. The pooler
+username embedded in Vercel's `POSTGRES_PRISMA_URL` is `postgres.sbdqmqzgtegemskpewaq` — Supabase's
+pooler auth username is always `postgres.<project-ref>`, so **Vercel's Supabase integration is wired
+to project ref `sbdqmqzgtegemskpewaq`, a different and completely empty (schema-less) Supabase
+project**, not `wleunpfiokcdbuydkhho` where all the real data and prior migration work actually lives.
+
+**This explains 1b in full** (and is a better fit than the pooler theory: "table does not exist" is
+instant and deterministic, matching the crawl's fast "no games match" response rather than a
+timeout). It also means the item-1 "RESOLVED" DATABASE_URL/DIRECT_URL fix pointed the app at a
+*schema-compatible-looking but data-empty* project, which is why pages stopped hanging (no more
+connection exhaustion) but started returning confidently-wrong empty results instead — a strictly
+worse failure mode because it now looks like "no data" instead of "broken."
+
+**This needs Babs's input before anyone touches `DATABASE_URL`/`DIRECT_URL` again** — I did not
+change anything in Vercel. Two real possibilities, and I can't tell which from the repo alone:
+1. `wleunpfiokcdbuydkhho` is the intended production database (has the real data, has the migration
+   history) and Vercel's Supabase integration is simply linked to the wrong Supabase project —
+   re-link it, or manually set `DATABASE_URL`/`DIRECT_URL` (and ideally the whole `POSTGRES_*` set)
+   to `wleunpfiokcdbuydkhho`'s pooled/direct connection strings.
+2. `sbdqmqzgtegemskpewaq` was actually meant to be production (e.g. a fresh project provisioned
+   for launch) and `wleunpfiokcdbuydkhho` is a separate/scratch project that happens to have realistic
+   seed data — in which case `sbdqmqzgtegemskpewaq` needs the schema migrated onto it (`prisma
+   migrate deploy` + data migration/seed) before it's usable.
+Given `wleunpfiokcdbuydkhho` already has the real schema, real rows, AND the RLS/index hardening
+from items 6–8 applied to it, (1) is far more likely — but this is a data-integrity decision, not a
+code fix, so flagging rather than acting.
 
 ### 1b. `/games` and `/debates` now return empty results that should have data
 Both `/games` and `/debates` are showing empty states ("No games match" / "No open debates")
@@ -117,19 +157,48 @@ commentary bot" feature and is a real, intentional part of the product — not d
 
 ## CRITICAL
 
-### 2. Auth.js in Production has **zero configured providers** — sign-in is likely completely non-functional
-Confirmed by reading `auth.ts` and the actual Vercel env inventory:
-- `auth.ts` only pushes a provider if `AUTH_GOOGLE_ID`+`AUTH_GOOGLE_SECRET` are set, or
-  `EMAIL_SERVER` is set, or (`NODE_ENV !== "production"` AND `ENABLE_DEV_AUTH === "true"`).
-- **None of `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, or `EMAIL_SERVER` exist at all** in Vercel's
-  env vars.
-- Vercel sets `NODE_ENV=production` for every optimized build regardless of Preview vs Production
-  target, so the dev-Credentials guard is very likely false everywhere.
-- **Net effect: `providers` is probably `[]` in every deployed environment.** Verify with an actual
-  Playwright sign-in attempt against a Preview deployment before assuming the reasoning is right.
-- If confirmed: this is THE launch blocker. Fix needs real credentials from Babs (Google OAuth
-  and/or SMTP) — propose the options, don't just pick one. Babs has said they'll do manual test-
-  account verification once this is working, so ping them as soon as a real sign-in path exists.
+### 2. Auth.js in Production has **zero configured providers** — CONFIRMED, sign-in is non-functional
+Confirmed empirically, not just by reading code. `curl https://sideline-wheat.vercel.app/api/auth/providers`
+— NextAuth's own live introspection endpoint on production — returns **`{}`**. Zero providers, right
+now, in the real deployment. (A full Playwright browser click-through was also attempted but
+Chromium's binary download stalled in this sandbox and never completed in a reasonable time; the
+`/api/auth/providers` result is a stronger signal anyway since it's Auth.js's own source of truth for
+what it will accept, not just a rendered form.)
+
+Reading `auth.ts` + `app/auth/sign-in/page.tsx` confirms *why*, and it's worse than "zero providers,
+sign-in form does nothing": the sign-in page **always** renders an email form regardless of provider
+config, and on submit calls `signIn(process.env.EMAIL_SERVER ? "nodemailer" : "development", {...})`.
+Since `EMAIL_SERVER` doesn't exist, every real submission calls `signIn("development", ...)` — but
+the `"development"` Credentials provider is only ever pushed into `providers[]` when
+`NODE_ENV !== "production"`, which is false on every Vercel deployment. So it's not just inert, it
+actively calls a provider ID that was never registered, which `next-auth` v5 raises as an `AuthError`
+that the page's catch block redirects to `/auth/error` — **every real sign-in attempt in production
+ends at the error page.** No Google button renders either (`AUTH_GOOGLE_ID` absent, and that button
+is conditionally rendered).
+
+Confirmed no env var exists in *any* target: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `EMAIL_SERVER`
+are absent across Production, Preview, and Development — not merely empty.
+
+**One more wrinkle found during this pass:** even once a real provider is added, sign-in still won't
+fully work until **1b-ROOT-CAUSE above is resolved** — `PrismaAdapter(db)` and the `authorize()`
+user lookup both go through the same `db` client pointed at the empty `sbdqmqzgtegemskpewaq`
+Supabase project, so any provider callback that touches the database (OAuth account linking, the
+dev Credentials `db.user.findUnique`) will fail the same way `/games` does. These two items need to
+be fixed together, not sequentially, for sign-in to actually work end-to-end.
+
+**Not implemented — needs Babs's decision + real credentials, exactly as this file already said.**
+Options, roughly in order of setup effort:
+- **(a) Google OAuth** — needs a Google Cloud OAuth client (Web application type), authorized
+  redirect URI `https://<production-domain>/api/auth/callback/google`, then
+  `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET` added to Vercel (Production + Preview). Fastest for users
+  (one-click), but Babs has to create the OAuth consent screen/client in Google Cloud Console.
+- **(b) Email magic-link (Nodemailer)** — needs a real SMTP relay (e.g. Resend, Postmark, SES) and
+  `EMAIL_SERVER`/`EMAIL_FROM` set. The sign-in page already assumes this is the default path
+  (`"Continue with email"` is the only button that currently renders), so this requires the least
+  code change, but needs Babs to pick/provision an email-sending service and hand over credentials.
+- **(c) Both** — most resilient, most setup work.
+I did not add either since both need secrets only Babs has. Once one is wired up, add a Playwright
+test that actually completes a sign-in (not just checks the form renders) per the original ask.
 
 ### 2b. Clerk is fully dead code — safe to remove
 Confirmed zero references anywhere in the repo and no Clerk dependency in `package.json` (only
