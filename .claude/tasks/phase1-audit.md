@@ -28,13 +28,8 @@ one target got fixed). Re-verify both `/games` and `/debates` on a fresh Preview
 
 ### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
 Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
-`{children}` with no fallback — add an `EmptyState` like every other section has. Not blocked by
-anything, safe to do any time.
-
-### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
-Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
-`{children}` with no fallback — add an `EmptyState` like every other section has. Not blocked by
-1b, safe to do any time.
+`{children}` with no fallback — add an `EmptyState` like every other section has. Fixed in PR #7
+(merged).
 
 ## ✅ CONFIRMED / RESOLVED
 
@@ -140,17 +135,76 @@ deployments (doesn't allow `vercel.live`). Preview-only, doesn't affect real use
 built-in PR review tooling. Add `https://vercel.live` to `script-src` (and likely `connect-src`) in
 `vercel.json` alongside the item 2b Clerk-CSP cleanup.
 
+## PHASE 2 — AUTHENTICATION AND ACCOUNTS (complete, verified)
+Full checklist audit of `auth.ts`, `proxy.ts`, `app/auth/*`, `app/(app)/onboarding/page.tsx`,
+`app/api/v1/[...segments]/route.ts`'s auth-touching endpoints, and `prisma/schema.prisma`'s
+User/Account/Session/Profile models. See item 2 above for the auth-provider findings (the big news
+from this phase); this section covers everything else.
+
+**Fixed in draft PR #9 (`claude/phase1-audit-phase2`, awaiting review/merge):** onboarding's
+`User.handle` unique-constraint collision wasn't caught in either the onboarding page's Server
+Action or its JSON-API twin (`POST /api/v1/profile/complete`) — the page threw unhandled, the API
+returned an opaque generic 500 instead of a specific "handle taken" error. Both now catch Prisma's
+`P2002` and return a clear, actionable message. Also fixed a casing inconsistency (API path stored
+`handle` with original casing while `normalizedHandle` was lowercased; both now lowercase
+consistently).
+
+**Audited, confirmed already correct — no change needed:**
+- Session persistence, `callbackUrl` propagation through sign-in, and sign-out are all correctly
+  wired (`components/profile/account-danger-zone.tsx`, `app/(app)/settings/page.tsx`).
+- `ENABLE_DEV_AUTH`'s production guard in `lib/env.ts` uses Vercel's own `VERCEL_ENV` — solid,
+  can't be spoofed by a user-set env var.
+- Google button correctly stays hidden when unconfigured; NextAuth route handler
+  (`app/api/auth/[...nextauth]/route.ts`) is correctly wired for whenever a provider works.
+- **No password field exists anywhere in the app** — confirmed via grep, `bcryptjs` (a real
+  dependency in `package.json`) is unused dead code. Auth is entirely passwordless
+  (OAuth/email-link/dev-credentials) by design, so the spec's "password recovery" checklist item
+  doesn't apply to this app's actual auth model — documenting that plainly rather than treating it
+  as a gap.
+- Duplicate-email-across-providers is handled by Auth.js's own secure-by-default behavior (no
+  `allowDangerousEmailAccountLinking` set) — not custom code, not a gap to fix.
+- A relevant Playwright test already exists — `tests/e2e/authenticated-database.spec.ts` (DB-gated
+  via `RUN_DATABASE_E2E`) — covering sign-in, session-persists-after-refresh, and sign-out. Its
+  assertions would have caught the pre-`trustHost` redirect bug described in item 2. Didn't
+  duplicate it with a new test since it already covers this ground correctly.
+
+**Verification depth, stated plainly:** typecheck/lint/build/vitest are all clean. The
+duplicate-handle fix and the auth-redirect/Google-OAuth findings above were verified against a real,
+fresh Preview deployment via direct HTTP requests (CSRF token fetch + real POST to
+`/api/auth/callback/development`, and a real Google OAuth-initiation request) — not assumed from
+reading code. Did not and could not complete a full real Google OAuth consent flow (requires
+interactive browser + a real Google account) — the Client ID/Secret finding was caught at the
+initiation-redirect step, before that would even be reachable.
+
 ## CRITICAL
 
-### 2. Auth.js in Production has zero configured providers — CONFIRMED
-Claude Code confirmed empirically: `curl https://sideline-wheat.vercel.app/api/auth/providers`
-(Auth.js's own introspection endpoint) returns `{}` on production right now. Worse than inert: the
-sign-in page's email form calls `signIn("development", ...)` in production, but that provider is
-never registered outside dev, so every real submission throws and redirects to `/auth/error`.
-**Needs Babs's input on which path to take:** (a) Google OAuth, (b) email magic-link via SMTP, or
-(c) both. None implemented yet — all three need real credentials only Babs has. Also blocked on 1b:
-fixing providers alone won't produce working sign-in while PrismaAdapter points at an empty
-database.
+### 2. Auth.js — real progress, one live blocker left, needs Babs to check Google Cloud Console
+Status has moved a lot since the original "zero providers" finding, tracked here in order:
+
+- **Dev credentials on Preview (PR #6, merged) — confirmed fully working end-to-end.** Re-tested
+  live against a fresh Preview build of current `main`: got a real `db.user.findUnique` hit, a
+  valid session cookie, and (after PR #7's `trustHost: true`) a correct same-origin redirect to
+  `/arena`. This is genuine, verified, working authenticated access on Preview — the biggest
+  concrete auth win of this audit. Confirmed blocked on Production by design (`lib/env.ts` guards
+  `ENABLE_DEV_AUTH` off whenever `VERCEL_ENV === "production"`, using Vercel's own non-spoofable
+  env var) — that's correct and intentional, not a gap.
+- **Real Google OAuth credentials now exist in Vercel** (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`,
+  both Preview + Production targets, added very recently — not by Claude Code). This is new since
+  the original finding above.
+- **🔴 But they're misconfigured — confirmed live, not fixed.** Triggered a real OAuth-initiation
+  request against a fresh Preview deployment; Google's own redirect URL shows
+  `client_id=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`. That `GOCSPX-` prefix is the distinctive format
+  of a Google OAuth **Client Secret** — real Client IDs always end in `.apps.googleusercontent.com`.
+  `auth.ts`'s code is correct (`clientId: AUTH_GOOGLE_ID`, `clientSecret: AUTH_GOOGLE_SECRET` — no
+  bug there); the value stored in `AUTH_GOOGLE_ID` itself is wrong. **This will fail at Google with
+  an invalid-client error for any real user who tries it right now.** Needs Babs to check Google
+  Cloud Console's OAuth client (Credentials page) against what's actually in Vercel — most likely
+  `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` got swapped, or `AUTH_GOOGLE_ID` was set to the wrong
+  value entirely. Not something to guess-fix without the real correct value.
+- Email magic-link (SMTP/`EMAIL_SERVER`) is still entirely unconfigured — untouched since the
+  original finding, still an open option alongside/instead of Google OAuth.
+- 1b's DB-project mismatch no longer blocks this on Production (see above, resolved there) but
+  **still blocks real user creation via any provider on Preview** until 1b's Preview fix lands too.
 
 ### 2b. Clerk — DONE
 Correction: Clerk does still appear in the repo (legacy root-level `index.html`/`login.html`/
