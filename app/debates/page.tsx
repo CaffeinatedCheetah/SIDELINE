@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { DebateCard } from "@/components/debates/debate-card";
 import { PageHeading } from "@/components/layout/page-heading";
@@ -14,6 +15,10 @@ type DebateListItem = Prisma.DebateGetPayload<{
   };
 }>;
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Debate Center",
+  description: "Clear questions, accountable votes, and room to change minds.",
+};
 export default async function DebatesPage() {
   let debates: DebateListItem[] = [];
   let failed = false;

@@ -170,7 +170,23 @@ export default async function Home() {
           ))}
         </Section>
         <TodaysScheduleSection />
-        <Section title="Trending takes" href="/games">
+        <Section
+          title="Trending takes"
+          href="/games"
+          isEmpty={!data.takes.length}
+          emptyState={
+            <EmptyState
+              title={
+                data.failed ? "Takes are unavailable" : "No trending takes yet"
+              }
+              description={
+                data.failed
+                  ? "Try again shortly."
+                  : "Be the first to share a take."
+              }
+            />
+          }
+        >
           {data.takes.map((take) => (
             <TakeCard
               key={take.id}
@@ -202,7 +218,23 @@ export default async function Home() {
             />
           ))}
         </Section>
-        <Section title="Find your crowd" href="/communities">
+        <Section
+          title="Find your crowd"
+          href="/communities"
+          isEmpty={!data.communities.length}
+          emptyState={
+            <EmptyState
+              title={
+                data.failed
+                  ? "Communities are unavailable"
+                  : "No communities yet"
+              }
+              description={
+                data.failed ? "Try again shortly." : "Check back soon."
+              }
+            />
+          }
+        >
           {data.communities.map((community) => (
             <CommunityCard
               key={community.id}
@@ -263,10 +295,14 @@ function Section({
   title,
   href,
   children,
+  isEmpty,
+  emptyState,
 }: {
   title: string;
   href: string;
   children: React.ReactNode;
+  isEmpty?: boolean;
+  emptyState?: React.ReactNode;
 }) {
   return (
     <section>
@@ -279,7 +315,13 @@ function Section({
           View all
         </Link>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
+      {isEmpty && emptyState ? (
+        emptyState
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {children}
+        </div>
+      )}
     </section>
   );
 }

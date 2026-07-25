@@ -57,6 +57,7 @@ if (isNonProdRuntime && environment.ENABLE_DEV_AUTH === "true") {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
+  trustHost: true,
   providers,
   session: { strategy: "jwt" },
   pages: { signIn: "/auth/sign-in", error: "/auth/error" },

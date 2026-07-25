@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CommunityCard } from "@/components/communities/community-card";
 import { PageHeading } from "@/components/layout/page-heading";
 import { EmptyState, ErrorState } from "@/components/ui/foundations";
@@ -10,6 +11,11 @@ type CommunityListItem = Prisma.CommunityGetPayload<{
   include: { _count: { select: { members: true; takes: true } } };
 }>;
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Communities",
+  description:
+    "Public spaces organized around teams, leagues, and the conversations fans care about.",
+};
 export default async function CommunitiesPage({
   searchParams,
 }: {
