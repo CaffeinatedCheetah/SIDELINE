@@ -12,6 +12,7 @@ export default async function SignInPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const query = await searchParams;
+  const isSignUpIntent = query.callbackUrl === "/onboarding";
   async function emailAction(formData: FormData) {
     "use server";
     const email = String(formData.get("email") ?? "");
@@ -29,11 +30,15 @@ export default async function SignInPage({
     <div className="page-container grid flex-1 place-items-center py-14">
       <Card className="w-full max-w-md">
         <p className="text-brand text-xs font-bold tracking-widest uppercase">
-          Welcome back
+          {isSignUpIntent ? "Get started" : "Welcome back"}
         </p>
-        <h1 className="font-display mt-2 text-4xl font-black">Sign in</h1>
+        <h1 className="font-display mt-2 text-4xl font-black">
+          {isSignUpIntent ? "Create your account" : "Sign in"}
+        </h1>
         <p className="text-text-secondary mt-2">
-          Return to your games, communities, and fan identity.
+          {isSignUpIntent
+            ? "Enter your email to create your FanTakes profile."
+            : "Return to your games, communities, and fan identity."}
         </p>
         {query.error && (
           <p role="alert" className="text-danger mt-4 text-sm">

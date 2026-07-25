@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Card, EmptyState } from "@/components/ui/foundations";
 import { Select } from "@/components/ui/form-controls";
@@ -16,6 +17,11 @@ type HallListItem = Prisma.HallOfFlameEntryGetPayload<{
   };
 }>;
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Hall of Flame",
+  description:
+    "The strongest fan contributions, ranked by quality, conversation, and trusted participation.",
+};
 export default async function HallPage() {
   let entries: HallListItem[] = [];
   try {

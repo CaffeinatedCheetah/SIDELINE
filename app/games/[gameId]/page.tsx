@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PredictionForm } from "@/components/actions/prediction-form";
 import { TakeComposer } from "@/components/actions/take-composer";
@@ -11,13 +13,8 @@ import { db } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
 
-export default async function GameRoom({
-  params,
-}: {
-  params: Promise<{ gameId: string }>;
-}) {
-  const { gameId } = await params;
-  const game = await db.game.findUnique({
+const getGame = cache(async (gameId: string) =>
+  db.game.findUnique({
     where: { id: gameId },
     include: {
       league: true,
@@ -40,7 +37,30 @@ export default async function GameRoom({
         },
       },
     },
-  });
+  }),
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ gameId: string }>;
+}): Promise<Metadata> {
+  const { gameId } = await params;
+  const game = await getGame(gameId);
+  if (!game) return { title: "Game not found" };
+  return {
+    title: `${game.awayTeam.name} at ${game.homeTeam.name}`,
+    description: `${game.league.abbreviation} · ${game.status}`,
+  };
+}
+
+export default async function GameRoom({
+  params,
+}: {
+  params: Promise<{ gameId: string }>;
+}) {
+  const { gameId } = await params;
+  const game = await getGame(gameId);
   if (!game) notFound();
   return (
     <div className="page-container py-10">
