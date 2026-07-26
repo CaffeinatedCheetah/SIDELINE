@@ -6,6 +6,7 @@ import { DebateComposer } from "@/components/actions/debate-composer";
 import { JoinCommunityButton } from "@/components/actions/join-community-button";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { TakeCard } from "@/components/takes/take-card";
+import { PollVoteCard } from "@/components/games/poll-vote-card";
 
 const routerPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -113,5 +114,32 @@ describe("participation actions", () => {
     expect(
       screen.getByRole("button", { name: "Remove flame, 6 total" }),
     ).toHaveAttribute("aria-pressed", "true");
+  });
+  it("casts a real poll vote and updates the local tally", async () => {
+    const fetch = vi.fn(() => response({ id: "pollvote-1" }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <PollVoteCard
+        pollId="poll-1"
+        question="Who wins?"
+        options={[
+          { id: "home", label: "Lions", votes: 3 },
+          { id: "away", label: "Bears", votes: 2 },
+        ]}
+        closed={false}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Lions"));
+    await userEvent.click(screen.getByRole("button", { name: "Vote" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/poll-votes",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ pollId: "poll-1", optionId: "home" }),
+      }),
+    );
+    // Voting again is now blocked -- the fieldset disables once voted.
+    expect(screen.getByRole("button", { name: "Vote" })).toBeDisabled();
   });
 });

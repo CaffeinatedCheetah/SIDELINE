@@ -1,11 +1,12 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { PredictionForm } from "@/components/actions/prediction-form";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { LiveGameRoom } from "@/components/games/live-game-room";
 import { PageHeading } from "@/components/layout/page-heading";
-import { PollCard } from "@/components/games/poll-card";
+import { PollVoteCard } from "@/components/games/poll-vote-card";
 import { TakeCard } from "@/components/takes/take-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/foundations";
@@ -60,8 +61,22 @@ export default async function GameRoom({
   params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
-  const game = await getGame(gameId);
+  const [session, game] = await Promise.all([auth(), getGame(gameId)]);
   if (!game) notFound();
+
+  const myPollVotes = session?.user?.id
+    ? await db.pollVote.findMany({
+        where: {
+          userId: session.user.id,
+          pollId: { in: game.polls.map((poll) => poll.id) },
+        },
+        select: { pollId: true, pollOptionId: true },
+      })
+    : [];
+  const votedOptionByPoll = new Map(
+    myPollVotes.map((vote) => [vote.pollId, vote.pollOptionId]),
+  );
+
   return (
     <div className="page-container py-10">
       <PageHeading
@@ -69,22 +84,23 @@ export default async function GameRoom({
         title={`${game.awayTeam.name} at ${game.homeTeam.name}`}
         description={
           game.status === "LIVE"
-            ? `${game.awayScore ?? 0}–${game.homeScore ?? 0} · ${game.period ?? "Live"} ${game.clock ?? ""}`
-            : game.scheduledAt.toLocaleString()
+            ? undefined
+            : game.status === "FINAL"
+              ? `Final: ${game.awayScore ?? 0}–${game.homeScore ?? 0}`
+              : game.scheduledAt.toLocaleString()
         }
       />
-      <LiveGameRoom gameId={game.id} initialStatus={game.status} />
+      <LiveGameRoom
+        gameId={game.id}
+        initialStatus={game.status}
+        initialHomeScore={game.homeScore}
+        initialAwayScore={game.awayScore}
+        initialPeriod={game.period}
+        initialClock={game.clock}
+      />
       <Tabs defaultValue="takes">
         <TabsList>
-          {[
-            "chat",
-            "takes",
-            "polls",
-            "predictions",
-            "stats",
-            "play-by-play",
-            "highlights",
-          ].map((tab) => (
+          {["takes", "polls", "predictions"].map((tab) => (
             <TabsTrigger key={tab} value={tab}>
               {tab.replaceAll("-", " ")}
             </TabsTrigger>
@@ -119,18 +135,27 @@ export default async function GameRoom({
         </TabsContent>
         <TabsContent value="polls">
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {game.polls.map((poll) => (
-              <PollCard
-                key={poll.id}
-                question={poll.question}
-                disabled
-                options={poll.options.map((option) => ({
-                  id: option.id,
-                  label: option.label,
-                  votes: option._count.votes,
-                }))}
+            {game.polls.length ? (
+              game.polls.map((poll) => (
+                <PollVoteCard
+                  key={poll.id}
+                  pollId={poll.id}
+                  question={poll.question}
+                  options={poll.options.map((option) => ({
+                    id: option.id,
+                    label: option.label,
+                    votes: option._count.votes,
+                  }))}
+                  initialSelected={votedOptionByPoll.get(poll.id)}
+                  closed={Boolean(poll.closesAt && poll.closesAt <= new Date())}
+                />
+              ))
+            ) : (
+              <EmptyState
+                title="No polls for this game"
+                description="Check back once a poll opens."
               />
-            ))}
+            )}
           </div>
         </TabsContent>
         <TabsContent value="predictions">
@@ -145,16 +170,6 @@ export default async function GameRoom({
             />
           </div>
         </TabsContent>
-        {["chat", "stats", "play-by-play", "highlights"].map((tab) => (
-          <TabsContent key={tab} value={tab}>
-            <div className="mt-5">
-              <EmptyState
-                title={`${tab.replaceAll("-", " ")} is quiet`}
-                description="Live updates appear here when available."
-              />
-            </div>
-          </TabsContent>
-        ))}
       </Tabs>
     </div>
   );
