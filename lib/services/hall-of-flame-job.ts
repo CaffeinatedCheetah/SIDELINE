@@ -26,6 +26,17 @@ export async function generateHallOfFlame(
       author: { select: { status: true } },
     },
   });
+  // reports was previously hardcoded to 0, silently defeating the eligibility
+  // rule below (candidate.reports > 2 excludes a take) -- confirmed via
+  // rankHallCandidates that this criterion never actually fired.
+  const reportCounts = await db.report.groupBy({
+    by: ["targetId"],
+    where: { targetType: "TAKE", targetId: { in: takes.map((take) => take.id) } },
+    _count: { targetId: true },
+  });
+  const reportsByTakeId = new Map(
+    reportCounts.map((row) => [row.targetId, row._count.targetId]),
+  );
   const ranked = rankHallCandidates(
     takes.map((take) => ({
       id: take.id,
@@ -35,7 +46,7 @@ export async function generateHallOfFlame(
         (take._count.reactions + take._count.comments) / 25,
       ),
       trust: take.author.status === "ACTIVE" ? 1 : 0,
-      reports: 0,
+      reports: reportsByTakeId.get(take.id) ?? 0,
       isActive: take.status === "ACTIVE",
     })),
   );
