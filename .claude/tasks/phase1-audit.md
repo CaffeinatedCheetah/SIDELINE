@@ -3,31 +3,23 @@
 Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
 without review. Return findings/diffs per item before moving to the next.
 
-## 🚨 NEEDS A FOLLOW-UP FIX — Production is resolved, Preview is not
+## ✅ 1b — NOW FULLY RESOLVED on both Production and Preview
 
-### 1b. DATABASE_URL/DIRECT_URL point at the WRONG Supabase project — RESOLVED on Production, still broken on Preview
-**Production is confirmed fixed — the database-project mismatch is resolved.** Independently
-re-verified live (not just reasoning from env vars): `curl
-https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all now return rows from
-`wleunpfiokcdbuydkhho` (the correct project) instead of the empty one. This matches exactly what was
-in the correct project earlier in this audit, so `DATABASE_URL`/`DIRECT_URL` on the Production target
-were corrected at some point during this session (not by Claude Code — most likely Babs, directly in
-Vercel). Original root cause for context: `DATABASE_URL` was pointed at Vercel's auto-provisioned
-Supabase integration project (`sbdqmqzgtegemskpewaq`, zero tables) instead of `wleunpfiokcdbuydkhho`
-(the one with real schema, data, and the item 6–8 migrations).
+### 1b. DATABASE_URL/DIRECT_URL pointed at the wrong Supabase project — fixed everywhere
+**Both targets confirmed fixed, independently re-verified live.** Production: `curl
+https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all return rows from
+`wleunpfiokcdbuydkhho` (the correct project). Preview: during Phase 8's authenticated testing,
+signed in as `demo@fantakes.local` on a freshly deployed Preview build, POSTed a real take, and a
+fresh GET immediately showed it — a real write + read round-trip against the correct database,
+not just an env-var check. `vercel env ls` also confirms `DATABASE_URL`/`DIRECT_URL` now target both
+`production` and `preview` with a recent `updatedAt`. Original root cause for context: `DATABASE_URL`
+was pointed at Vercel's auto-provisioned Supabase integration project (`sbdqmqzgtegemskpewaq`, zero
+tables) instead of `wleunpfiokcdbuydkhho` (the one with real schema, data, and the item 6–8
+migrations).
 **Correction to how this was originally described:** "Detroit Lions/Chicago Bears (LIVE)" etc. are
 **not real sports data** — they're `prisma/seed.ts` fixture rows (`providerRef: "demo-nfl-live"`).
 1b's fix means the app is now correctly reading the right *database* — it says nothing about whether
 that database's game content is real, which it isn't. See item 4 (Phase 4) for the full finding.
-
-**Preview is NOT fixed — same bug, different target.** Confirmed via direct request (with the
-project's automation-bypass header) against the PR #5 preview deployment
-(`sideline-bbqnhj7vm-team-sideline.vercel.app/games`): still renders the "Games are unavailable"
-error state (PR #5's own fix correctly surfacing the underlying failure, which is itself a good
-sign the fix works — but the underlying DB problem persists on this target). **Action needed:**
-apply the same `DATABASE_URL`/`DIRECT_URL` correction to the Preview environment target in Vercel
-(Production and Preview can hold different values for the same key — that's very likely why only
-one target got fixed). Re-verify both `/games` and `/debates` on a fresh Preview deployment after.
 
 ### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
 Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
@@ -225,33 +217,29 @@ static→dynamic tradeoff by diffing the build's route table before/after the fi
 
 ## CRITICAL
 
-### 2. Auth.js — real progress, one live blocker left, needs Babs to check Google Cloud Console
-Status has moved a lot since the original "zero providers" finding, tracked here in order:
+### 2. Auth.js — FULLY RESOLVED. Real sign-in works end-to-end now.
+Status, tracked in order of how it actually got fixed:
 
-- **Dev credentials on Preview (PR #6, merged) — confirmed fully working end-to-end.** Re-tested
-  live against a fresh Preview build of current `main`: got a real `db.user.findUnique` hit, a
-  valid session cookie, and (after PR #7's `trustHost: true`) a correct same-origin redirect to
-  `/arena`. This is genuine, verified, working authenticated access on Preview — the biggest
-  concrete auth win of this audit. Confirmed blocked on Production by design (`lib/env.ts` guards
-  `ENABLE_DEV_AUTH` off whenever `VERCEL_ENV === "production"`, using Vercel's own non-spoofable
-  env var) — that's correct and intentional, not a gap.
-- **Real Google OAuth credentials now exist in Vercel** (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`,
-  both Preview + Production targets, added very recently — not by Claude Code). This is new since
-  the original finding above.
-- **🔴 But they're misconfigured — confirmed live, not fixed.** Triggered a real OAuth-initiation
-  request against a fresh Preview deployment; Google's own redirect URL shows
-  `client_id=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`. That `GOCSPX-` prefix is the distinctive format
-  of a Google OAuth **Client Secret** — real Client IDs always end in `.apps.googleusercontent.com`.
-  `auth.ts`'s code is correct (`clientId: AUTH_GOOGLE_ID`, `clientSecret: AUTH_GOOGLE_SECRET` — no
-  bug there); the value stored in `AUTH_GOOGLE_ID` itself is wrong. **This will fail at Google with
-  an invalid-client error for any real user who tries it right now.** Needs Babs to check Google
-  Cloud Console's OAuth client (Credentials page) against what's actually in Vercel — most likely
-  `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` got swapped, or `AUTH_GOOGLE_ID` was set to the wrong
-  value entirely. Not something to guess-fix without the real correct value.
-- Email magic-link (SMTP/`EMAIL_SERVER`) is still entirely unconfigured — untouched since the
-  original finding, still an open option alongside/instead of Google OAuth.
-- 1b's DB-project mismatch no longer blocks this on Production (see above, resolved there) but
-  **still blocks real user creation via any provider on Preview** until 1b's Preview fix lands too.
+- **Dev credentials on Preview (PR #6, merged) — confirmed fully working end-to-end.** Real
+  `db.user.findUnique` hit, valid session cookie, correct same-origin redirect to `/arena`.
+  Confirmed blocked on Production by design (`lib/env.ts` guards `ENABLE_DEV_AUTH` off whenever
+  `VERCEL_ENV === "production"`) — correct and intentional, not a gap.
+- **Google OAuth — confirmed genuinely fixed, live.** The previous finding (Client ID/Secret
+  swapped — `AUTH_GOOGLE_ID` held a value with the `GOCSPX-` prefix, which is a Client *Secret*'s
+  format) is resolved: re-triggered a real OAuth-initiation request against Production and got
+  `client_id=1058548997770-0tbsjsh6vb6qofh2jejf97ab06n3eeg7.apps.googleusercontent.com` — the
+  correct format this time. `vercel env ls` confirms both `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`
+  have an `updatedAt` well after their `createdAt`, consistent with a real fix, not a new pair.
+  (Could not complete the full interactive Google consent screen — that needs a real Google account
+  in a real browser — but the initiation step, which is where the previous bug lived, is fixed.)
+- 1b's DB-project mismatch (see above) is now resolved on both Production and Preview, so real user
+  creation via any provider works on both targets — verified via Phase 8's real authenticated
+  write+read round-trip on Preview.
+- Email magic-link (SMTP/`EMAIL_SERVER`) remains unconfigured — no longer needed now that Google
+  OAuth works, but still an open option if a second sign-in path is ever wanted.
+
+**Net effect: auth is no longer a blocker for anything in this audit.** Phase 8 onward is the first
+work in this audit tested with a real authenticated session end-to-end.
 
 ### 2b. Clerk — DONE
 Correction: Clerk does still appear in the repo (legacy root-level `index.html`/`login.html`/
@@ -539,10 +527,50 @@ real database: Chat/Stats/Highlights/Play-by-play are completely gone from the r
 live scoreboard shows the real `14–17 · 3rd 08:42 · LIVE · connected` — not the old static
 status-only line.
 
+## PHASE 8 — CREATE TAKE (complete, verified)
+
+Draft PR #15 (`claude/phase8-create-take`). First phase tested with a genuinely real authenticated
+session end-to-end — signed in as `demo@fantakes.local` against a live Preview deployment, now that
+both dev-auth-on-Preview and Google OAuth are confirmed working (see item 2 above).
+
+### High: newly posted takes never appeared without a manual page reload
+Root cause confirmed via a real POST + fresh GET round-trip: the take persists correctly and
+attaches to its game/debate/community correctly — the DB/API layer is entirely correct. The bug is
+purely client-side: `TakeComposer` never called `router.refresh()` after a successful post, unlike
+the sibling `DebateComposer`, which already does exactly this. Every page rendering `TakeComposer`
+(game room, debate detail, community detail) fetches its take list via a Server Component, and
+Next's App Router doesn't refetch that tree just because an unrelated client fetch succeeded
+elsewhere. Fixed by adding the same `router.refresh()` call `DebateComposer` already uses.
+
+### Verified live against the real API, not just read from source
+- Posting to a community you're not a member of correctly returns `403 FORBIDDEN` with a message
+  `TakeComposer` correctly surfaces.
+- Empty body and >1000-char body both correctly rejected server-side (`400 INVALID_REQUEST`),
+  independent of the client's `maxLength`/`required` — real defense in depth, confirmed live.
+- Duplicate-submission prevention (button disables synchronously via `loading` state) and Modal
+  open/focus-trap/Escape (generic Radix Dialog behavior, already covered by
+  `tests/unit/modal.test.tsx`) both hold — no changes needed.
+- Logged-out entry points: navbar's "Create a take" trigger is entirely absent when logged out
+  (both desktop and mobile); page-embedded composers render unconditionally but correctly redirect
+  to `/auth/sign-in` with the return URL preserved on a 401 if a logged-out visitor submits — matches
+  the explicit requirement.
+- Test take posted during verification was deleted from the database afterward — no leftover test
+  data left behind.
+
+### Found, not fixed here — flagged for Phase 11 (Search)
+`components/search/search-panel.tsx` links take results to `/takes/${id}`, a route that doesn't
+exist anywhere in the app — confirmed via search, no `app/takes/` directory exists. Cross-checked
+against `docs/pages/SEARCH.md`, which explicitly states "Authored take full-text search is deferred
+pending privacy/moderation review" — Search including takes at all, and linking to a nonexistent
+permalink, is itself out of spec, not just a missing page. Left for Phase 11 to keep this PR scoped
+to Create Take's own files.
+
+**Verification:** typecheck/lint/build clean, 38/38 unit tests (1 new regression test asserting
+`router.refresh()` is actually called after a successful post, not just that the request fires).
+
 ## Next batches (not yet crawled)
-Phases 1–7 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+Phases 1–8 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
 per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
 Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 8 (Create Take) is next — note item 1 (RESOLVED section)
-already partially covers this; Phase 8 should verify the full authenticated post-and-see-it-appear
-flow now that dev-auth-on-Preview genuinely works, which wasn't possible earlier in the audit.
+not yet run, not blocked on anything. Auth is no longer a blocker for any remaining phase. Phase 9
+(Debate Center) is next.
