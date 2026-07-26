@@ -395,8 +395,56 @@ See above. Quick cleanup, not blocked.
 ### `Session` table has no primary key
 Supabase linter flags it as INFO only.
 
+## PHASE 5 — HOMEPAGE FUNCTIONALITY (complete, verified)
+
+Draft PR #12 (`claude/phase1-audit-phase5`). Two categories of finding: dead controls in shared
+components (not homepage-specific — used on 5 pages total) and one real data-correctness bug.
+
+### High: `TakeCard`'s flame/reply/share buttons were 100% dead — used on 5 pages
+No `onClick` anywhere, styled fully interactive. Confirmed via grep this component is used on the
+homepage, `/arena`, `/communities/[slug]`, `/games/[gameId]`, and `/users/[handle]` — a widespread
+problem, not a homepage-only one. Fixed: flame now calls the real `POST /api/v1/reactions`
+(optimistic + rollback), reply opens the existing `TakeComposer` in reply mode (it already supported
+`parentId`, nothing ever passed it), share copies the page link. Removed the "more actions"
+(edit/delete/report) button entirely rather than ship a fourth fake one — no report/moderation UI
+exists anywhere yet (Phase 17), so there's nothing real to wire it to.
+
+### High: `CommunityCard`'s Join button was dead despite a working component sitting unused
+A fully-built `JoinCommunityButton` (real API call, loading/error states) already existed one file
+over — `CommunityCard` just never used it, rendering a static `<Button>` instead. Wired it in on
+both call sites (homepage, `/communities`), and fixed both to compute the viewer's actual membership
+status instead of always defaulting to "not joined."
+
+### High: `ProfileCard`'s Follow button was the same dead pattern
+No follow UI exists anywhere in the product — not on this card, not on `/users/[handle]` (confirmed
+via search) — despite a real, working `POST /api/v1/follows` backend. Building a full follow flow is
+Phase 12's scope, flagged there. Fixed narrowly: the button is now conditional on an `onToggleFollow`
+callback prop instead of always rendering, so this component can't ship fake-interactive again.
+Nothing currently passes that prop (see next item — why).
+
+### High: homepage "Fan identity" showed a random stranger's data labeled "yours"
+The section's copy says "Your ... reputation," but the query fetched whichever user had the most
+fan-score events *platform-wide* and showed their real profile to every visitor, logged in or not.
+Fixed: shows the actual session's own profile when signed in (no follow button — you can't follow
+yourself, which is also why `ProfileCard`'s follow prop goes unused here), and a real sign-up CTA
+when logged out, instead of a stranger's real achievements under a "yours" heading.
+
+### Medium: Hero's secondary CTA ignored auth state
+"Join FanTakes" showed even to signed-in visitors. Now shows "Go to My Arena" when a session exists.
+
+### Audited, confirmed already correct
+`DebateCard` is a summary/results card by design — voting correctly lives on the debate detail page
+via the existing `DebateVote` component (confirmed it's actually wired there, not just assumed).
+Hall of Flame preview already keeps Rank/Top Take/Fan Score clearly distinct with its own explainer
+paragraph — a genuinely good example already in the codebase.
+
+**Verification:** typecheck/lint/build clean, 33/33 unit tests (added a real interaction test —
+click the flame button, assert the exact `fetch` call and resulting DOM/aria state, not just a
+render check). Deployed to a live Preview and confirmed via direct HTTP fetch against the real
+database: homepage returns 200, new labels/button text render correctly, zero stray Follow buttons.
+
 ## Next batches (not yet crawled)
-Phases 1–4 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
-per the three options laid out there, nothing implemented. Full Phase 23 accessibility audit (axe
-scans) and full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything.
-Phase 5 (homepage functionality deep-dive) is next.
+Phases 1–5 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
+Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
+not yet run, not blocked on anything. Phase 6 (Games page deep-dive) is next.
