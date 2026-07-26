@@ -568,9 +568,66 @@ to Create Take's own files.
 **Verification:** typecheck/lint/build clean, 38/38 unit tests (1 new regression test asserting
 `router.refresh()` is actually called after a successful post, not just that the request fires).
 
+## PHASE 9 — DEBATE CENTER (complete, verified)
+
+Draft PR #16 (`claude/phase9-debate-center`). Cross-checked every finding against
+`docs/pages/DEBATE_CENTER.md`.
+
+### High: voting was permanent — no way to ever change your position
+`db.vote.create` (not `upsert`) meant a second vote on the same debate always hit the unique
+constraint and returned a hard 409 for life. The doc explicitly says "position selection via PUT" —
+changeable. Fixed via `db.vote.upsert` on `(userId, debateId)`, matching the sibling take-vote branch
+in the same handler which already did this correctly. Wired the debate detail page to look up the
+viewer's existing vote and pass it to `DebateVote`, which now shows "Your position," lets you pick a
+different option, and calls `router.refresh()` after voting — `DebateVote` had the exact same
+missing-revalidation bug Phase 8 found and fixed in `TakeComposer`.
+
+**Verified live, not just read from source:** cast a vote, changed it, confirmed the *same* vote row
+updated in place (`total` stayed at 1, not 2) and percentages flipped correctly. Test votes deleted
+afterward.
+
+### High: only ever 2-position debates were creatable
+`DebateComposer` had exactly two hardcoded `option1`/`option2` inputs. The doc's own "Assumptions and
+decisions" section states debates support 2–4 positions, and the server already validated up to 6 —
+the actual product feature existed everywhere except the only UI that creates debates. Rebuilt the
+composer with add/remove position rows capped at the doc's stated 4, and tightened the server's
+`.max()` from 6 to 4 to match.
+
+### High: no tabs, no filters, no featured section at all
+Just a flat list of every OPEN debate, newest first — meaning LOCKED/ARCHIVED debates were completely
+unreachable, no page ever queried for them. Implemented the doc's exact spec: Active/Closing
+soon/Resolved tabs backed by real `DebateStatus`/`closesAt` fields, a community filter, and a
+non-auto-rotating featured debate (highest total votes, deterministic tie-break). Verified live: the
+real seed debate correctly shows as Featured on Active, and Resolved correctly shows an honest empty
+state (no debate has ever been locked/archived).
+
+### Discrepancy flagged, not silently decided
+The original Phase 9 brief asked for Popular/Latest/Trending/Unanswered tabs. The project's actual
+design doc specifies Active/Closing soon/Resolved instead, backed by real schema fields — no
+"popularity" or "unanswered" concept exists anywhere in the data model. Implemented the documented
+version; flagging this explicitly rather than picking silently. Redo as
+Popular/Latest/Trending/Unanswered if that's actually what's wanted over the documented spec.
+
+### Found, not built: no debate edit/delete exists for anyone
+Confirmed via the API route's full PATCH/DELETE handlers: only `takes/:id`, `profile`, and `account`
+are supported — nothing for debates, for creators or moderators. The design doc doesn't call for
+creator self-edit either, and `Debate` has none of `Take`'s soft-delete/edit-window schema support
+(`editedAt`, `deletedAt`, `AUTHOR_REMOVED` status). This needs a product decision (can you edit after
+votes exist? does editing reset votes?), not a code fix — flagged for Phase 17 (Moderation) alongside
+the lock/archive lifecycle moderators would actually need.
+
+### Take vs Debate — documented, as the phase explicitly asked
+A **Take** is a short (≤1000 char) freeform opinion, optionally attached to a game/debate/community/
+parent-take, supports FIRE reactions and threaded replies, no formal resolution. A **Debate** is a
+structured question with 2–4 predefined positions the community votes on (one changeable vote per
+person), has an open/locked/archived lifecycle with an optional close time, and can carry freeform
+Takes as "counter-takes" — evidence/commentary that never affects the vote tally.
+
+**Verification:** typecheck/lint/build clean, 40/40 unit tests (3 new: add/remove positions capped at
+4, change-position flow, vote-refresh regression).
+
 ## Next batches (not yet crawled)
-Phases 1–8 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+Phases 1–9 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
 per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
 Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Auth is no longer a blocker for any remaining phase. Phase 9
-(Debate Center) is next.
+not yet run, not blocked on anything. Phase 10 (Communities) is next.
