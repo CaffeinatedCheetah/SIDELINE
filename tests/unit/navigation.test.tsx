@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { Navbar } from "@/components/navigation/navbar";
 
@@ -24,5 +25,20 @@ describe("Navbar", () => {
     expect(
       screen.getByRole("link", { name: "Notifications, 12 unread" }),
     ).toHaveAttribute("href", "/notifications");
+  });
+
+  it("the mobile menu button opens destinations hidden from the bottom nav", async () => {
+    render(<Navbar />);
+    await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    const menu = screen.getByRole("dialog", { name: "Menu" });
+    expect(
+      within(menu).getByRole("link", { name: "Communities" }),
+    ).toHaveAttribute("href", "/communities");
+    expect(
+      within(menu).getByRole("link", { name: "Debates" }),
+    ).toHaveAttribute("href", "/debates");
+    expect(
+      within(menu).getByRole("link", { name: "Hall of Flame" }),
+    ).toHaveAttribute("href", "/hall-of-flame");
   });
 });
