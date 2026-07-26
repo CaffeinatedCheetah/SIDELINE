@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Plus,
   Search,
+  Settings,
   Trophy,
   User,
   Users,
@@ -136,12 +137,56 @@ export function Navbar({
                 Sign in
               </Link>
             )}
-            <button
-              aria-label="Open menu"
-              className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm lg:hidden"
+            <Modal
+              title="Menu"
+              trigger={
+                <button
+                  aria-label="Open menu"
+                  className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm lg:hidden"
+                >
+                  <Menu aria-hidden className="size-5" />
+                </button>
+              }
             >
-              <Menu aria-hidden className="size-5" />
-            </button>
+              <nav aria-label="Primary" className="grid gap-1">
+                {links.map(({ href, label, icon: Icon }) => {
+                  const active = isActive(pathname, href);
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      aria-current={active ? "page" : undefined}
+                      className={cn(
+                        "flex min-h-11 items-center gap-3 rounded-sm border px-3 font-bold transition",
+                        active
+                          ? "bg-brand-surface border-brand-border text-brand-light"
+                          : "border-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                      )}
+                    >
+                      <Icon aria-hidden className="size-5" />
+                      {label}
+                    </Link>
+                  );
+                })}
+                {authenticated && (
+                  <Link
+                    href="/settings"
+                    aria-current={
+                      isActive(pathname, "/settings") ? "page" : undefined
+                    }
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 rounded-sm border px-3 font-bold transition",
+                      isActive(pathname, "/settings")
+                        ? "bg-brand-surface border-brand-border text-brand-light"
+                        : "border-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                    )}
+                  >
+                    <Settings aria-hidden className="size-5" />
+                    Settings
+                  </Link>
+                )}
+              </nav>
+            </Modal>
           </div>
         </div>
       </header>
