@@ -745,11 +745,109 @@ the takes-exclusion — gated behind `RUN_DATABASE_TESTS` like the rest of that 
 real, unresolved verification gaps that Phases 5–10 didn't have — flagging that difference explicitly
 rather than presenting it as equally verified.
 
+## PHASE 12 — PROFILE (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase12-profile`, pushed. Cross-checked against `docs/pages/PROFILE.md`.
+
+### High: 6 of the page's 7 tabs had no content at all
+`app/users/[handle]/page.tsx` rendered `TabsTrigger`s for takes/activity/predictions/badges/
+communities/following/followers, but only `takes` had a matching `TabsContent` — clicking any other
+tab showed nothing. The tab set itself was also wrong against the doc: it specifies
+Takes/Predictions/Debates/Communities/About, with badges living in the reputation summary and
+follower/following as sidebar counts, not tabs — so this wasn't a case of "5 tabs missing content,"
+the tab list itself didn't match the product spec. Rebuilt with the documented 5 tabs, each with a
+real query and real content, and made them URL-backed (`?tab=`) per the doc's explicit "URL-backed
+scrolling tabs" requirement — refresh and back/forward preserve the active tab, same pattern as
+Phase 11's search type filter.
+
+### High: no Follow button existed anywhere, despite a fully working backend
+Confirmed via Phase 5's own finding, still true: `POST /api/v1/follows` is real and correct (create/
+delete, notification on follow, idempotent), but nothing in the app ever called it — `ProfileCard`'s
+follow prop went unused everywhere, and the profile page itself had no follow control at all. Built
+a real `FollowButton` (optimistic, rolls back on failure) and wired it into the header.
+
+### High: Block and Mute had complete schema models and zero API surface
+`Block` and `Mute` are both fully modeled in `prisma/schema.prisma` with unique constraints ready for
+upsert — confirmed via a repo-wide search that neither is referenced anywhere in
+`app/api/v1/[...segments]/route.ts` or any other file. The doc requires both ("block confirms and
+immediately hides interaction," block/mute listed under Permissions and data/API). Added both as
+POST resources following the existing `follows` toggle pattern. Blocking also ends any mutual follow
+in both directions as a transaction — otherwise a block wouldn't actually "immediately hide
+interaction" if a stale mutual-follow relationship survived it. A block or "blocked by" relationship
+now renders a privacy-safe surface instead of the full profile (doc: "Restricted/deleted/block
+relationship uses privacy-safe surface") — the blocked-by-them case shows a generic "not available"
+message rather than confirming to the blocked visitor that they were specifically blocked.
+
+### High: the profile query had no status check at all
+`db.user.findUnique` had no `where: { status }` filter, so a `SUSPENDED`/`PENDING_DELETION`/`DELETED`
+account's full profile (bio, takes, everything) still rendered normally to any visitor. Matches the
+doc's own account-deletion copy in `components/profile/account-danger-zone.tsx` ("restricts your
+profile") — that restriction was promised at the point of deletion but never actually implemented on
+the page itself. Fixed: non-owners see a privacy-safe "not available" state for any non-`ACTIVE`
+status; the owner can still see their own profile regardless (so they can navigate to Settings).
+
+### High: "More" menu (Report/Block/Mute) built on a component that already existed, fully built, completely unused
+`components/ui/dropdown.tsx` is a real, working Radix dropdown wrapper — confirmed via search it was
+never imported anywhere in the app before this change. Wired it into a new `ProfileActionsMenu`
+(Report via the existing `POST /api/v1/reports` USER target, Mute, Block-with-confirmation). The
+Block-confirmation flow nests a `ConfirmationDialog` trigger inside a `DropdownMenu.Item`, a
+known-tricky Radix composition (the menu closing can unmount the dialog trigger before it opens) —
+verified with a real `userEvent` interaction test, not just read from code, since this exact pattern
+is easy to get wrong silently.
+
+### Medium: prediction accuracy was read from counters that are never updated
+`Profile.predictionCorrect`/`predictionTotal` are set once at onboarding (always 0) and never
+incremented anywhere — confirmed via repo-wide search, no `PredictionResult` row is ever created in
+this codebase at all. **This means predictions are never actually resolved against real game
+outcomes anywhere in the app** — a real gap, not scoped to fix here (it's a resolution-pipeline gap,
+not a profile-page bug), but worth flagging loudly since `app/(app)/arena/page.tsx` has the exact
+same dead-counter bug for Phase 13 to pick up. Fixed narrowly for this page: accuracy is now computed
+live from real `Prediction`/`PredictionResult` rows (currently always "no resolved predictions yet"
+for every user, honestly, since resolution doesn't exist yet — not a fake number). Also implemented
+the doc's privacy rule for predictions: an unlocked pick's `selection` is concealed from everyone but
+the owner ("not active private choice before lock").
+
+### Found and wired: `privacySettings.profileDiscoverable` was stored and never read
+Confirmed via search: the API validates and persists this field but nothing ever consumed it.
+Wired it into `generateMetadata`'s `robots` directive (noindex when `false`), alongside noindex for
+deleted/suspended/restricted profiles per the doc's SEO section. This is an inference, not something
+the doc names explicitly by field — flagging that rather than presenting it as directly specified.
+
+### Also fixed
+Avatar/favorite teams (resolved from the stored team-ID array) now actually render in the header —
+previously nothing read `Profile.avatarUrl` or `favoriteTeams` on this page at all. Badges moved out
+of the tab list into the reputation summary per the doc's section order, with a real "How reputation
+works" breakdown sourced from the actual `FAN_SCORE_POINTS` table instead of an invented explanation.
+The profile query now uses an explicit `select` rather than a broad `include`, so private fields
+(email, role, moderation flags) can't leak onto this page even by future accident. Added real
+cursor-based "Load more" to all four list tabs instead of an unbounded query.
+
+### Flagged, not built — needs a product decision, not a code fix
+A full browsable followers/following list. The doc's layout section only requires the *counts* in the
+sidebar (done, real), not a list UI — but the "Assumptions and decisions" section states follower
+lists are public, which only means something if a list view exists somewhere. Not built here to stay
+scoped to what the page's own layout section actually calls for; flagging the ambiguity rather than
+guessing at a full new feature.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (45/45, no regressions). Added
+`tests/unit/profile-actions.test.tsx` (5 new tests) covering the follow optimistic-update/rollback,
+the Block confirmation-then-API-call flow via real `userEvent` clicks (not just a render check --
+this is exactly the kind of nested-Radix interaction that can silently misbehave), and Unblock. Added
+2 new integration tests to `tests/integration/database-flows.test.ts` (blocks/mutes round-trip,
+block-ends-mutual-follow) — gated behind `RUN_DATABASE_TESTS` like the rest of that file. Same
+verification gap as Phase 11: no local Postgres available to actually run the gated integration
+tests, and no live-Preview check possible this session (Vercel MCP/GitHub tooling still down) —
+stated plainly rather than presented as equally verified to Phases 5–10.
+
 ## Next batches (not yet crawled)
-Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phase 11 (Search) is
-code-complete and pushed but **not yet opened as a PR or live-verified** — blocked on Vercel
-MCP/GitHub tooling access, see above; needs a retry or manual PR creation before merge review. Phase
-4 is audit-only, awaiting Babs's decision per the three options laid out there (now: following the
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search) and
+12 (Profile) are code-complete and pushed but **not yet opened as PRs or live-verified** — blocked on
+Vercel MCP/GitHub tooling access this session (Vercel MCP connector disconnected mid-session, no `gh`
+CLI or accessible GitHub token in this environment); both need a retry or manual PR creation before
+merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search` and
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase12-profile`. Phase 4 is
+audit-only, awaiting Babs's decision per the three options laid out there (now: following the
 roadmap, blocked on `BALLDONTLIE_KEY`). Full Phase 23 accessibility audit (axe scans) and full Phase
-24 responsive matrix are still pending — not yet run, not blocked on anything. Phase 12 (Profile) is
+24 responsive matrix are still pending — not yet run, not blocked on anything. Phase 13 (My Arena) is
 next.
