@@ -176,6 +176,50 @@ reading code. Did not and could not complete a full real Google OAuth consent fl
 interactive browser + a real Google account) — the Client ID/Secret finding was caught at the
 initiation-redirect step, before that would even be reachable.
 
+## PHASE 3 — GLOBAL NAVIGATION AND APP SHELL (complete, verified)
+Audited `components/navigation/app-shell.tsx` (desktop sidebar), `navbar.tsx` (top nav + mobile
+bottom nav), `footer.tsx`, `shell-gate.tsx`, and `app/layout.tsx`. Found two real, load-bearing bugs
+— both fixed in draft PR #10 (`claude/phase1-audit-phase3`, awaiting review/merge).
+
+### High: the navbar never reflected real session state, for anyone, on any page
+`app/layout.tsx` rendered `<Navbar />` with **zero props**. `authenticated`/`unread` default to
+`false`/`0` in the component, so every real signed-in user saw a fully logged-out navbar the entire
+time they were signed in: no Take button, no notification bell/unread count, no My Arena link — and
+the mobile bottom nav's Take/Alerts/Profile slots all pointed at `/auth/sign-in` instead of their
+real destinations. This means even now that item 2's dev-auth-on-Preview is confirmed genuinely
+working end-to-end, a real tester signing in would still see a broken-looking, always-logged-out
+navbar throughout their whole session. Fixed: `RootLayout` is now an async Server Component calling
+`auth()` + a notification unread-count query (same pattern already used in
+`app/(app)/notifications/page.tsx`), passing real values down to `Navbar`.
+
+**Tradeoff, stated explicitly:** `auth()` reads cookies, which forces the whole route tree dynamic.
+Confirmed via build output diff: `/help`, `/terms`, `/privacy`, `/guidelines`, `/auth/sign-up`,
+`/auth/error`, and `/_not-found` flip from statically prerendered to server-rendered-per-request. A
+broken navbar for every authenticated user clearly outweighs losing static generation on 7
+low-traffic marketing/legal pages, but flagging this as a real, deliberate cost rather than a silent
+regression — a Suspense-based streaming refactor to recover static generation there is a reasonable
+Phase 25 (Performance) follow-up, not attempted here.
+
+### High: the mobile "Open menu" hamburger button did nothing
+Confirmed via a repo-wide search: no `onClick`, no menu component, nothing wired to it at all. Since
+the primary nav bar (Games/Debates/Communities/Hall of Flame) is hidden below the `lg` breakpoint and
+the 5-slot mobile bottom nav only covers Home/Games/Take/Alerts/Profile, **Debates, Communities, and
+Hall of Flame were completely unreachable via any control on mobile/tablet viewports** — a direct,
+concrete violation of "no item is hidden without an alternative pathway." Fixed by wiring the button
+to the existing `Modal` component (the same pattern already used for the "Create a take" trigger two
+lines below it in the same file) showing the previously-hidden destinations plus Settings when
+authenticated. Added a unit test asserting the menu exposes all three with correct hrefs.
+
+### Audited, confirmed clean — no changes needed
+Desktop sidebar: every destination routes correctly, active-state highlighting works, all hrefs are
+real routes. Footer: all 4 links (Help, Community guidelines, Privacy, Terms) are real, working
+routes. Phase 1's interactive-element scan (138 elements, zero broken) already covered general
+link-checking for logged-out state; these two Phase 3 bugs are specifically about auth-state wiring,
+which a logged-out-only crawl couldn't have caught.
+
+**Verification:** typecheck/lint/build/vitest all clean (28/28 unit tests). Confirmed the
+static→dynamic tradeoff by diffing the build's route table before/after the fix, not assumed.
+
 ## CRITICAL
 
 ### 2. Auth.js — real progress, one live blocker left, needs Babs to check Google Cloud Console
@@ -254,7 +298,6 @@ See above. Quick cleanup, not blocked.
 Supabase linter flags it as INFO only.
 
 ## Next batches (not yet crawled)
-Phase 1 (logged-out crawl) is complete — see the PHASE 1 section above. Authenticated navigation,
-full Phase 23 accessibility audit (axe scans), and full Phase 24 responsive matrix are still
-pending — authenticated coverage is blocked on item 2 only now (DB is fixed on Production), the
-others are just not yet run.
+Phases 1–3 are complete — see their sections above. Phase 4 (real sports data) is next. Full Phase
+23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending — not yet
+run, not blocked on anything.
