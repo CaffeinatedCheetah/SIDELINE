@@ -5,9 +5,11 @@ import { apiAction } from "./api-action";
 export function JoinCommunityButton({
   communityId,
   initialJoined = false,
+  size,
 }: {
   communityId: string;
   initialJoined?: boolean;
+  size?: "sm" | "md" | "lg";
 }) {
   const [joined, setJoined] = useState(initialJoined);
   const [loading, setLoading] = useState(false);
@@ -34,6 +36,7 @@ export function JoinCommunityButton({
       <Button
         loading={loading}
         variant={joined ? "secondary" : "primary"}
+        size={size}
         onClick={toggle}
       >
         {joined ? "Leave community" : "Join community"}

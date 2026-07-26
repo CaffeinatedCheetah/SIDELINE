@@ -5,6 +5,7 @@ import { DebateVote } from "@/components/actions/debate-vote";
 import { DebateComposer } from "@/components/actions/debate-composer";
 import { JoinCommunityButton } from "@/components/actions/join-community-button";
 import { TakeComposer } from "@/components/actions/take-composer";
+import { TakeCard } from "@/components/takes/take-card";
 
 const routerPush = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -83,5 +84,34 @@ describe("participation actions", () => {
       screen.getByRole("button", { name: "Join community" }),
     );
     await screen.findByRole("button", { name: "Leave community" });
+  });
+  it("toggles a take reaction optimistically and calls the real API", async () => {
+    const fetch = vi.fn(() => response({ active: true }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <TakeCard
+        id="take-1"
+        author={{ handle: "jordan", displayName: "Jordan" }}
+        body="Defense wins this."
+        createdAt="Now"
+        reactions={5}
+        replies={0}
+      />,
+    );
+    const flameButton = screen.getByRole("button", {
+      name: "Give flame, 5 total",
+    });
+    await userEvent.click(flameButton);
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/reactions",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ takeId: "take-1", kind: "FIRE" }),
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Remove flame, 6 total" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 });

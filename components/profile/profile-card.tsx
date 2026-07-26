@@ -7,7 +7,8 @@ export function ProfileCard({
   bio,
   fanScore,
   rank,
-  following = false,
+  following,
+  onToggleFollow,
 }: {
   handle: string;
   displayName: string;
@@ -15,6 +16,8 @@ export function ProfileCard({
   fanScore: number;
   rank?: number;
   following?: boolean;
+  /** Omit to render the card without a follow control (e.g. viewing your own profile). */
+  onToggleFollow?: () => void;
 }) {
   return (
     <Card>
@@ -37,9 +40,15 @@ export function ProfileCard({
           <strong className="text-brand">{fanScore}</strong>{" "}
           <span className="text-text-secondary text-sm">Fan Score</span>
         </span>
-        <Button variant={following ? "secondary" : "primary"} size="sm">
-          {following ? "Following" : "Follow"}
-        </Button>
+        {onToggleFollow && (
+          <Button
+            variant={following ? "secondary" : "primary"}
+            size="sm"
+            onClick={onToggleFollow}
+          >
+            {following ? "Following" : "Follow"}
+          </Button>
+        )}
       </div>
     </Card>
   );

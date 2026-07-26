@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { auth } from "@/auth";
 import { CommunityCard } from "@/components/communities/community-card";
 import { PageHeading } from "@/components/layout/page-heading";
 import { EmptyState, ErrorState } from "@/components/ui/foundations";
@@ -22,7 +23,9 @@ export default async function CommunitiesPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const { q } = await searchParams;
+  const session = await auth();
   let communities: CommunityListItem[] = [];
+  let joinedIds = new Set<string>();
   let failed = false;
   try {
     communities = (await withTimeout(
@@ -36,6 +39,17 @@ export default async function CommunitiesPage({
       }),
       "CommunitiesPage.findMany",
     )) as typeof communities;
+    if (session?.user?.id) {
+      const memberships = await db.communityMember.findMany({
+        where: {
+          userId: session.user.id,
+          communityId: { in: communities.map((community) => community.id) },
+          status: "ACTIVE",
+        },
+        select: { communityId: true },
+      });
+      joinedIds = new Set(memberships.map((m) => m.communityId));
+    }
   } catch (error) {
     failed = true;
     console.error(
@@ -69,10 +83,12 @@ export default async function CommunitiesPage({
           {communities.map((community) => (
             <CommunityCard
               key={community.id}
+              id={community.id}
               slug={community.slug}
               name={community.name}
               description={community.description}
               members={community._count.members}
+              joined={joinedIds.has(community.id)}
             />
           ))}
         </div>

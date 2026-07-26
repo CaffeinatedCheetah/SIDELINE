@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { auth } from "@/auth";
 import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
@@ -22,9 +23,9 @@ export const metadata: Metadata = {
   },
 };
 
-async function discovery() {
+async function discovery(viewerId: string | undefined) {
   try {
-    const [games, takes, debates, communities, leader] = await Promise.all([
+    const [games, takes, debates, communities] = await Promise.all([
       db.game.findMany({
         take: 3,
         orderBy: [{ status: "asc" }, { scheduledAt: "asc" }],
@@ -62,27 +63,72 @@ async function discovery() {
         orderBy: { name: "asc" },
         include: { _count: { select: { members: true, takes: true } } },
       }),
-      db.user.findFirst({
-        where: { status: "ACTIVE" },
-        orderBy: { fanScoreEvents: { _count: "desc" } },
-        include: { profile: true, _count: { select: { followers: true } } },
-      }),
     ]);
-    return { games, takes, debates, communities, leader, failed: false };
+
+    let viewer = null;
+    let reactedTakeIds = new Set<string>();
+    let joinedCommunityIds = new Set<string>();
+    if (viewerId) {
+      const [viewerRow, reactions, memberships] = await Promise.all([
+        db.user.findUnique({
+          where: { id: viewerId },
+          include: { profile: true },
+        }),
+        db.reaction.findMany({
+          where: {
+            userId: viewerId,
+            kind: "FIRE",
+            takeId: { in: takes.map((take) => take.id) },
+          },
+          select: { takeId: true },
+        }),
+        db.communityMember.findMany({
+          where: {
+            userId: viewerId,
+            status: "ACTIVE",
+            communityId: { in: communities.map((community) => community.id) },
+          },
+          select: { communityId: true },
+        }),
+      ]);
+      viewer = viewerRow;
+      reactedTakeIds = new Set(
+        reactions
+          .map((reaction) => reaction.takeId)
+          .filter((takeId): takeId is string => takeId !== null),
+      );
+      joinedCommunityIds = new Set(
+        memberships.map((membership) => membership.communityId),
+      );
+    }
+
+    return {
+      games,
+      takes,
+      debates,
+      communities,
+      viewer,
+      reactedTakeIds,
+      joinedCommunityIds,
+      failed: false,
+    };
   } catch {
     return {
       games: [],
       takes: [],
       debates: [],
       communities: [],
-      leader: null,
+      viewer: null,
+      reactedTakeIds: new Set<string>(),
+      joinedCommunityIds: new Set<string>(),
       failed: true,
     };
   }
 }
 
 export default async function Home() {
-  const data = await discovery();
+  const session = await auth();
+  const data = await discovery(session?.user?.id);
   return (
     <>
       <section className="hero-grid">
@@ -104,12 +150,27 @@ export default async function Home() {
               <Link href="/games" className={buttonStyles({ size: "lg" })}>
                 Explore live games
               </Link>
-              <Link
-                href="/auth/sign-up"
-                className={buttonStyles({ variant: "secondary", size: "lg" })}
-              >
-                Join FanTakes
-              </Link>
+              {session?.user ? (
+                <Link
+                  href="/arena"
+                  className={buttonStyles({
+                    variant: "secondary",
+                    size: "lg",
+                  })}
+                >
+                  Go to My Arena
+                </Link>
+              ) : (
+                <Link
+                  href="/auth/sign-up"
+                  className={buttonStyles({
+                    variant: "secondary",
+                    size: "lg",
+                  })}
+                >
+                  Join FanTakes
+                </Link>
+              )}
             </div>
           </div>
           {data.games[0] ? (
@@ -200,6 +261,7 @@ export default async function Home() {
               createdAt={take.createdAt.toLocaleDateString()}
               reactions={take._count.reactions}
               replies={take._count.replies}
+              initialReacted={data.reactedTakeIds.has(take.id)}
             />
           ))}
         </Section>
@@ -238,10 +300,12 @@ export default async function Home() {
           {data.communities.map((community) => (
             <CommunityCard
               key={community.id}
+              id={community.id}
               slug={community.slug}
               name={community.name}
               description={community.description}
               members={community._count.members}
+              joined={data.joinedCommunityIds.has(community.id)}
             />
           ))}
         </Section>
@@ -253,20 +317,28 @@ export default async function Home() {
             reputation—together.
           </p>
           <div className="mt-6 max-w-md">
-            {data.leader ? (
+            {data.viewer ? (
               <ProfileCard
-                handle={data.leader.handle}
-                displayName={data.leader.displayName}
+                handle={data.viewer.handle}
+                displayName={data.viewer.displayName}
                 bio={
-                  data.leader.profile?.bio ??
+                  data.viewer.profile?.bio ??
                   "Building a fan identity one take at a time."
                 }
-                fanScore={data.leader.profile?.reputation ?? 0}
+                fanScore={data.viewer.profile?.reputation ?? 0}
               />
             ) : (
               <EmptyState
                 title="Build your fan identity"
                 description="Sign in to start earning reputation."
+                action={
+                  <Link
+                    className={buttonStyles({ variant: "secondary" })}
+                    href="/auth/sign-up"
+                  >
+                    Create your profile
+                  </Link>
+                }
               />
             )}
           </div>
