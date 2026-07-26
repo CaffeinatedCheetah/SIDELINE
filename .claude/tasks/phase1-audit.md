@@ -3,31 +3,23 @@
 Source: full 30-phase launch-readiness audit spec. Work top to bottom. Do not merge to `main`
 without review. Return findings/diffs per item before moving to the next.
 
-## 🚨 NEEDS A FOLLOW-UP FIX — Production is resolved, Preview is not
+## ✅ 1b — NOW FULLY RESOLVED on both Production and Preview
 
-### 1b. DATABASE_URL/DIRECT_URL point at the WRONG Supabase project — RESOLVED on Production, still broken on Preview
-**Production is confirmed fixed — the database-project mismatch is resolved.** Independently
-re-verified live (not just reasoning from env vars): `curl
-https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all now return rows from
-`wleunpfiokcdbuydkhho` (the correct project) instead of the empty one. This matches exactly what was
-in the correct project earlier in this audit, so `DATABASE_URL`/`DIRECT_URL` on the Production target
-were corrected at some point during this session (not by Claude Code — most likely Babs, directly in
-Vercel). Original root cause for context: `DATABASE_URL` was pointed at Vercel's auto-provisioned
-Supabase integration project (`sbdqmqzgtegemskpewaq`, zero tables) instead of `wleunpfiokcdbuydkhho`
-(the one with real schema, data, and the item 6–8 migrations).
+### 1b. DATABASE_URL/DIRECT_URL pointed at the wrong Supabase project — fixed everywhere
+**Both targets confirmed fixed, independently re-verified live.** Production: `curl
+https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all return rows from
+`wleunpfiokcdbuydkhho` (the correct project). Preview: during Phase 8's authenticated testing,
+signed in as `demo@fantakes.local` on a freshly deployed Preview build, POSTed a real take, and a
+fresh GET immediately showed it — a real write + read round-trip against the correct database,
+not just an env-var check. `vercel env ls` also confirms `DATABASE_URL`/`DIRECT_URL` now target both
+`production` and `preview` with a recent `updatedAt`. Original root cause for context: `DATABASE_URL`
+was pointed at Vercel's auto-provisioned Supabase integration project (`sbdqmqzgtegemskpewaq`, zero
+tables) instead of `wleunpfiokcdbuydkhho` (the one with real schema, data, and the item 6–8
+migrations).
 **Correction to how this was originally described:** "Detroit Lions/Chicago Bears (LIVE)" etc. are
 **not real sports data** — they're `prisma/seed.ts` fixture rows (`providerRef: "demo-nfl-live"`).
 1b's fix means the app is now correctly reading the right *database* — it says nothing about whether
 that database's game content is real, which it isn't. See item 4 (Phase 4) for the full finding.
-
-**Preview is NOT fixed — same bug, different target.** Confirmed via direct request (with the
-project's automation-bypass header) against the PR #5 preview deployment
-(`sideline-bbqnhj7vm-team-sideline.vercel.app/games`): still renders the "Games are unavailable"
-error state (PR #5's own fix correctly surfacing the underlying failure, which is itself a good
-sign the fix works — but the underlying DB problem persists on this target). **Action needed:**
-apply the same `DATABASE_URL`/`DIRECT_URL` correction to the Preview environment target in Vercel
-(Production and Preview can hold different values for the same key — that's very likely why only
-one target got fixed). Re-verify both `/games` and `/debates` on a fresh Preview deployment after.
 
 ### 1c. "Trending takes" and "Find your crowd" homepage sections have no empty-state fallback
 Smaller, independent bug in `app/page.tsx`: the shared `Section` component just renders
@@ -225,33 +217,29 @@ static→dynamic tradeoff by diffing the build's route table before/after the fi
 
 ## CRITICAL
 
-### 2. Auth.js — real progress, one live blocker left, needs Babs to check Google Cloud Console
-Status has moved a lot since the original "zero providers" finding, tracked here in order:
+### 2. Auth.js — FULLY RESOLVED. Real sign-in works end-to-end now.
+Status, tracked in order of how it actually got fixed:
 
-- **Dev credentials on Preview (PR #6, merged) — confirmed fully working end-to-end.** Re-tested
-  live against a fresh Preview build of current `main`: got a real `db.user.findUnique` hit, a
-  valid session cookie, and (after PR #7's `trustHost: true`) a correct same-origin redirect to
-  `/arena`. This is genuine, verified, working authenticated access on Preview — the biggest
-  concrete auth win of this audit. Confirmed blocked on Production by design (`lib/env.ts` guards
-  `ENABLE_DEV_AUTH` off whenever `VERCEL_ENV === "production"`, using Vercel's own non-spoofable
-  env var) — that's correct and intentional, not a gap.
-- **Real Google OAuth credentials now exist in Vercel** (`AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`,
-  both Preview + Production targets, added very recently — not by Claude Code). This is new since
-  the original finding above.
-- **🔴 But they're misconfigured — confirmed live, not fixed.** Triggered a real OAuth-initiation
-  request against a fresh Preview deployment; Google's own redirect URL shows
-  `client_id=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`. That `GOCSPX-` prefix is the distinctive format
-  of a Google OAuth **Client Secret** — real Client IDs always end in `.apps.googleusercontent.com`.
-  `auth.ts`'s code is correct (`clientId: AUTH_GOOGLE_ID`, `clientSecret: AUTH_GOOGLE_SECRET` — no
-  bug there); the value stored in `AUTH_GOOGLE_ID` itself is wrong. **This will fail at Google with
-  an invalid-client error for any real user who tries it right now.** Needs Babs to check Google
-  Cloud Console's OAuth client (Credentials page) against what's actually in Vercel — most likely
-  `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` got swapped, or `AUTH_GOOGLE_ID` was set to the wrong
-  value entirely. Not something to guess-fix without the real correct value.
-- Email magic-link (SMTP/`EMAIL_SERVER`) is still entirely unconfigured — untouched since the
-  original finding, still an open option alongside/instead of Google OAuth.
-- 1b's DB-project mismatch no longer blocks this on Production (see above, resolved there) but
-  **still blocks real user creation via any provider on Preview** until 1b's Preview fix lands too.
+- **Dev credentials on Preview (PR #6, merged) — confirmed fully working end-to-end.** Real
+  `db.user.findUnique` hit, valid session cookie, correct same-origin redirect to `/arena`.
+  Confirmed blocked on Production by design (`lib/env.ts` guards `ENABLE_DEV_AUTH` off whenever
+  `VERCEL_ENV === "production"`) — correct and intentional, not a gap.
+- **Google OAuth — confirmed genuinely fixed, live.** The previous finding (Client ID/Secret
+  swapped — `AUTH_GOOGLE_ID` held a value with the `GOCSPX-` prefix, which is a Client *Secret*'s
+  format) is resolved: re-triggered a real OAuth-initiation request against Production and got
+  `client_id=1058548997770-0tbsjsh6vb6qofh2jejf97ab06n3eeg7.apps.googleusercontent.com` — the
+  correct format this time. `vercel env ls` confirms both `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`
+  have an `updatedAt` well after their `createdAt`, consistent with a real fix, not a new pair.
+  (Could not complete the full interactive Google consent screen — that needs a real Google account
+  in a real browser — but the initiation step, which is where the previous bug lived, is fixed.)
+- 1b's DB-project mismatch (see above) is now resolved on both Production and Preview, so real user
+  creation via any provider works on both targets — verified via Phase 8's real authenticated
+  write+read round-trip on Preview.
+- Email magic-link (SMTP/`EMAIL_SERVER`) remains unconfigured — no longer needed now that Google
+  OAuth works, but still an open option if a second sign-in path is ever wanted.
+
+**Net effect: auth is no longer a blocker for anything in this audit.** Phase 8 onward is the first
+work in this audit tested with a real authenticated session end-to-end.
 
 ### 2b. Clerk — DONE
 Correction: Clerk does still appear in the repo (legacy root-level `index.html`/`login.html`/
@@ -443,8 +431,651 @@ click the flame button, assert the exact `fetch` call and resulting DOM/aria sta
 render check). Deployed to a live Preview and confirmed via direct HTTP fetch against the real
 database: homepage returns 200, new labels/button text render correctly, zero stray Follow buttons.
 
+## PHASE 6 — GAMES PAGE (complete, verified)
+
+Draft PR #13 (`claude/phase1-audit-phase6`).
+
+### High: `GameCard` never showed a start time for a game before it had a score
+Just a bare clock icon with zero information, on every page that renders it (games list, homepage,
+today's schedule). Added a `GameTime` component using `useSyncExternalStore`'s server/client
+snapshot split — not a `setState`-in-effect, which this repo's ESLint config correctly rejects as an
+anti-pattern — so the viewer sees their *own* local time, not whatever timezone the Vercel runtime
+happens to default to. Confirmed via a real render test the actual local-time string appears (e.g.
+"Sat, Aug 1, 2:00 PM"), not just that a placeholder exists. **Same latent gap already exists in
+`app/games/[gameId]/page.tsx`'s `.toLocaleString()` call** — flagged for whichever phase covers that
+page, not touched here to stay scoped to the games list.
+
+### High: team logos never passed through on `/games`
+`GameCard` has supported `homeTeamLogo`/`awayTeamLogo` since it was built, and `Team.logoUrl` is a
+real fetched field — `/games/page.tsx` just never passed it, even though the sibling
+`TodaysScheduleSection` already does this correctly. Wired it through on both.
+
+### High: league filter hardcoded two options instead of querying real data
+`<Select>` had exactly `<option>NFL</option>`/`<option>NBA</option>` hardcoded in JSX. Now built from
+`db.league.findMany()` — will automatically pick up new leagues once Phase 4's real sync lands
+without another code change.
+
+### High: unbounded query, no date window — real scaling problem, not just a UX one
+No `take` limit, ordered only by `scheduledAt` ascending — meaning the *oldest* FINAL game ever
+synced would render first, ahead of anything live or upcoming, and the list would grow unbounded as
+real data accumulates. Added real date navigation (Previous day / Next day / Jump to today, reusing
+the same UTC day-boundary convention already established in `lib/db/todays-schedule.ts`) with a
+`take: 60` safety cap — matches how an actual sports scoreboard behaves: default to today, browse
+other days explicitly. Also added POSTPONED/CANCELED as selectable status filters (schema already
+supports both; only LIVE/SCHEDULED/FINAL were offered).
+
+**Nice unintended side effect, confirmed live:** the fabricated seed game's `scheduledAt` (computed
+relative to whenever `prisma/seed.ts` last ran, now days in the past) no longer falls inside "today"
+under this new date window, so it stopped appearing on `/games` entirely — an honest empty state
+instead of the stale fake "LIVE" game, with no special-casing needed. Doesn't change the item 4
+finding (the fake game is still live on the homepage's differently-scoped queries and in the DB
+itself), but worth noting as a small, real improvement that fell out of the date-window fix.
+
+### A bug caught in my own first draft, worth flagging on its own
+Building filter-preserving pagination links via `new URLSearchParams({...filters, date})` silently
+stringifies `undefined` values as the literal text `"undefined"` (verified this is real
+`URLSearchParams` behavior via `node -e`, not assumed) — would have shipped broken
+`?status=undefined&league=undefined` URLs on every date-navigation click whenever no filter was
+active, which is the common case. Caught it before committing; replaced with a small helper that
+drops empty values before building the query string.
+
+**Verification:** typecheck/lint/build clean, 34/34 unit tests (2 new, covering team-logo rendering
+and the real local-time string). Deployed to a live Preview and confirmed via direct HTTP fetch
+against the real database.
+
+## PHASE 7 — GAME ROOM (complete, verified)
+
+Draft PR #14 (`claude/phase1-audit-phase7`). Cross-checked every finding against the project's own
+design spec (`docs/pages/GAME_ROOM.md`), not just my own read of the code — the doc turned out to
+settle several of these decisively rather than leaving them to my judgment.
+
+### High: Chat, Stats, Highlights tabs — removed, not relabeled
+All three rendered unconditionally with copy ("... is quiet. Live updates appear here when
+available.") implying a working feature with no current data, for every game, forever. The design
+doc's documented section order has no chat/stats/highlights anywhere — confirmed these were never
+part of the plan, not a build-in-progress. Removed rather than relabeled: there's nothing real behind
+them to honestly call "coming soon."
+
+### High: Play-by-play tab — removed per the design doc's own explicit condition
+The doc says play-by-play should be "shown only if the provider adapter supplies verified data; it is
+not synthesized." No provider currently supplies this (not even Phase 4's real adapter fetches it),
+and there's no schema field to store it if it did. Removed for now rather than ship a
+permanently-empty tab; reintroduce once a provider with play-by-play support exists, per the doc's
+own stated condition.
+
+### High: poll voting was completely fake
+`PollCard` was rendered with `disabled` hardcoded, no `onChange`/`onVote` — despite the component
+fully supporting both and a real, working `POST /api/v1/poll-votes` endpoint already existing
+(closesAt check, duplicate-vote handling). Built `PollVoteCard` to wire them together, plus a real
+per-viewer "did I already vote" check so a returning voter doesn't see the poll as fresh again.
+
+### High: `LiveGameRoom` polled the real endpoint every 15s but only showed a status label
+Correctly matches the design doc's "poll every 15 seconds" spec, but only ever extracted `status`
+from the response — the actual score/period/clock shown in the page header were rendered once from
+the initial server request and frozen for the rest of the session, even though the same poll response
+already contains fresh values for all of them. Fixed to track and render the full live scoreboard,
+and to stop polling once the live-tracked status leaves LIVE (previously it would poll a finished
+game forever). `PageHeading`'s description is now skipped for LIVE games (`LiveGameRoom` owns that
+display) and shows the real final score for FINAL games instead of just the scheduled time. Made
+`PageHeading`'s `description` prop optional rather than pass an empty string to satisfy a required
+prop that didn't need to be one.
+
+**Verification:** typecheck/lint/build clean, 36/36 unit tests (3 new — real poll-vote API call +
+resulting disabled state, live scoreboard shows the real score/period/clock, and renders nothing at
+all for a non-live game). Deployed to a live Preview and confirmed via direct HTTP fetch against the
+real database: Chat/Stats/Highlights/Play-by-play are completely gone from the rendered HTML, and the
+live scoreboard shows the real `14–17 · 3rd 08:42 · LIVE · connected` — not the old static
+status-only line.
+
+## PHASE 8 — CREATE TAKE (complete, verified)
+
+Draft PR #15 (`claude/phase8-create-take`). First phase tested with a genuinely real authenticated
+session end-to-end — signed in as `demo@fantakes.local` against a live Preview deployment, now that
+both dev-auth-on-Preview and Google OAuth are confirmed working (see item 2 above).
+
+### High: newly posted takes never appeared without a manual page reload
+Root cause confirmed via a real POST + fresh GET round-trip: the take persists correctly and
+attaches to its game/debate/community correctly — the DB/API layer is entirely correct. The bug is
+purely client-side: `TakeComposer` never called `router.refresh()` after a successful post, unlike
+the sibling `DebateComposer`, which already does exactly this. Every page rendering `TakeComposer`
+(game room, debate detail, community detail) fetches its take list via a Server Component, and
+Next's App Router doesn't refetch that tree just because an unrelated client fetch succeeded
+elsewhere. Fixed by adding the same `router.refresh()` call `DebateComposer` already uses.
+
+### Verified live against the real API, not just read from source
+- Posting to a community you're not a member of correctly returns `403 FORBIDDEN` with a message
+  `TakeComposer` correctly surfaces.
+- Empty body and >1000-char body both correctly rejected server-side (`400 INVALID_REQUEST`),
+  independent of the client's `maxLength`/`required` — real defense in depth, confirmed live.
+- Duplicate-submission prevention (button disables synchronously via `loading` state) and Modal
+  open/focus-trap/Escape (generic Radix Dialog behavior, already covered by
+  `tests/unit/modal.test.tsx`) both hold — no changes needed.
+- Logged-out entry points: navbar's "Create a take" trigger is entirely absent when logged out
+  (both desktop and mobile); page-embedded composers render unconditionally but correctly redirect
+  to `/auth/sign-in` with the return URL preserved on a 401 if a logged-out visitor submits — matches
+  the explicit requirement.
+- Test take posted during verification was deleted from the database afterward — no leftover test
+  data left behind.
+
+### Found, not fixed here — flagged for Phase 11 (Search)
+`components/search/search-panel.tsx` links take results to `/takes/${id}`, a route that doesn't
+exist anywhere in the app — confirmed via search, no `app/takes/` directory exists. Cross-checked
+against `docs/pages/SEARCH.md`, which explicitly states "Authored take full-text search is deferred
+pending privacy/moderation review" — Search including takes at all, and linking to a nonexistent
+permalink, is itself out of spec, not just a missing page. Left for Phase 11 to keep this PR scoped
+to Create Take's own files.
+
+**Verification:** typecheck/lint/build clean, 38/38 unit tests (1 new regression test asserting
+`router.refresh()` is actually called after a successful post, not just that the request fires).
+
+## PHASE 9 — DEBATE CENTER (complete, verified)
+
+Draft PR #16 (`claude/phase9-debate-center`). Cross-checked every finding against
+`docs/pages/DEBATE_CENTER.md`.
+
+### High: voting was permanent — no way to ever change your position
+`db.vote.create` (not `upsert`) meant a second vote on the same debate always hit the unique
+constraint and returned a hard 409 for life. The doc explicitly says "position selection via PUT" —
+changeable. Fixed via `db.vote.upsert` on `(userId, debateId)`, matching the sibling take-vote branch
+in the same handler which already did this correctly. Wired the debate detail page to look up the
+viewer's existing vote and pass it to `DebateVote`, which now shows "Your position," lets you pick a
+different option, and calls `router.refresh()` after voting — `DebateVote` had the exact same
+missing-revalidation bug Phase 8 found and fixed in `TakeComposer`.
+
+**Verified live, not just read from source:** cast a vote, changed it, confirmed the *same* vote row
+updated in place (`total` stayed at 1, not 2) and percentages flipped correctly. Test votes deleted
+afterward.
+
+### High: only ever 2-position debates were creatable
+`DebateComposer` had exactly two hardcoded `option1`/`option2` inputs. The doc's own "Assumptions and
+decisions" section states debates support 2–4 positions, and the server already validated up to 6 —
+the actual product feature existed everywhere except the only UI that creates debates. Rebuilt the
+composer with add/remove position rows capped at the doc's stated 4, and tightened the server's
+`.max()` from 6 to 4 to match.
+
+### High: no tabs, no filters, no featured section at all
+Just a flat list of every OPEN debate, newest first — meaning LOCKED/ARCHIVED debates were completely
+unreachable, no page ever queried for them. Implemented the doc's exact spec: Active/Closing
+soon/Resolved tabs backed by real `DebateStatus`/`closesAt` fields, a community filter, and a
+non-auto-rotating featured debate (highest total votes, deterministic tie-break). Verified live: the
+real seed debate correctly shows as Featured on Active, and Resolved correctly shows an honest empty
+state (no debate has ever been locked/archived).
+
+### Discrepancy flagged, not silently decided
+The original Phase 9 brief asked for Popular/Latest/Trending/Unanswered tabs. The project's actual
+design doc specifies Active/Closing soon/Resolved instead, backed by real schema fields — no
+"popularity" or "unanswered" concept exists anywhere in the data model. Implemented the documented
+version; flagging this explicitly rather than picking silently. Redo as
+Popular/Latest/Trending/Unanswered if that's actually what's wanted over the documented spec.
+
+### Found, not built: no debate edit/delete exists for anyone
+Confirmed via the API route's full PATCH/DELETE handlers: only `takes/:id`, `profile`, and `account`
+are supported — nothing for debates, for creators or moderators. The design doc doesn't call for
+creator self-edit either, and `Debate` has none of `Take`'s soft-delete/edit-window schema support
+(`editedAt`, `deletedAt`, `AUTHOR_REMOVED` status). This needs a product decision (can you edit after
+votes exist? does editing reset votes?), not a code fix — flagged for Phase 17 (Moderation) alongside
+the lock/archive lifecycle moderators would actually need.
+
+### Take vs Debate — documented, as the phase explicitly asked
+A **Take** is a short (≤1000 char) freeform opinion, optionally attached to a game/debate/community/
+parent-take, supports FIRE reactions and threaded replies, no formal resolution. A **Debate** is a
+structured question with 2–4 predefined positions the community votes on (one changeable vote per
+person), has an open/locked/archived lifecycle with an optional close time, and can carry freeform
+Takes as "counter-takes" — evidence/commentary that never affects the vote tally.
+
+**Verification:** typecheck/lint/build clean, 40/40 unit tests (3 new: add/remove positions capped at
+4, change-position flow, vote-refresh regression).
+
+## PHASE 10 — COMMUNITIES (complete, verified)
+
+Draft PR #17 (`claude/phase10-communities`). Cross-checked against `docs/pages/COMMUNITIES.md`
+(directory) and `docs/pages/COMMUNITY_DETAIL.md` (detail page).
+
+### High: community detail had the same fake-tab pattern already removed from Game Room
+`chat`/`polls`/`events`/`media` rendered unconditionally with generic "will appear here" copy,
+forever, for every community — none of these four are in the documented tab list
+(Feed/Games/Debates/Members/About). Removed them, same treatment as Phase 7's Game Room finding.
+
+### High: Debates and Members tabs were missing despite being fully buildable
+`Debate.communityId` is a real FK (a real debate is already attached to the seed community) and
+`CommunityMember` has real role/user data — built both as real tabs instead of fake placeholders.
+Flagged, not built: a "Games" tab per the doc — `Community` has no team/league/game relation
+anywhere in the schema, so nothing could populate it without a schema change.
+
+### High: `Community.avatarUrl` existed and was never rendered anywhere
+Same "real data column nobody reads" pattern this audit keeps finding. Added it to the detail hero.
+
+### Medium: joining silently recorded rule acceptance without ever showing the rules
+`rulesAcceptedAt` was stamped on join, but the user never saw the rules text first — a timestamp for
+consent that was never presented isn't real consent, and the doc requires "rule acceptance." Added an
+optional confirmation step to `JoinCommunityButton` (reuses the existing `ConfirmationDialog`)
+showing the real rules before joining, wired in on the detail page. Left the compact directory/
+homepage card's one-click join unchanged — a deliberate scope line, not an oversight.
+
+### High: the directory was a flat, unsorted list — no tabs, filters, or featured section
+Implemented the doc's Trending/Most active/New tabs (Trending approximated as 7-day take velocity,
+since there's no dedicated activity field) plus a featured community (highest member count,
+deterministic, non-auto-rotating — matching Phase 9's debate-center featured pattern). Flagged, not
+built: "Browse by team/league chips" — same schema gap as the Games tab.
+
+### Discrepancy flagged, not silently decided
+The original brief asked for "My Communities / Discover" tabs. The actual doc specifies Trending/Most
+active/New for the public directory; a separate "Your Communities" view belongs to My Arena (Phase 13)
+— two different pages in the documented design, not one.
+
+### Confirmed already correct
+Community creation is deferred by explicit design-doc decision ("never tease an unusable flow") —
+confirmed via search that no Create Community UI exists anywhere. Compliance, not a gap.
+
+### 🔍 Found live during verification, not built: the community owner never appears in its own Members list
+Deployed to a live Preview and fetched the community detail page's real data: the actual owner
+(`ownerId`) never showed up in the Members tab at all. Seed data only ever created a
+`CommunityMember` row for a regular member — never one for the owner. `Community.ownerId` and
+`CommunityMember` role=OWNER are two structurally separate things in this data model right now, and
+nothing guarantees they're kept in sync. A real owner visiting their own community wouldn't see
+themselves listed. Worth a decision: should creating/owning a community always also create an OWNER
+`CommunityMember` row? Not patched blind here — needs a call on intended behavior, and possibly a
+data-backfill for the existing seed community.
+
+Also found, not built: "Leave uses confirmation if the user has a role" (doc) — `JoinCommunityButton`
+doesn't know the viewer's role yet, so a moderator/owner leaving gets no extra confirmation warning.
+Scoped out of this PR (needs role plumbed into the component).
+
+**Verification:** typecheck/lint/build clean, 39/39 unit tests (1 new: rules-confirmation-before-
+joining flow, asserting the request doesn't fire until confirmed). Deployed to a live Preview and
+confirmed via direct HTTP fetch against the real database: tabs/featured section render correctly,
+fake tabs are completely gone, Debates tab shows the real debate with real vote percentages and the
+wired `closesAt`, avatar falls back to initials correctly.
+
+## PHASE 11 — SEARCH (code complete, PR/live-verify blocked on tooling — see below)
+
+Branch `claude/phase11-search`, pushed. Cross-checked against `docs/pages/SEARCH.md`.
+
+### High: search returned dead-end take links and a declared-but-never-queried games key
+`app/api/v1/[...segments]/route.ts`'s `resource === "search"` handler queried `takes`, which the doc
+explicitly defers ("Authored take full-text search is deferred pending privacy/moderation review") —
+this is the exact dangling `/takes/${id}` link flagged, not fixed, in Phase 8 (no `app/takes/` route
+exists at all). It also queried `teams`, which have no `/teams/[key]` destination route anywhere
+(confirmed via search) — another dead-end link. Meanwhile `games` was already declared in the
+endpoint's empty-fallback response shape but never actually queried — the same
+declared-but-unbuilt pattern this audit keeps finding elsewhere. Fixed: removed takes/teams, built
+the real games query (home/away team name/abbreviation match), and added `type`-based filtering
+(all/games/debates/communities/people) plus the doc's 100-char query cap.
+
+### High: search UI had no URL state, no type filters, no recent searches, no empty/loading states
+`components/search/search-panel.tsx` and `app/(app)/search/page.tsx` rewritten: query and type now
+live in the URL (refresh and back/forward preserve results, per the brief), a debounced live preview
+runs client-side while a submit (Enter/button/recent-search click) is what commits to the URL and
+history, tab filters show real result counts, and there's a proper loading skeleton plus a
+distinct no-results state. Recent searches persist in `localStorage` with a Clear control. Added
+`robots: { index: false, follow: true }` and a canonical of bare `/search` per the doc ("Page and all
+query variants use noindex; canonical is /search without query").
+
+### Added: pg_trgm GIN indexes for the searched text columns
+Confirmed via Supabase (`list_extensions`) that `pg_trgm` is available on `wleunpfiokcdbuydkhho` but
+not installed, and `prisma/schema.prisma` has no `previewFeatures` enabling extended index types — so
+this is a raw-SQL migration (`prisma/migrations/202607260001_search_trigram_indexes/`), not a schema
+change, matching how the `RateLimitBucket` index in `202607240001_preview_hardening` was already done
+as a plain migration. Covers `User.displayName`/`handle`, `Team.name`/`abbreviation`,
+`Community.name`, `Debate.title` — the exact columns the ILIKE/`contains` queries above hit.
+
+### 🔴 Blocked, tooling not code: migration not yet applied to the live database
+This session's auto-mode classifier denied direct `apply_migration` against the live Supabase project
+(schema change to a shared database — correctly treated as needing explicit sign-off, not a
+workaround target). The migration file is committed and will run correctly via the normal
+`prisma migrate deploy` path whenever that's wired into deploys, or can be applied manually. Until
+then, search still works — the trigram indexes are a performance optimization for
+`contains`/ILIKE queries at scale, not a correctness dependency.
+
+### 🔴 Blocked, tooling not code: no draft PR opened, no live-Preview verification done
+Unlike Phases 5–10, this phase could not be verified against a live Preview deployment or shipped as
+a draft PR: the Vercel MCP connector disconnected mid-session (session-expired, then dropped from the
+available tool list entirely) and this environment has no `gh` CLI installed and no accessible GitHub
+token (`git credential fill` was correctly denied by the same classifier as a credential-extraction
+pattern, which is the right call — did not attempt to work around it). The branch is pushed;
+GitHub's own push output includes the PR-creation link:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`. Needs either a human
+to open that link, or a retry once Vercel MCP/GitHub tooling is available again in a future session.
+
+**Verification, stated plainly given the above:** typecheck/lint/build all clean. `npm run test`
+clean (40/40, no regressions from the rewrite). Added integration coverage
+(`tests/integration/database-flows.test.ts`) for type-scoped filtering, the 2-char query floor, and
+the takes-exclusion — gated behind `RUN_DATABASE_TESTS` like the rest of that file, not run locally
+(no local Postgres available in this environment either) or live (blocked above). This phase has
+real, unresolved verification gaps that Phases 5–10 didn't have — flagging that difference explicitly
+rather than presenting it as equally verified.
+
+## PHASE 12 — PROFILE (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase12-profile`, pushed. Cross-checked against `docs/pages/PROFILE.md`.
+
+### High: 6 of the page's 7 tabs had no content at all
+`app/users/[handle]/page.tsx` rendered `TabsTrigger`s for takes/activity/predictions/badges/
+communities/following/followers, but only `takes` had a matching `TabsContent` — clicking any other
+tab showed nothing. The tab set itself was also wrong against the doc: it specifies
+Takes/Predictions/Debates/Communities/About, with badges living in the reputation summary and
+follower/following as sidebar counts, not tabs — so this wasn't a case of "5 tabs missing content,"
+the tab list itself didn't match the product spec. Rebuilt with the documented 5 tabs, each with a
+real query and real content, and made them URL-backed (`?tab=`) per the doc's explicit "URL-backed
+scrolling tabs" requirement — refresh and back/forward preserve the active tab, same pattern as
+Phase 11's search type filter.
+
+### High: no Follow button existed anywhere, despite a fully working backend
+Confirmed via Phase 5's own finding, still true: `POST /api/v1/follows` is real and correct (create/
+delete, notification on follow, idempotent), but nothing in the app ever called it — `ProfileCard`'s
+follow prop went unused everywhere, and the profile page itself had no follow control at all. Built
+a real `FollowButton` (optimistic, rolls back on failure) and wired it into the header.
+
+### High: Block and Mute had complete schema models and zero API surface
+`Block` and `Mute` are both fully modeled in `prisma/schema.prisma` with unique constraints ready for
+upsert — confirmed via a repo-wide search that neither is referenced anywhere in
+`app/api/v1/[...segments]/route.ts` or any other file. The doc requires both ("block confirms and
+immediately hides interaction," block/mute listed under Permissions and data/API). Added both as
+POST resources following the existing `follows` toggle pattern. Blocking also ends any mutual follow
+in both directions as a transaction — otherwise a block wouldn't actually "immediately hide
+interaction" if a stale mutual-follow relationship survived it. A block or "blocked by" relationship
+now renders a privacy-safe surface instead of the full profile (doc: "Restricted/deleted/block
+relationship uses privacy-safe surface") — the blocked-by-them case shows a generic "not available"
+message rather than confirming to the blocked visitor that they were specifically blocked.
+
+### High: the profile query had no status check at all
+`db.user.findUnique` had no `where: { status }` filter, so a `SUSPENDED`/`PENDING_DELETION`/`DELETED`
+account's full profile (bio, takes, everything) still rendered normally to any visitor. Matches the
+doc's own account-deletion copy in `components/profile/account-danger-zone.tsx` ("restricts your
+profile") — that restriction was promised at the point of deletion but never actually implemented on
+the page itself. Fixed: non-owners see a privacy-safe "not available" state for any non-`ACTIVE`
+status; the owner can still see their own profile regardless (so they can navigate to Settings).
+
+### High: "More" menu (Report/Block/Mute) built on a component that already existed, fully built, completely unused
+`components/ui/dropdown.tsx` is a real, working Radix dropdown wrapper — confirmed via search it was
+never imported anywhere in the app before this change. Wired it into a new `ProfileActionsMenu`
+(Report via the existing `POST /api/v1/reports` USER target, Mute, Block-with-confirmation). The
+Block-confirmation flow nests a `ConfirmationDialog` trigger inside a `DropdownMenu.Item`, a
+known-tricky Radix composition (the menu closing can unmount the dialog trigger before it opens) —
+verified with a real `userEvent` interaction test, not just read from code, since this exact pattern
+is easy to get wrong silently.
+
+### Medium: prediction accuracy was read from counters that are never updated
+`Profile.predictionCorrect`/`predictionTotal` are set once at onboarding (always 0) and never
+incremented anywhere — confirmed via repo-wide search, no `PredictionResult` row is ever created in
+this codebase at all. **This means predictions are never actually resolved against real game
+outcomes anywhere in the app** — a real gap, not scoped to fix here (it's a resolution-pipeline gap,
+not a profile-page bug), but worth flagging loudly since `app/(app)/arena/page.tsx` has the exact
+same dead-counter bug for Phase 13 to pick up. Fixed narrowly for this page: accuracy is now computed
+live from real `Prediction`/`PredictionResult` rows (currently always "no resolved predictions yet"
+for every user, honestly, since resolution doesn't exist yet — not a fake number). Also implemented
+the doc's privacy rule for predictions: an unlocked pick's `selection` is concealed from everyone but
+the owner ("not active private choice before lock").
+
+### Found and wired: `privacySettings.profileDiscoverable` was stored and never read
+Confirmed via search: the API validates and persists this field but nothing ever consumed it.
+Wired it into `generateMetadata`'s `robots` directive (noindex when `false`), alongside noindex for
+deleted/suspended/restricted profiles per the doc's SEO section. This is an inference, not something
+the doc names explicitly by field — flagging that rather than presenting it as directly specified.
+
+### Also fixed
+Avatar/favorite teams (resolved from the stored team-ID array) now actually render in the header —
+previously nothing read `Profile.avatarUrl` or `favoriteTeams` on this page at all. Badges moved out
+of the tab list into the reputation summary per the doc's section order, with a real "How reputation
+works" breakdown sourced from the actual `FAN_SCORE_POINTS` table instead of an invented explanation.
+The profile query now uses an explicit `select` rather than a broad `include`, so private fields
+(email, role, moderation flags) can't leak onto this page even by future accident. Added real
+cursor-based "Load more" to all four list tabs instead of an unbounded query.
+
+### Flagged, not built — needs a product decision, not a code fix
+A full browsable followers/following list. The doc's layout section only requires the *counts* in the
+sidebar (done, real), not a list UI — but the "Assumptions and decisions" section states follower
+lists are public, which only means something if a list view exists somewhere. Not built here to stay
+scoped to what the page's own layout section actually calls for; flagging the ambiguity rather than
+guessing at a full new feature.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (45/45, no regressions). Added
+`tests/unit/profile-actions.test.tsx` (5 new tests) covering the follow optimistic-update/rollback,
+the Block confirmation-then-API-call flow via real `userEvent` clicks (not just a render check --
+this is exactly the kind of nested-Radix interaction that can silently misbehave), and Unblock. Added
+2 new integration tests to `tests/integration/database-flows.test.ts` (blocks/mutes round-trip,
+block-ends-mutual-follow) — gated behind `RUN_DATABASE_TESTS` like the rest of that file. Same
+verification gap as Phase 11: no local Postgres available to actually run the gated integration
+tests, and no live-Preview check possible this session (Vercel MCP/GitHub tooling still down) —
+stated plainly rather than presented as equally verified to Phases 5–10.
+
 ## Next batches (not yet crawled)
-Phases 1–5 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
-per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
-Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 6 (Games page deep-dive) is next.
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search) and
+12 (Profile) are code-complete and pushed but **not yet opened as PRs or live-verified** — blocked on
+Vercel MCP/GitHub tooling access this session (Vercel MCP connector disconnected mid-session, no `gh`
+CLI or accessible GitHub token in this environment); both need a retry or manual PR creation before
+merge review.
+
+## PHASE 13 — MY ARENA (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase13-my-arena`, pushed. Cross-checked against `docs/pages/MY_ARENA.md`.
+
+### High: two of the doc's seven layout sections didn't exist at all
+"Your Predictions" and "Conversations" had zero UI anywhere on the page — not a rendering bug, the
+sections were simply never built. Added both: Predictions shows the viewer's own picks (open/locked/
+resolved, real `Prediction`/`PredictionResult` data); Conversations shows real replies to the
+viewer's own takes (`Take.parentId` pointing at one of their takes). Flagging plainly: the doc also
+says "mentions" belong in Conversations, and no @mention feature exists anywhere in this codebase
+(no parsing, no model) — not built here, out of scope for a page-level fix.
+
+### High: "Happening Now" and "Recommended takes" weren't personalized despite their names/section intent
+`Happening Now`'s query (`db.game.findMany({ where: { status: { in: ["LIVE","SCHEDULED"] } } } })`)
+returned any 3 live/scheduled games platform-wide — no filter on `GameFollow` or
+`Profile.favoriteTeams` at all, despite the doc specifying "followed/team-interest live GameCards."
+"Recommended takes" was the newest 4 takes platform-wide, completely unrelated to who the viewer
+follows — not a "Following" feed by any definition, just recent activity mislabeled as personalized.
+Fixed: Happening Now now filters on real `GameFollow` rows and the viewer's real `favoriteTeams`,
+LIVE only per the doc; replaced "Recommended takes" with a real Following section querying takes from
+followed users, matching the doc's actual section 6.
+
+### High: "Current ranking" wasn't a ranking
+`db.user.count({ where: { fanScoreEvents: { some: {} } } })` counts how many users have ever earned
+any Fan Score event — it has no relationship to *this* user's rank. Removed the stat rather than ship
+a number that looks like real personalization but isn't; a real leaderboard-position query is real
+work (needs a windowed rank over all users' summed scores), not something to fake with a placeholder
+that happens to render a plausible-looking `#N`.
+
+### Medium: prediction accuracy read from the same dead counters Phase 12 found
+`Profile.predictionCorrect`/`predictionTotal` are set once at onboarding and never updated anywhere —
+confirmed (again) via repo-wide search, no `PredictionResult` is ever created in this codebase.
+Same root cause as the Phase 12 finding, same fix applied here: computed live from real `Prediction`/
+`PredictionResult` rows instead of the stale counters. **This is now confirmed across two independent
+pages relying on the same broken data path** — worth a decision on building the actual prediction-
+resolution pipeline (presumably triggered when a `Game` goes `FINAL`), since nothing currently ever
+creates a `PredictionResult` row at all, anywhere.
+
+### Added: mobile URL-backed filter tabs, per the doc's own accessibility note
+The doc requires "URL-backed filter tabs For you/Predictions/Replies/Communities" on mobile while
+desktop shows the full 720/320 section grid at once. Built as real `<Link>`s (not an ARIA-tablist
+widget) directly per the doc's Accessibility/SEO line: "Tabs are links because they change
+URL-filtered views." Desktop ignores the `?view=` param and renders every section; mobile shows only
+the matching section via `hidden lg:block` on each section wrapper. "Improve Your Arena" isn't gated
+by any tab — it's a persistent nudge, not filterable content.
+
+### Added: server-side block/mute filtering
+The doc requires it explicitly ("Server filters blocks, mutes, removed/private content"), and neither
+the Following feed nor Conversations existed before this phase to filter in the first place. Both now
+exclude authors the viewer has blocked, has been blocked by, or has muted.
+
+### Added: noindex metadata
+The doc requires "noindex/no-store" for this personalized, per-session page; had no metadata export
+at all before. Added `robots: { index: false, follow: false }`; `no-store` is covered by the existing
+`export const dynamic = "force-dynamic"`, the same mechanism every other dynamic page in this app
+already relies on for this — no dedicated Cache-Control wiring exists anywhere else in the codebase
+either, so this isn't a new gap specific to this page.
+
+### Flagged, not built — needs a decision, not a code fix
+Community cards now show a real "N takes this week" activity count (computed live) instead of the
+static description they showed before, but this isn't true **unread** tracking — that would need a
+per-member `lastVisitedAt`-style field, which doesn't exist in the schema. Flagging the gap rather
+than presenting an activity count as if it were the doc's "unread activity" requirement.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions -- this
+page has no existing dedicated test file, matching precedent: Phase 12's profile page is also a
+Server Component page without one). Same verification gap as Phases 11–12: no local Postgres to
+exercise a real end-to-end block/mute-filtering round trip, and no live-Preview check possible this
+session — stated plainly rather than presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search), 12
+(Profile), and 13 (My Arena) are code-complete and pushed but **not yet opened as PRs or
+live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP connector
+disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all three need
+a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase12-profile`, and
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase13-my-arena`. Phase 4 is
+audit-only, awaiting Babs's decision per the three options laid out there (now: following the
+roadmap, blocked on `BALLDONTLIE_KEY`). The prediction-resolution-pipeline gap found independently in
+both Phase 12 and Phase 13 (no `PredictionResult` is ever created anywhere) is worth a standing
+decision of its own, separate from either page.
+
+## PHASE 14 — HALL OF FLAME (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase14-hall-of-flame`, pushed. Cross-checked against `docs/pages/HALL_OF_FLAME.md`.
+
+### High: the period/sport selectors were a dead `<form>` — nothing was ever filtered by them
+No `action`, no `onSubmit`, no wiring from the selects to the query at all — "Apply" did nothing.
+The query itself ignored period entirely (`orderBy: [{ periodStart: "desc" }, { rank: "asc" }]` with
+no `where: { period }`), so whichever period the generation job most recently wrote won, regardless
+of what was selected. Made the period selector real and URL-backed (`?period=`). Removed "Sport"
+entirely rather than wire it to fake data: confirmed via source that
+`lib/services/hall-of-flame-job.ts` never sets `leagueId` on the entries it creates, so nothing real
+ever backed that filter — it would have "worked" as a control that always returned the same results
+regardless of selection, arguably worse than an obviously-dead one.
+
+### High: a real eligibility rule silently never fired — reports were hardcoded to 0
+`lib/scoring/hall-of-flame.ts`'s `hallScore` correctly excludes any take with `reports > 2` (matches
+the doc: "not currently sanctioned"), but `lib/services/hall-of-flame-job.ts` called it with
+`reports: 0` hardcoded for every candidate, always — so a take could accumulate any number of real
+reports and still rank, even top the list. Fixed: the job now joins real `Report` counts per take
+(`groupBy` on `targetType: "TAKE"`). Added an integration regression test that reports a take 3 times
+and asserts it never enters the `HallOfFlameEntry` table at all after the ranking job runs — asserted
+against the table directly rather than the top-50 response slice, since a real, populated database
+could otherwise push a low-scoring take out of the visible list for an unrelated reason and mask a
+regression here.
+
+### High: no Top 3 podium, no "How ranking works" explanation — both explicitly required, neither existed
+The doc's layout puts a distinct top-3 featured section (item 4) before the ranked list 4–50 (item 5),
+plus an explanation in the header and again in a footer (items 1 and 6). The old page was one flat
+`<ol>` covering ranks 1–50 with zero explanation of the methodology anywhere. Added a real top-3
+podium (author, evidence snippet, score) and a "How ranking works" explainer that states the actual
+formula plainly — including that "quality" is a take-length proxy, not a claim of deeper analysis it
+doesn't make. Documenting the real formula honestly here, not a more sophisticated-sounding version
+of it.
+
+### Found, not built — needs a product/schema decision, not a code fix
+**The doc's Category tabs (Predictors/Debaters/Community builders) have no backing data model at
+all.** Confirmed via `prisma/schema.prisma`: `HallOfFlameEntry` has no category field, and ranks
+individual `Take` rows only — one global score per take, no per-user aggregation of any kind. Building
+"Predictors" would require ranking users by prediction accuracy (a completely different computation
+from take-scoring); "Debaters" and "Community builders" have no defined metric anywhere in the
+codebase either. This isn't a labeling mismatch like Phase 9/10's tab-name discrepancies — the
+feature as documented cannot be built without new aggregation logic and likely new schema, which is a
+real scoping decision, not something to fake with tabs that would filter nothing. Did not build it.
+
+**No scheduled job exists anywhere, contradicting the doc's own stated assumption** ("Version 1
+rankings recompute on a scheduled job"). Confirmed: `vercel.json`'s crons are all SCOUT-related (same
+finding as Phase 4's sports-sync gap), and `generateHallOfFlame` is only reachable via an admin-only
+`POST /api/v1/jobs/hall-of-flame` — meaning rankings are only ever as fresh as whenever an admin last
+triggered it by hand, possibly never. Not adding a 7th cron unilaterally on a Hobby-plan project
+(Phase 4 already found Hobby-plan crons only run daily, which constrains what "scheduled" can even
+mean here) — this needs a scoping decision, flagged rather than silently worked around.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions). Added 1
+new integration test (reports-exclusion regression, described above) — 12 integration tests now
+gated behind `RUN_DATABASE_TESTS`, same as every prior phase's additions. Same verification gap as
+Phases 11–13: no local Postgres to run the gated integration tests, no live-Preview check possible
+this session — stated plainly rather than presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search), 12
+(Profile), 13 (My Arena), and 14 (Hall of Flame) are code-complete and pushed but **not yet opened as
+PRs or live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP
+connector disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all
+four need a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`.../claude/phase12-profile`, `.../claude/phase13-my-arena`, and `.../claude/phase14-hall-of-flame`.
+Phase 4 is audit-only, awaiting Babs's decision per the three options laid out there (now: following
+the roadmap, blocked on `BALLDONTLIE_KEY`). Two standing decisions now flagged across multiple
+phases: the prediction-resolution pipeline (Phases 12 and 13 both found no `PredictionResult` is ever
+created) and whether/how to build real scheduled-job infrastructure beyond SCOUT on a Hobby-plan
+project (Phase 4's sports sync and Phase 14's Hall of Flame ranking both need one and neither has it).
+
+## PHASE 15 — NOTIFICATIONS (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase15-notifications`, pushed. Cross-checked against `docs/pages/NOTIFICATIONS.md`.
+
+### High: opening a notification never marked it read
+Only the bulk "Mark all read" button did anything — individual rows were plain `<a href>` tags with
+no mutation attached, so a notification's unread state never cleared just by actually reading it
+(contradicts the doc's explicit "Opening a notification marks it read" requirement). Built a real
+per-row mark-on-click that fires the existing, already-correct `POST /api/v1/notifications/read`
+without blocking navigation on it — the doc only requires the read state land after a real navigation
+intent (the click itself), not that navigation wait on the network round trip.
+
+### High: no category tabs, no Today/Earlier this week/Older grouping, no Load More
+The page was a flat, `take: 50`-capped list with none of the doc's structure. Added the doc's tabs
+(All/Replies/Predictions/Games/Communities/Safety), URL-backed, mapped to real `NotificationType`
+values; added the missing date-bucket grouping; added real cursor-based Load More. Flagging a real
+mapping gap: `NotificationType` has 9 real values but the doc's tab list only names 5 categories —
+`FOLLOW` and `BADGE` don't fit any named tab. Rather than force them into an ill-fitting category,
+they only ever appear under All. `DEBATE` was folded into Communities and `REACTION` into Replies as
+the closest reasonable fit — both inferred, not directly specified, flagging that explicitly.
+
+### High: every row showed the exact same generic text regardless of what happened
+"Open the related activity" was hardcoded for every notification type, discarding the real `actor`
+relation and the real `payload` JSON (MODERATION notifications already write a real
+`{action, reason}` payload — confirmed via the moderation-action handler — that nothing ever read).
+Built real per-type messages (e.g. "{name} followed you", "Your content was removed: {reason}")
+instead of a single boilerplate line for every event.
+
+### High: block/mute did nothing to stop notifications, contradicting the doc directly
+The doc requires "Block/mute prevents future ordinary notifications." Confirmed via the `follows`
+POST handler: it creates a FOLLOW notification unconditionally, with no check of the recipient's
+block/mute state toward the actor at all — Phase 12 added Block/Mute *models* and an API surface, but
+nothing anywhere checks them at notification-creation time. Fixed at the one real creation site that
+exists today (FOLLOW, in the `follows` handler) — the follow itself still succeeds, only the
+notification it would otherwise generate is suppressed. Whether a blocked user should even be able to
+follow the person who blocked them is a separate, broader enforcement question (flagged for Phase 17,
+not fixed here — this phase's scope is notification suppression, not follow-eligibility). Added an
+integration regression test.
+
+### Medium: "Mark all read confirms for large count" — added, with an inferred threshold
+No confirmation existed for any count before. The doc doesn't specify what "large" means numerically
+— picked 10 as a reasonable threshold and flagged it plainly as inferred, not a documented value that
+should be treated as authoritative.
+
+### Also fixed
+Added `robots: { index: false, follow: false }` (doc: "noindex/no-store"; page had no metadata
+export at all). Added a visually-hidden "Unread:" prefix on unread rows for the doc's "unread text is
+explicit" accessibility requirement.
+
+### Found, not built — needs a decision, not a code fix
+Deleted/private notification targets don't get the doc's "neutral unavailable state" — building this
+would mean a per-type existence check for every rendered row (a real N+1 query cost on a list page,
+one extra query per notification just to pre-validate a target that in practice almost always still
+exists). Not built blind; the underlying detail pages already `notFound()` reasonably if a target is
+genuinely gone, just without notification-specific messaging.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions). Added 1
+new integration test (block-suppresses-follow-notification regression) — 13 integration tests now
+gated behind `RUN_DATABASE_TESTS`. Same verification gap as Phases 11–14: no local Postgres to run
+the gated integration tests, no live-Preview check possible this session — stated plainly rather than
+presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11–15 (Search,
+Profile, My Arena, Hall of Flame, Notifications) are code-complete and pushed but **not yet opened as
+PRs or live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP
+connector disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all
+five need a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`.../claude/phase12-profile`, `.../claude/phase13-my-arena`, `.../claude/phase14-hall-of-flame`, and
+`.../claude/phase15-notifications`. Phase 4 is audit-only, awaiting Babs's decision per the three
+options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`). Standing decisions
+flagged across multiple phases: the prediction-resolution pipeline (Phases 12, 13), scheduled-job
+infrastructure beyond SCOUT (Phases 4, 14), and now whether a blocked user should be able to follow
+their blocker at all (Phase 15, flagged forward to Phase 17). Full Phase 23 accessibility audit (axe
+scans) and full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything.
+Phase 16 (Settings) is next.
