@@ -281,14 +281,65 @@ This is dead weight at best and unnecessary live attack surface at best-case-not
 `/api/admin-auth` is a real, callable, rate-limited password-guess endpoint with no UI in front of
 it). Worth an explicit call from Babs: delete the whole legacy layer, or is any of it still needed?
 
-## PHASE 4 — REAL SPORTS DATA (audit complete, needs Babs's decision — not fixed, per instruction)
+## PHASE 4 — REAL SPORTS DATA
 
-### 4. CONFIRMED: the "LIVE" game on Production right now is 100% fabricated — and there's zero live-data code anywhere
-Full audit of the sports-data architecture, as asked. Short version: there isn't one yet, and that
-turns out to be *documented, intentional* project scope, not sloppiness — but it collides with
-where the audit has gotten the rest of the app.
+**Babs's direction after the initial audit: follow the roadmap's documented adapter architecture,
+get the Games tab showing real games/scores, don't fabricate.** Built it — draft PR #11
+(`claude/phase1-audit-phase4`). **Currently blocked on a working `BALLDONTLIE_KEY`, not on code.**
 
-**No live sports-data integration exists in code, at all.** Confirmed via repo-wide search:
+### Built: `lib/sports/provider.ts` / `balldontlie.ts` / `sync.ts`
+A `SportsProvider` interface (matches `docs/ROADMAP.md`'s "provider-neutral game adapter" framing —
+a future provider swap won't touch call sites), a real `BallDontLieProvider` implementation against
+balldontlie.io's actual documented NBA/NFL endpoints (verified against their live docs, not
+memory), and a sync function that upserts real games into the existing `Team`/`League`/`Game`
+tables — not a separate live-only data path — so takes/debates/predictions keep working against real
+games via the schema's normal foreign keys.
+
+**No cron used, deliberately:** this project is on Vercel's Hobby plan, where crons only run daily
+(`666d204 fix: reduce crons to daily for Vercel Hobby plan`) — useless for live scores. Sync instead
+triggers off real page traffic: first request past a 30-second cooldown (reusing the existing
+`RateLimitBucket`-backed `checkRateLimit` helper as the gate) fetches fresh data; every request
+inside the cooldown just reads the DB. Also keeps requests within the provider's per-minute rate
+limit for free.
+
+### 🔴 Blocked: `BALLDONTLIE_KEY` is invalid — confirmed live, not assumed
+Deployed the adapter to a real Preview build and tested it against the actual Vercel-injected key via
+a throwaway diagnostic route (removed before the final commit — it exposed key-shape info
+unauthenticated, not shippable). **Result: 401 Unauthorized on both NBA and NFL**, confirmed three
+separate ways (plain header, `Bearer`-prefixed, whitespace-trimmed) specifically to rule out a
+client-side formatting mistake before concluding the credential itself is bad. Also found: the stored
+value has a stray leading tab character, worth cleaning up regardless once a real key is set.
+
+**This is the third credential this audit has found present-in-Vercel-but-broken**, after the wrong
+Supabase project (1b, now fixed) and the swapped Google OAuth Client ID/Secret (item 2, still open).
+Worth Babs doing a broader sweep of recently-added credentials generally, not just patching this one
+in isolation — three for three so far.
+
+**To finish once a working key exists:** wire `syncTodaysGames()` into `/games` and the homepage,
+verify real games render end-to-end, and filter the fabricated seed game (`providerRef` starting with
+`demo-`) out of user-facing current/live views so real and fake data don't coexist. Not done yet
+because doing it against a confirmed-broken key would just silently do nothing while looking finished
+— exactly the failure mode this audit exists to catch, not repeat.
+
+### A bug caught in my own first draft, worth flagging on its own
+The first version silently treated a 401 as "no games today" (reasoning: balldontlie licenses
+NBA/NFL separately, so a 401 on one league under an otherwise-valid key is a real, expected case) —
+but that made a fully invalid key indistinguishable from genuinely-zero-games, the same
+swallowed-failure-as-empty-state pattern this whole audit has been removing elsewhere. Caught it via
+the raw-response diagnostic before it shipped; now logs loudly on 401/403 instead of returning
+silently empty.
+
+**Verification:** typecheck/lint/build clean, 31/31 unit tests passing (4 new, covering the
+postponed/scheduled/final/live status mapping — the one piece of pure logic here). Full
+integration behavior (real DB upsert, real page rendering) isn't verifiable until the key works.
+
+### Background: why this gap exists (for context, not action — see resolution above)
+Short version: there wasn't any live-data code at all, and that turned out to be *documented,
+intentional* project scope, not sloppiness — but it collided with where the audit had gotten the
+rest of the app by the time this was found.
+
+**No live sports-data integration existed in code, at all, before PR #11.** Confirmed via repo-wide
+search:
 `balldontlie` (case-insensitive) appears in zero source files — only in this task doc. `BALLDONTLIE_KEY`
 (the real env var actually present in Vercel, both targets) doesn't even match the naming convention
 the app's own `lib/env.ts` schema expects (`SPORTS_API_BASE_URL`/`SPORTS_API_KEY`), and those two
@@ -325,28 +376,12 @@ documentation/foundation-building phase. But this audit has been closing the gap
 genuinely works end-to-end, Google OAuth is one credential-swap away from working. The moment a real
 visitor can actually reach the product, a fabricated "LIVE" score with a real-looking clock and
 period stops being an acceptable placeholder and starts being something a real user could reasonably
-feel misled by. **Not fixed here, by design** — per your instruction, this item needs your judgment
-call, not a unilateral fix. Three real options, not picking one for you:
+feel misled by.
 
-- **(a) Build the real integration now.** Needs you to confirm/pick a provider — is
-  `BALLDONTLIE_KEY`'s presence in Vercel a signal balldontlie.io is the intended one, and if so, does
-  the current plan actually cover live scores (not just historical stats) at a usable rate limit for
-  the leagues you want? This is real feature work (the adapter layer ROADMAP.md describes was never
-  built, not just an API key away) — polling, caching, provider-failure handling, a real
-  `Game`-syncing job — not a quick patch.
-- **(b) Filter seed/demo data out of user-facing "current"/"live" surfaces now, show the honest empty
-  states Phase 1 already built.** Low-risk, code-only, uses the existing `providerRef` "demo-" prefix
-  convention already established by the seed script itself as the filter signal (no schema migration
-  needed). Tradeoff: the product would show literally no games to any real visitor until (a) happens
-  — a stark, honest emptiness instead of a compelling-but-fake one.
-- **(c) Keep the demo game visible short-term but relabel it honestly** (a "Preview data" badge
-  instead of "LIVE," a real/obviously-fake score presentation). Smallest change, but Phase 30's "no
-  fake live scores" bar reads as a hard minimum, not a "labeled fake scores are fine" bar — worth you
-  weighing whether a label actually clears that requirement or just softens it.
-
-Also worth a decision alongside this: the `BALLDONTLIE_KEY` env var itself, since it's currently
-100% inert — either it's step one of option (a) and should stay, or it's a vestigial artifact from
-an earlier plan and should be removed like `CLERK_PUBLISHABLE_KEY` was.
+**Babs's call: build the real integration (option a), following the roadmap's adapter architecture
+rather than a quick patch or filtering to empty states.** See the top of this section for what's
+built and what's still blocking it (a working `BALLDONTLIE_KEY`). The fabricated seed game is still
+live on Production right now, unfiltered, pending that key.
 
 ### 5. Three tables have RLS enabled but zero policies
 `ModerationAction`, `RateLimitBucket`, `VerificationToken` on `wleunpfiokcdbuydkhho`. Add explicit
