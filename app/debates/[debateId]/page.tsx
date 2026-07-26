@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { DebateVote } from "@/components/actions/debate-vote";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { PageHeading } from "@/components/layout/page-heading";
@@ -11,18 +12,31 @@ export default async function DebateDetail({
   params: Promise<{ debateId: string }>;
 }) {
   const { debateId } = await params;
-  const debate = await db.debate.findFirst({
-    where: { OR: [{ id: debateId }, { slug: debateId }] },
-    include: {
-      creator: true,
-      options: {
-        orderBy: { displayOrder: "asc" },
-        include: { _count: { select: { votes: true } } },
+  const [session, debate] = await Promise.all([
+    auth(),
+    db.debate.findFirst({
+      where: { OR: [{ id: debateId }, { slug: debateId }] },
+      include: {
+        creator: true,
+        options: {
+          orderBy: { displayOrder: "asc" },
+          include: { _count: { select: { votes: true } } },
+        },
+        takes: { where: { status: "ACTIVE" }, include: { author: true } },
       },
-      takes: { where: { status: "ACTIVE" }, include: { author: true } },
-    },
-  });
+    }),
+  ]);
   if (!debate) notFound();
+
+  const myVote = session?.user?.id
+    ? await db.vote.findUnique({
+        where: {
+          userId_debateId: { userId: session.user.id, debateId: debate.id },
+        },
+        select: { debateOptionId: true },
+      })
+    : null;
+
   const total = debate.options.reduce(
     (sum, option) => sum + option._count.votes,
     0,
@@ -37,9 +51,14 @@ export default async function DebateDetail({
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="grid gap-3" aria-labelledby="positions">
           <h2 id="positions" className="font-display text-2xl font-black">
-            Choose your position
+            Positions
           </h2>
-          <DebateVote debateId={debate.id} options={debate.options} />
+          <DebateVote
+            debateId={debate.id}
+            options={debate.options}
+            initialSelected={myVote?.debateOptionId ?? undefined}
+            disabled={debate.status !== "OPEN"}
+          />
           {debate.options.map((option) => (
             <Card key={option.id} className="flex items-center justify-between">
               <div>
@@ -78,6 +97,14 @@ export default async function DebateDetail({
             <p className="text-text-secondary text-sm">Created by</p>
             <p className="font-bold">{debate.creator.displayName}</p>
             <p className="text-text-secondary mt-4 text-sm">{total} votes</p>
+            {debate.closesAt && (
+              <p className="text-text-muted mt-1 text-xs">
+                Closes{" "}
+                <time dateTime={debate.closesAt.toISOString()}>
+                  {debate.closesAt.toLocaleDateString()}
+                </time>
+              </p>
+            )}
           </Card>
         </aside>
       </div>

@@ -483,7 +483,7 @@ async function handlePost(request: Request, context: Context) {
         options: z
           .array(z.string().trim().min(1).max(80))
           .min(2)
-          .max(6)
+          .max(4)
           .refine(
             (options) =>
               new Set(options.map((option) => option.toLowerCase())).size ===
@@ -598,53 +598,43 @@ async function handlePost(request: Request, context: Context) {
     });
     if (!option)
       return apiError("INVALID_OPTION", "That option is not available.", 409);
-    try {
-      const vote = await db.vote.create({
-        data: {
-          userId,
-          debateId: parsed.data.debateId,
-          debateOptionId: option.id,
-          kind: VoteKind.DEBATE_OPTION,
-        },
-      });
-      const options = await db.debateOption.findMany({
-        where: { debateId: parsed.data.debateId },
-        orderBy: { displayOrder: "asc" },
-        select: {
-          id: true,
-          _count: { select: { votes: true } },
-        },
-      });
-      const total = options.reduce(
-        (sum, debateOption) => sum + debateOption._count.votes,
-        0,
-      );
-      return apiSuccess(
-        {
-          vote,
-          total,
-          results: options.map((debateOption) => ({
-            optionId: debateOption.id,
-            votes: debateOption._count.votes,
-            percentage: total
-              ? Number(((debateOption._count.votes / total) * 100).toFixed(2))
-              : 0,
-          })),
-        },
-        201,
-      );
-    } catch (error) {
-      if (
-        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-        error.code !== "P2002"
-      )
-        throw error;
-      return apiError(
-        "DUPLICATE_VOTE",
-        "You already voted in this debate.",
-        409,
-      );
-    }
+    // upsert (not create): a fan can change their declared position on an
+    // open debate. The unique constraint is on (userId, debateId), so
+    // switching from one option to another is a normal update, not a
+    // duplicate-vote conflict.
+    const vote = await db.vote.upsert({
+      where: { userId_debateId: { userId, debateId: parsed.data.debateId } },
+      update: { debateOptionId: option.id },
+      create: {
+        userId,
+        debateId: parsed.data.debateId,
+        debateOptionId: option.id,
+        kind: VoteKind.DEBATE_OPTION,
+      },
+    });
+    const options = await db.debateOption.findMany({
+      where: { debateId: parsed.data.debateId },
+      orderBy: { displayOrder: "asc" },
+      select: {
+        id: true,
+        _count: { select: { votes: true } },
+      },
+    });
+    const total = options.reduce(
+      (sum, debateOption) => sum + debateOption._count.votes,
+      0,
+    );
+    return apiSuccess({
+      vote,
+      total,
+      results: options.map((debateOption) => ({
+        optionId: debateOption.id,
+        votes: debateOption._count.votes,
+        percentage: total
+          ? Number(((debateOption._count.votes / total) * 100).toFixed(2))
+          : 0,
+      })),
+    });
   }
   if (resource === "polls") {
     const parsed = await parseJson(

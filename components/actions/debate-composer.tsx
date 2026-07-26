@@ -8,20 +8,34 @@ import { Field, Input, Textarea } from "@/components/ui/form-controls";
 
 import { apiAction } from "./api-action";
 
+const MIN_POSITIONS = 2;
+const MAX_POSITIONS = 4;
+
 export function DebateComposer() {
   const router = useRouter();
+  const [positions, setPositions] = useState(["", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function updatePosition(index: number, value: string) {
+    setPositions((current) =>
+      current.map((position, i) => (i === index ? value : position)),
+    );
+  }
+  function addPosition() {
+    if (positions.length < MAX_POSITIONS) setPositions((c) => [...c, ""]);
+  }
+  function removePosition(index: number) {
+    if (positions.length > MIN_POSITIONS)
+      setPositions((current) => current.filter((_, i) => i !== index));
+  }
 
   async function submit(formData: FormData) {
     setLoading(true);
     setError("");
     const title = String(formData.get("title") ?? "").trim();
     const prompt = String(formData.get("prompt") ?? "").trim();
-    const options = [
-      String(formData.get("option1") ?? "").trim(),
-      String(formData.get("option2") ?? "").trim(),
-    ];
+    const options = positions.map((position) => position.trim());
     const slug = `${title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
@@ -64,12 +78,46 @@ export function DebateComposer() {
           required
         />
       </Field>
-      <Field label="Option one" htmlFor="option1">
-        <Input id="option1" name="option1" maxLength={80} required />
-      </Field>
-      <Field label="Option two" htmlFor="option2">
-        <Input id="option2" name="option2" maxLength={80} required />
-      </Field>
+      <fieldset className="grid gap-3">
+        <legend className="font-bold">
+          Positions ({MIN_POSITIONS}–{MAX_POSITIONS})
+        </legend>
+        {positions.map((position, index) => (
+          <div key={index} className="flex items-end gap-2">
+            <div className="flex-1">
+              <Field
+                label={`Option ${index + 1}`}
+                htmlFor={`option${index + 1}`}
+              >
+                <Input
+                  id={`option${index + 1}`}
+                  value={position}
+                  onChange={(event) =>
+                    updatePosition(index, event.target.value)
+                  }
+                  maxLength={80}
+                  required
+                />
+              </Field>
+            </div>
+            {positions.length > MIN_POSITIONS && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => removePosition(index)}
+                aria-label={`Remove option ${index + 1}`}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+        ))}
+        {positions.length < MAX_POSITIONS && (
+          <Button type="button" variant="secondary" onClick={addPosition}>
+            Add another position
+          </Button>
+        )}
+      </fieldset>
       <Button loading={loading} type="submit">
         Publish debate
       </Button>

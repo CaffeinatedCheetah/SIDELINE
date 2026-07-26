@@ -36,8 +36,8 @@ describe("participation actions", () => {
       screen.getByLabelText("Context"),
       "Compare late-game execution from both teams.",
     );
-    await userEvent.type(screen.getByLabelText("Option one"), "Detroit");
-    await userEvent.type(screen.getByLabelText("Option two"), "Chicago");
+    await userEvent.type(screen.getByLabelText("Option 1"), "Detroit");
+    await userEvent.type(screen.getByLabelText("Option 2"), "Chicago");
     await userEvent.click(
       screen.getByRole("button", { name: "Publish debate" }),
     );
@@ -49,6 +49,28 @@ describe("participation actions", () => {
         body: expect.stringContaining('"options":["Detroit","Chicago"]'),
       }),
     );
+  });
+  it("supports adding a third and fourth debate position, capped at 4", async () => {
+    render(<DebateComposer />);
+    expect(
+      screen.queryByLabelText("Option 3"),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add another position" }),
+    );
+    expect(screen.getByLabelText("Option 3")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Add another position" }),
+    );
+    expect(screen.getByLabelText("Option 4")).toBeInTheDocument();
+    // 4 is the documented maximum -- the control to add a 5th must be gone.
+    expect(
+      screen.queryByRole("button", { name: "Add another position" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove option 4" }),
+    );
+    expect(screen.queryByLabelText("Option 4")).not.toBeInTheDocument();
   });
   it("posts a take through the authenticated API and refreshes the server-rendered feed", async () => {
     routerRefresh.mockClear();
@@ -68,7 +90,8 @@ describe("participation actions", () => {
     // page reload. Regression coverage for that exact bug.
     expect(routerRefresh).toHaveBeenCalledOnce();
   });
-  it("submits a selected debate option", async () => {
+  it("submits a selected debate option and refreshes the server-rendered results", async () => {
+    routerRefresh.mockClear();
     const fetch = vi.fn(() => response({ id: "vote-1" }));
     vi.stubGlobal("fetch", fetch);
     render(
@@ -83,6 +106,38 @@ describe("participation actions", () => {
     fireEvent.click(screen.getByLabelText("Option two"));
     await userEvent.click(screen.getByRole("button", { name: "Cast vote" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(routerRefresh).toHaveBeenCalledOnce();
+  });
+  it("lets a fan who already voted change their position", async () => {
+    const fetch = vi.fn(() => response({ id: "vote-1" }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <DebateVote
+        debateId="debate-1"
+        options={[
+          { id: "one", label: "Option one" },
+          { id: "two", label: "Option two" },
+        ]}
+        initialSelected="one"
+      />,
+    );
+    // Already voted -- the legend and button reflect that, and re-clicking
+    // the same option submits nothing (it's a no-op, not a duplicate vote).
+    expect(screen.getByText("Your position")).toBeInTheDocument();
+    const changeButton = screen.getByRole("button", {
+      name: "Change position",
+    });
+    expect(changeButton).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("Option two"));
+    expect(changeButton).toBeEnabled();
+    await userEvent.click(changeButton);
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/v1/votes",
+      expect.objectContaining({
+        body: JSON.stringify({ debateId: "debate-1", optionId: "two" }),
+      }),
+    );
   });
   it("toggles community membership", async () => {
     const fetch = vi.fn(() => response({ joined: true }));
