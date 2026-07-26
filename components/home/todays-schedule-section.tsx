@@ -48,6 +48,7 @@ export async function TodaysScheduleSection() {
               homeScore={game.homeScore ?? undefined}
               awayScore={game.awayScore ?? undefined}
               status={game.status}
+              scheduledAt={game.scheduledAt.toISOString()}
               statusText={
                 game.status === "LIVE"
                   ? `${game.period ?? "Live"} ${game.clock ?? ""}`.trim()

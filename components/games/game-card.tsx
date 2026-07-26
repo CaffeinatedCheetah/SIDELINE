@@ -1,5 +1,6 @@
 import { Clock, Flame } from "lucide-react";
 import Link from "next/link";
+import { GameTime } from "@/components/games/game-time";
 import { Badge, Card } from "@/components/ui/foundations";
 
 export interface GameCardProps {
@@ -13,6 +14,8 @@ export interface GameCardProps {
   awayScore?: number;
   status: "SCHEDULED" | "LIVE" | "FINAL" | "POSTPONED" | "CANCELED";
   statusText: string;
+  /** Required to show a start time when the game hasn't been played yet. */
+  scheduledAt?: string;
   conversationCount?: number;
   featured?: boolean;
 }
@@ -65,12 +68,17 @@ export function GameCard(p: GameCardProps) {
             <span className="truncate">{p.homeTeam}</span>
           </div>
         </div>
-        <div className="font-display grid shrink-0 gap-1 text-right text-3xl font-black tabular-nums">
+        <div className="grid shrink-0 justify-items-end gap-1 text-right">
           {hasScore ? (
-            <>
+            <div className="font-display grid gap-1 text-3xl font-black tabular-nums">
               <span>{p.awayScore}</span>
               <span>{p.homeScore}</span>
-            </>
+            </div>
+          ) : p.scheduledAt ? (
+            <div className="flex items-center gap-1.5">
+              <Clock aria-hidden className="text-text-secondary size-4" />
+              <GameTime scheduledAt={p.scheduledAt} />
+            </div>
           ) : (
             <Clock aria-hidden className="text-text-secondary size-7" />
           )}
