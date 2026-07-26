@@ -525,6 +525,83 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     ).toBe(0);
   });
 
+  it("blocking ends a mutual follow, and muting/unblocking round-trip cleanly", async () => {
+    authState.userId = ids.user;
+    await request("POST", "follows", {
+      userId: ids.secondUser,
+      follow: true,
+    });
+    authState.userId = ids.secondUser;
+    await request("POST", "follows", { userId: ids.user, follow: true });
+    expect(
+      await db.follow.count({
+        where: {
+          OR: [
+            { followerId: ids.user, followedId: ids.secondUser },
+            { followerId: ids.secondUser, followedId: ids.user },
+          ],
+        },
+      }),
+    ).toBe(2);
+
+    authState.userId = ids.user;
+    expect(
+      (await request("POST", "blocks", { userId: ids.secondUser, block: true }))
+        .status,
+    ).toBe(201);
+    expect(
+      await db.block.count({
+        where: { blockerId: ids.user, blockedId: ids.secondUser },
+      }),
+    ).toBe(1);
+    // Blocking must end any mutual follow in both directions -- doc:
+    // "block confirms and immediately hides interaction."
+    expect(
+      await db.follow.count({
+        where: {
+          OR: [
+            { followerId: ids.user, followedId: ids.secondUser },
+            { followerId: ids.secondUser, followedId: ids.user },
+          ],
+        },
+      }),
+    ).toBe(0);
+
+    expect(
+      (await request("POST", "mutes", { userId: ids.secondUser, mute: true }))
+        .status,
+    ).toBe(201);
+    expect(
+      await db.mute.count({
+        where: {
+          userId: ids.user,
+          targetType: "USER",
+          targetId: ids.secondUser,
+        },
+      }),
+    ).toBe(1);
+
+    await request("POST", "blocks", {
+      userId: ids.secondUser,
+      block: false,
+    });
+    await request("POST", "mutes", { userId: ids.secondUser, mute: false });
+    expect(
+      await db.block.count({
+        where: { blockerId: ids.user, blockedId: ids.secondUser },
+      }),
+    ).toBe(0);
+    expect(
+      await db.mute.count({
+        where: {
+          userId: ids.user,
+          targetType: "USER",
+          targetId: ids.secondUser,
+        },
+      }),
+    ).toBe(0);
+  });
+
   it("keeps Fan Score events idempotent and generates deterministic Hall entries", async () => {
     await recordFanScoreEvent(db, {
       userId: ids.user,
