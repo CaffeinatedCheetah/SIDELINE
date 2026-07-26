@@ -1076,6 +1076,108 @@ five need a retry or manual PR creation before merge review. GitHub's push outpu
 options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`). Standing decisions
 flagged across multiple phases: the prediction-resolution pipeline (Phases 12, 13), scheduled-job
 infrastructure beyond SCOUT (Phases 4, 14), and now whether a blocked user should be able to follow
-their blocker at all (Phase 15, flagged forward to Phase 17). Full Phase 23 accessibility audit (axe
-scans) and full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything.
-Phase 16 (Settings) is next.
+their blocker at all (Phase 15, flagged forward to Phase 17).
+
+## PHASE 16 — SETTINGS (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase16-settings`, pushed. Cross-checked against `docs/pages/SETTINGS.md`.
+
+### High: 5 of the page's settings were static text with zero functionality
+"Notification preferences," "Privacy controls," "Linked accounts," "Blocked and muted users," and
+"Security and data export" were a plain `<ul>` of text — not even links, let alone working
+controls. Given this audit's own standing rule ("every visible setting must persist or be removed"),
+this is the single most direct violation found across all 30 phases. Built real, independently-saving
+sections for Teams & interests, Notifications, Privacy & safety (including working Blocked/Muted
+lists with real Remove buttons), and Accessibility & data, matching the doc's exact 7-section list
+(Profile/Teams & interests/Notifications/Privacy & safety/Accessibility & data/Sessions/Account).
+"Linked accounts" and "Security and data export" are not built — see below.
+
+### High: two real, previously-unwired schema fields are now actually used
+`UserPreference.notificationSettings` and `.reducedData` are both real columns the app already
+validated and stored in places, but nothing anywhere ever read either back — confirmed via
+repo-wide search. Wired both into real forms. Went one step further on notifications: the "New
+followers" toggle is checked at the one real notification-creation site that exists (`FOLLOW`, in the
+`follows` handler) — proven to actually suppress a notification, not just persist to a JSON blob
+nobody consumes. The other four toggles (replies/predictions/games/communities) persist correctly but
+currently have nothing to gate, since — as Phases 13 and 15 already found — those notification types
+are never created anywhere in this codebase. Flagging that plainly rather than implying they're fully
+wired.
+
+### High: onboarding promises an avatar-setup path in Settings that didn't exist
+`app/(app)/onboarding/page.tsx`'s own copy says "Avatar setup is optional and remains available in
+Settings" — it wasn't; no avatar field existed anywhere on the Settings page. Added a real Avatar URL
+field (a plain URL input, consistent with how `avatarUrl` is already validated elsewhere in the API
+as `z.string().url()` — no file-upload infrastructure exists anywhere in this app to build a real
+upload flow, so this isn't a scoped-down version of something bigger, it matches the only pattern
+that already exists).
+
+### High: caught a dead control in my own first draft before it shipped
+The mobile section `<select>` initially had a no-op `onChange={() => {}}` while I worked out the
+server/client split for a Server Component page with a URL-driven active section. Caught it before
+committing — exactly the kind of control this entire audit exists to catch, and it would have shipped
+silently if not for a second pass. Built a real client wrapper (`SectionSelect`) that navigates to
+`?section=` on change, with a regression test.
+
+### Medium: added the doc's sticky dirty-state save bar
+The doc requires "Sticky save bar only when dirty; Cancel/reset" — no dirty-tracking existed at all
+before (the old page had one static Save button, always visible, for one merged Profile+Appearance
+form). Built a reusable `DirtyForm` wrapper: tracks real form-change events, shows Save/Cancel only
+once something's actually changed, and adds a `beforeunload` confirmation while dirty. Flagging a
+real, deliberate scope line: this covers tab-close/reload/typed-URL navigation only — intercepting
+in-app `<Link>` clicks (client-side App Router transitions) would need a router-patching library,
+which the App Router has no built-in hook for; not attempted here.
+
+### Also fixed
+Each section now saves independently via its own Server Action (doc: "Each section saves
+independently") — the old page merged displayName/bio/theme/reducedMotion into one form, and its
+`create` branch for a first-time Profile row hardcoded `favoriteSports`/`favoriteTeams` to empty
+arrays regardless of what a user might already have set elsewhere, a real (if edge-case, since
+Settings has no onboarding gate) silent-data-loss risk that the section split naturally eliminates.
+Added `robots: { index: false, follow: false }` (doc: "noindex/no-store"; page had no metadata export
+at all).
+
+### Found, not built — needs a decision, not a code fix
+**"Active sessions with Revoke" cannot be built as documented on this app's current auth
+configuration.** Confirmed via `auth.ts`: `session: { strategy: "jwt" }` — not `"database"` — so the
+`Session` Prisma table is never populated at all, regardless of how many devices are signed in. There
+is no server-side record of "other signed-in devices" to enumerate or revoke; the doc's whole
+"Sessions" section assumes session data that doesn't exist in this app's architecture. Rendered the
+section honestly (this device only, Sign Out only) instead of faking a device list. A real fix means
+switching the auth session strategy app-wide — a significant, blast-radius-wide infrastructure
+decision, not something to fold into a Settings-page phase.
+
+**"Sensitive changes require recent auth"** isn't implemented — this app has no password and no
+re-auth-challenge UI anywhere at all (confirmed in Phase 2's audit), so there's no existing mechanism
+to build a "recent auth" check on top of. Flagged, not faked.
+
+**"Linked accounts" and "Security and data export"** are not built. Linked accounts would show real
+`Account` rows (Google OAuth, dev credentials) but has no specified behavior beyond listing them in
+the doc's prose; data export is explicitly already deferred elsewhere in this codebase
+(`AccountDangerZone`'s "Request data export (coming soon)," left untouched). Neither was silently
+dropped — removed the dead list items only for the sections actually built this phase.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (43/43, 3 new: SectionSelect's
+real navigation, ManagedUserList's real remove-API-call, and its empty state). Added 1 new
+integration test (follows-notification-preference-suppression regression, mirroring Phase 15's
+block/mute suppression test) — 14 integration tests now gated behind `RUN_DATABASE_TESTS`. Same
+verification gap as Phases 11–15: no local Postgres to run the gated integration tests, no
+live-Preview check possible this session — stated plainly rather than presented as equally verified
+to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11–16 (Search,
+Profile, My Arena, Hall of Flame, Notifications, Settings) are code-complete and pushed but **not yet
+opened as PRs or live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel
+MCP connector disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment);
+all six need a retry or manual PR creation before merge review. GitHub's push output gives direct
+links: `https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`.../claude/phase12-profile`, `.../claude/phase13-my-arena`, `.../claude/phase14-hall-of-flame`,
+`.../claude/phase15-notifications`, and `.../claude/phase16-settings`. Phase 4 is audit-only,
+awaiting Babs's decision per the three options laid out there (now: following the roadmap, blocked on
+`BALLDONTLIE_KEY`). Standing decisions flagged across multiple phases: the prediction-resolution
+pipeline (Phases 12, 13), scheduled-job infrastructure beyond SCOUT (Phases 4, 14), whether a blocked
+user should be able to follow their blocker at all (Phase 15, forward to Phase 17), and now whether
+to switch the auth session strategy from JWT to database-backed (Phase 16, needed for real session
+management, a real infrastructure call beyond this audit's page-level scope). Full Phase 23
+accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending — not yet run,
+not blocked on anything. Phase 17 (Moderation) is next — the last of the phases in this batch.
