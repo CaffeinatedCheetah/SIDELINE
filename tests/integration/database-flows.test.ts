@@ -749,6 +749,63 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     });
   });
 
+  it("dismisses a report without a punitive action, gated to moderators", async () => {
+    const target = await db.take.create({
+      data: { authorId: ids.secondUser, body: "Dismiss-flow integration target." },
+    });
+    authState.userId = ids.user;
+    const report = await request("POST", "reports", {
+      targetType: "TAKE",
+      targetId: target.id,
+      reason: "INTEGRATION_DISMISS_TEST",
+    });
+    expect(report.status).toBe(201);
+    const reportId = (report.body.data as { id: string }).id;
+
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Regular users cannot dismiss reports.",
+        })
+      ).status,
+    ).toBe(403);
+
+    authState.userId = ids.moderator;
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Reviewed -- no violation found.",
+        })
+      ).status,
+    ).toBe(200);
+    const dismissed = await db.report.findUniqueOrThrow({
+      where: { id: reportId },
+    });
+    expect(dismissed.state).toBe("DISMISSED");
+    expect(dismissed.assignedModeratorId).toBe(ids.moderator);
+    // No ModerationAction row and no state change to the take -- dismissing
+    // is explicitly the no-action path.
+    expect(
+      await db.moderationAction.count({ where: { reportId } }),
+    ).toBe(0);
+    expect(
+      (await db.take.findUniqueOrThrow({ where: { id: target.id } })).status,
+    ).toBe("ACTIVE");
+
+    // Dismissing an already-resolved report is rejected, not silently
+    // accepted -- confirms the state-guard on the update, not just the
+    // happy path.
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Second attempt should fail.",
+        })
+      ).status,
+    ).toBe(404);
+
+    await db.take.delete({ where: { id: target.id } });
+  });
+
   it("starts account deletion and blocks subsequent mutations", async () => {
     authState.userId = ids.deletionUser;
     expect((await request("DELETE", "account")).status).toBe(200);
