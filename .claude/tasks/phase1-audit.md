@@ -626,8 +626,69 @@ Takes as "counter-takes" — evidence/commentary that never affects the vote tal
 **Verification:** typecheck/lint/build clean, 40/40 unit tests (3 new: add/remove positions capped at
 4, change-position flow, vote-refresh regression).
 
+## PHASE 10 — COMMUNITIES (complete, verified)
+
+Draft PR #17 (`claude/phase10-communities`). Cross-checked against `docs/pages/COMMUNITIES.md`
+(directory) and `docs/pages/COMMUNITY_DETAIL.md` (detail page).
+
+### High: community detail had the same fake-tab pattern already removed from Game Room
+`chat`/`polls`/`events`/`media` rendered unconditionally with generic "will appear here" copy,
+forever, for every community — none of these four are in the documented tab list
+(Feed/Games/Debates/Members/About). Removed them, same treatment as Phase 7's Game Room finding.
+
+### High: Debates and Members tabs were missing despite being fully buildable
+`Debate.communityId` is a real FK (a real debate is already attached to the seed community) and
+`CommunityMember` has real role/user data — built both as real tabs instead of fake placeholders.
+Flagged, not built: a "Games" tab per the doc — `Community` has no team/league/game relation
+anywhere in the schema, so nothing could populate it without a schema change.
+
+### High: `Community.avatarUrl` existed and was never rendered anywhere
+Same "real data column nobody reads" pattern this audit keeps finding. Added it to the detail hero.
+
+### Medium: joining silently recorded rule acceptance without ever showing the rules
+`rulesAcceptedAt` was stamped on join, but the user never saw the rules text first — a timestamp for
+consent that was never presented isn't real consent, and the doc requires "rule acceptance." Added an
+optional confirmation step to `JoinCommunityButton` (reuses the existing `ConfirmationDialog`)
+showing the real rules before joining, wired in on the detail page. Left the compact directory/
+homepage card's one-click join unchanged — a deliberate scope line, not an oversight.
+
+### High: the directory was a flat, unsorted list — no tabs, filters, or featured section
+Implemented the doc's Trending/Most active/New tabs (Trending approximated as 7-day take velocity,
+since there's no dedicated activity field) plus a featured community (highest member count,
+deterministic, non-auto-rotating — matching Phase 9's debate-center featured pattern). Flagged, not
+built: "Browse by team/league chips" — same schema gap as the Games tab.
+
+### Discrepancy flagged, not silently decided
+The original brief asked for "My Communities / Discover" tabs. The actual doc specifies Trending/Most
+active/New for the public directory; a separate "Your Communities" view belongs to My Arena (Phase 13)
+— two different pages in the documented design, not one.
+
+### Confirmed already correct
+Community creation is deferred by explicit design-doc decision ("never tease an unusable flow") —
+confirmed via search that no Create Community UI exists anywhere. Compliance, not a gap.
+
+### 🔍 Found live during verification, not built: the community owner never appears in its own Members list
+Deployed to a live Preview and fetched the community detail page's real data: the actual owner
+(`ownerId`) never showed up in the Members tab at all. Seed data only ever created a
+`CommunityMember` row for a regular member — never one for the owner. `Community.ownerId` and
+`CommunityMember` role=OWNER are two structurally separate things in this data model right now, and
+nothing guarantees they're kept in sync. A real owner visiting their own community wouldn't see
+themselves listed. Worth a decision: should creating/owning a community always also create an OWNER
+`CommunityMember` row? Not patched blind here — needs a call on intended behavior, and possibly a
+data-backfill for the existing seed community.
+
+Also found, not built: "Leave uses confirmation if the user has a role" (doc) — `JoinCommunityButton`
+doesn't know the viewer's role yet, so a moderator/owner leaving gets no extra confirmation warning.
+Scoped out of this PR (needs role plumbed into the component).
+
+**Verification:** typecheck/lint/build clean, 39/39 unit tests (1 new: rules-confirmation-before-
+joining flow, asserting the request doesn't fire until confirmed). Deployed to a live Preview and
+confirmed via direct HTTP fetch against the real database: tabs/featured section render correctly,
+fake tabs are completely gone, Debates tab shows the real debate with real vote percentages and the
+wired `closesAt`, avatar falls back to initials correctly.
+
 ## Next batches (not yet crawled)
-Phases 1–9 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+Phases 1–10 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
 per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
 Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 10 (Communities) is next.
+not yet run, not blocked on anything. Phase 11 (Search) is next.
