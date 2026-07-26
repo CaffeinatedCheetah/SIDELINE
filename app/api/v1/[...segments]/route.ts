@@ -835,21 +835,38 @@ async function handlePost(request: Request, context: Context) {
         where: { id: userId },
         select: { handle: true },
       });
+      // Block/mute prevents future ordinary notifications (doc:
+      // NOTIFICATIONS.md) -- the follow itself isn't blocked here, only the
+      // notification it would otherwise generate for the recipient.
+      const suppressed = await db.user.findFirst({
+        where: {
+          id: parsed.data.userId,
+          OR: [
+            { blocksMade: { some: { blockedId: userId } } },
+            { mutes: { some: { targetType: "USER", targetId: userId } } },
+          ],
+        },
+        select: { id: true },
+      });
       try {
         await db.$transaction([
           db.follow.create({
             data: { followerId: userId, followedId: parsed.data.userId },
           }),
-          db.notification.create({
-            data: {
-              recipientId: parsed.data.userId,
-              actorId: userId,
-              type: "FOLLOW",
-              entityType: "USER",
-              entityId: userId,
-              href: `/users/${actor.handle}`,
-            },
-          }),
+          ...(suppressed
+            ? []
+            : [
+                db.notification.create({
+                  data: {
+                    recipientId: parsed.data.userId,
+                    actorId: userId,
+                    type: "FOLLOW",
+                    entityType: "USER",
+                    entityId: userId,
+                    href: `/users/${actor.handle}`,
+                  },
+                }),
+              ]),
         ]);
       } catch (error) {
         if (

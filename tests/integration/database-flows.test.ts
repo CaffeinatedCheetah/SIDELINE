@@ -525,6 +525,39 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     ).toBe(0);
   });
 
+  it("suppresses the follow notification when the recipient has blocked the follower", async () => {
+    await db.block.create({
+      data: { blockerId: ids.secondUser, blockedId: ids.user },
+    });
+    authState.userId = ids.user;
+    const result = await request("POST", "follows", {
+      userId: ids.secondUser,
+      follow: true,
+    });
+    expect(result.status).toBe(201);
+    // The follow itself isn't blocked by this endpoint (only Phase 12's
+    // dedicated blocks endpoint enforces that) -- only the notification it
+    // would otherwise generate is suppressed, per the doc.
+    expect(
+      await db.follow.count({
+        where: { followerId: ids.user, followedId: ids.secondUser },
+      }),
+    ).toBe(1);
+    expect(
+      await db.notification.count({
+        where: {
+          recipientId: ids.secondUser,
+          actorId: ids.user,
+          type: "FOLLOW",
+        },
+      }),
+    ).toBe(0);
+    await db.follow.deleteMany({
+      where: { followerId: ids.user, followedId: ids.secondUser },
+    });
+    await db.block.deleteMany({
+      where: { blockerId: ids.secondUser, blockedId: ids.user },
+    });
   it("blocking ends a mutual follow, and muting/unblocking round-trip cleanly", async () => {
     authState.userId = ids.user;
     await request("POST", "follows", {
