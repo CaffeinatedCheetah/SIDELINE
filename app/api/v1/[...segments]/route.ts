@@ -880,6 +880,79 @@ async function handlePost(request: Request, context: Context) {
     }
     return apiSuccess({ following: true }, 201);
   }
+  if (resource === "blocks") {
+    const parsed = await parseJson(
+      request,
+      z.object({ userId: z.string().uuid(), block: z.boolean() }),
+    );
+    if (!parsed.success || parsed.data.userId === userId)
+      return apiError("INVALID_REQUEST", "Invalid block request.", 400);
+    if (!parsed.data.block) {
+      await db.block.deleteMany({
+        where: { blockerId: userId, blockedId: parsed.data.userId },
+      });
+      return apiSuccess({ blocked: false });
+    }
+    const target = await db.user.findFirst({
+      where: { id: parsed.data.userId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!target) return apiError("NOT_FOUND", "User not found.", 404);
+    await db.$transaction([
+      db.block.upsert({
+        where: {
+          blockerId_blockedId: {
+            blockerId: userId,
+            blockedId: parsed.data.userId,
+          },
+        },
+        update: {},
+        create: { blockerId: userId, blockedId: parsed.data.userId },
+      }),
+      // A block immediately ends any mutual follow -- matches the doc's
+      // "block confirms and immediately hides interaction."
+      db.follow.deleteMany({
+        where: {
+          OR: [
+            { followerId: userId, followedId: parsed.data.userId },
+            { followerId: parsed.data.userId, followedId: userId },
+          ],
+        },
+      }),
+    ]);
+    return apiSuccess({ blocked: true }, 201);
+  }
+  if (resource === "mutes") {
+    const parsed = await parseJson(
+      request,
+      z.object({ userId: z.string().uuid(), mute: z.boolean() }),
+    );
+    if (!parsed.success || parsed.data.userId === userId)
+      return apiError("INVALID_REQUEST", "Invalid mute request.", 400);
+    if (!parsed.data.mute) {
+      await db.mute.deleteMany({
+        where: { userId, targetType: "USER", targetId: parsed.data.userId },
+      });
+      return apiSuccess({ muted: false });
+    }
+    const target = await db.user.findFirst({
+      where: { id: parsed.data.userId, status: "ACTIVE" },
+      select: { id: true },
+    });
+    if (!target) return apiError("NOT_FOUND", "User not found.", 404);
+    await db.mute.upsert({
+      where: {
+        userId_targetType_targetId: {
+          userId,
+          targetType: "USER",
+          targetId: parsed.data.userId,
+        },
+      },
+      update: {},
+      create: { userId, targetType: "USER", targetId: parsed.data.userId },
+    });
+    return apiSuccess({ muted: true }, 201);
+  }
   if (resource === "saved-items") {
     const parsed = await parseJson(
       request,
@@ -928,6 +1001,44 @@ async function handlePost(request: Request, context: Context) {
       },
     });
     return apiSuccess({ saved: true }, 201);
+  }
+  if (resource === "reports" && segments[1] && segments[2] === "dismiss") {
+    // ReportState.DISMISSED exists in the schema but nothing ever set it --
+    // moderation-actions always requires a punitive action + resolves the
+    // report as a side effect, leaving no way to close out a report that
+    // turns out not to be a violation without faking an action against it.
+    const moderator = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!moderator || moderator.role === "USER")
+      return apiError("FORBIDDEN", "Moderator permission is required.", 403);
+    const parsed = await parseJson(
+      request,
+      z.object({ resolution: z.string().min(5).max(500) }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "A resolution note is required to dismiss a report.",
+        400,
+        parsed.error.flatten(),
+      );
+    const result = await db.report.updateMany({
+      where: { id: segments[1], state: { in: ["OPEN", "IN_REVIEW"] } },
+      data: {
+        state: "DISMISSED",
+        resolution: parsed.data.resolution,
+        assignedModeratorId: userId,
+      },
+    });
+    if (!result.count)
+      return apiError(
+        "NOT_FOUND",
+        "Report not found or already resolved.",
+        404,
+      );
+    return apiSuccess({ dismissed: true });
   }
   if (resource === "reports") {
     const parsed = await parseJson(

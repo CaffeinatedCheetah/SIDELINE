@@ -558,6 +558,81 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     await db.block.deleteMany({
       where: { blockerId: ids.secondUser, blockedId: ids.user },
     });
+  it("blocking ends a mutual follow, and muting/unblocking round-trip cleanly", async () => {
+    authState.userId = ids.user;
+    await request("POST", "follows", {
+      userId: ids.secondUser,
+      follow: true,
+    });
+    authState.userId = ids.secondUser;
+    await request("POST", "follows", { userId: ids.user, follow: true });
+    expect(
+      await db.follow.count({
+        where: {
+          OR: [
+            { followerId: ids.user, followedId: ids.secondUser },
+            { followerId: ids.secondUser, followedId: ids.user },
+          ],
+        },
+      }),
+    ).toBe(2);
+
+    authState.userId = ids.user;
+    expect(
+      (await request("POST", "blocks", { userId: ids.secondUser, block: true }))
+        .status,
+    ).toBe(201);
+    expect(
+      await db.block.count({
+        where: { blockerId: ids.user, blockedId: ids.secondUser },
+      }),
+    ).toBe(1);
+    // Blocking must end any mutual follow in both directions -- doc:
+    // "block confirms and immediately hides interaction."
+    expect(
+      await db.follow.count({
+        where: {
+          OR: [
+            { followerId: ids.user, followedId: ids.secondUser },
+            { followerId: ids.secondUser, followedId: ids.user },
+          ],
+        },
+      }),
+    ).toBe(0);
+
+    expect(
+      (await request("POST", "mutes", { userId: ids.secondUser, mute: true }))
+        .status,
+    ).toBe(201);
+    expect(
+      await db.mute.count({
+        where: {
+          userId: ids.user,
+          targetType: "USER",
+          targetId: ids.secondUser,
+        },
+      }),
+    ).toBe(1);
+
+    await request("POST", "blocks", {
+      userId: ids.secondUser,
+      block: false,
+    });
+    await request("POST", "mutes", { userId: ids.secondUser, mute: false });
+    expect(
+      await db.block.count({
+        where: { blockerId: ids.user, blockedId: ids.secondUser },
+      }),
+    ).toBe(0);
+    expect(
+      await db.mute.count({
+        where: {
+          userId: ids.user,
+          targetType: "USER",
+          targetId: ids.secondUser,
+        },
+      }),
+    ).toBe(0);
   });
 
   it("keeps Fan Score events idempotent and generates deterministic Hall entries", async () => {
@@ -608,6 +683,34 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         score: String(score),
       })),
     );
+  });
+
+  it("excludes heavily-reported takes from Hall of Flame ranking", async () => {
+    const reported = await db.take.create({
+      data: { authorId: ids.user, body: "A take reported three times." },
+    });
+    authState.userId = ids.secondUser;
+    for (let i = 0; i < 3; i++) {
+      await request("POST", "reports", {
+        targetType: "TAKE",
+        targetId: reported.id,
+        reason: `Integration report ${i}`,
+      });
+    }
+    authState.userId = ids.moderator;
+    const result = await request("POST", "jobs/hall-of-flame", {
+      period: "ALL_TIME",
+    });
+    expect(result.status).toBe(200);
+    // reports was previously hardcoded to 0 in the ranking job, so a
+    // reported take was still eligible and could still rank -- this is a
+    // real regression test for that exclusion (asserted directly against
+    // the table rather than the top-100 response slice, which a real,
+    // populated database could otherwise push this take out of anyway).
+    expect(
+      await db.hallOfFlameEntry.count({ where: { takeId: reported.id } }),
+    ).toBe(0);
+    await db.take.delete({ where: { id: reported.id } });
   });
 
   it("enforces moderation roles, content state, warnings, mutes, and bans", async () => {
@@ -754,6 +857,63 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
       where: { id: ids.secondUser },
       data: { status: "ACTIVE", bannedAt: null },
     });
+  });
+
+  it("dismisses a report without a punitive action, gated to moderators", async () => {
+    const target = await db.take.create({
+      data: { authorId: ids.secondUser, body: "Dismiss-flow integration target." },
+    });
+    authState.userId = ids.user;
+    const report = await request("POST", "reports", {
+      targetType: "TAKE",
+      targetId: target.id,
+      reason: "INTEGRATION_DISMISS_TEST",
+    });
+    expect(report.status).toBe(201);
+    const reportId = (report.body.data as { id: string }).id;
+
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Regular users cannot dismiss reports.",
+        })
+      ).status,
+    ).toBe(403);
+
+    authState.userId = ids.moderator;
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Reviewed -- no violation found.",
+        })
+      ).status,
+    ).toBe(200);
+    const dismissed = await db.report.findUniqueOrThrow({
+      where: { id: reportId },
+    });
+    expect(dismissed.state).toBe("DISMISSED");
+    expect(dismissed.assignedModeratorId).toBe(ids.moderator);
+    // No ModerationAction row and no state change to the take -- dismissing
+    // is explicitly the no-action path.
+    expect(
+      await db.moderationAction.count({ where: { reportId } }),
+    ).toBe(0);
+    expect(
+      (await db.take.findUniqueOrThrow({ where: { id: target.id } })).status,
+    ).toBe("ACTIVE");
+
+    // Dismissing an already-resolved report is rejected, not silently
+    // accepted -- confirms the state-guard on the update, not just the
+    // happy path.
+    expect(
+      (
+        await request("POST", `reports/${reportId}/dismiss`, {
+          resolution: "Second attempt should fail.",
+        })
+      ).status,
+    ).toBe(404);
+
+    await db.take.delete({ where: { id: target.id } });
   });
 
   it("starts account deletion and blocks subsequent mutations", async () => {
