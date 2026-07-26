@@ -148,6 +148,28 @@ describe("participation actions", () => {
     );
     await screen.findByRole("button", { name: "Leave community" });
   });
+  it("requires confirming the rules before joining when rules are provided", async () => {
+    const fetch = vi.fn(() => response({ joined: true }));
+    vi.stubGlobal("fetch", fetch);
+    render(
+      <JoinCommunityButton
+        communityId="community-1"
+        rules="Be specific. Debate the take, not the fan."
+      />,
+    );
+    // Clicking "Join community" opens a confirmation dialog rather than
+    // joining immediately -- the request must not fire yet.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Join community" }),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "Community rules" }),
+    ).toHaveTextContent("Be specific. Debate the take, not the fan.");
+    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    await screen.findByRole("button", { name: "Leave community" });
+  });
   it("toggles a take reaction optimistically and calls the real API", async () => {
     const fetch = vi.fn(() => response({ active: true }));
     vi.stubGlobal("fetch", fetch);
