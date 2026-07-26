@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/form-controls";
 import { apiAction } from "./api-action";
@@ -16,6 +17,7 @@ export function TakeComposer({
   parentId?: string;
   onPosted?: () => void;
 }) {
+  const router = useRouter();
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -33,6 +35,11 @@ export function TakeComposer({
       });
       setBody("");
       setMessage("Posted.");
+      // The take lists on every page that renders this composer (game room,
+      // debate detail, community detail, profile) are Server Components --
+      // a successful client fetch alone never causes them to refetch. Without
+      // this, a newly posted take is invisible until a manual page reload.
+      router.refresh();
       onPosted?.();
     } catch (error) {
       if (error instanceof Error && error.message !== "AUTH_REQUIRED")
