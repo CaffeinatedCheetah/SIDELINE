@@ -35,17 +35,11 @@
     { "source": "/onboarding",  "destination": "/onboarding.html"  }
   ],
   "crons": [
-    { "path": "/api/agent-scout",      "schedule": "0 8 * * *"  },
+    { "path": "/api/scout",            "schedule": "0 10 * * *" },
     { "path": "/api/agent-pulse",      "schedule": "0 10 * * *" },
     { "path": "/api/agent-social",     "schedule": "0 12 * * *" },
     { "path": "/api/agent-hunter",     "schedule": "0 14 * * *" },
     { "path": "/api/push-notify",      "schedule": "0 16 * * *" },
     { "path": "/api/agent-rivals",     "schedule": "0 18 * * *" }
-  ],
-  "functions": {
-    "api/agent-scout.js": {
-      "memory": 1024,
-      "maxDuration": 300
-    }
-  }
+  ]
 }

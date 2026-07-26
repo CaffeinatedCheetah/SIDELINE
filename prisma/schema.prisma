@@ -134,6 +134,13 @@ model User {
   displayName          String             @default("New fan")
   role                 UserRole           @default(USER)
   status               UserStatus         @default(ACTIVE)
+  // Identity/badge flag only -- deliberately NOT a UserRole value. Two
+  // moderator-permission checks in the API test `role === "USER"` as their
+  // "not privileged" condition, so any non-USER role is treated as
+  // moderator-or-above; adding a SYSTEM role would have silently granted an
+  // automated account moderation permissions. isOfficial is authorization-
+  // inert by design.
+  isOfficial           Boolean            @default(false)
   mutedUntil           DateTime?
   bannedAt             DateTime?
   onboardedAt          DateTime?
