@@ -15,7 +15,7 @@ vi.mock("@/auth", () => ({
       : null,
 }));
 
-import { DELETE, PATCH, POST } from "@/app/api/v1/[...segments]/route";
+import { DELETE, GET, PATCH, POST } from "@/app/api/v1/[...segments]/route";
 
 const runDatabaseTests = process.env.RUN_DATABASE_TESTS === "true";
 const databaseDescribe = runDatabaseTests ? describe : describe.skip;
@@ -49,6 +49,17 @@ async function request(
       : method === "PATCH"
         ? await PATCH(input, context(path))
         : await DELETE(input, context(path));
+  return {
+    status: response.status,
+    body: (await response.json()) as JsonBody,
+  };
+}
+
+async function get(path: string) {
+  const response = await GET(
+    new Request(`http://localhost/api/v1/${path}`),
+    context(path),
+  );
   return {
     status: response.status,
     body: (await response.json()) as JsonBody,
@@ -448,6 +459,39 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         })
       ).status,
     ).toBe(409);
+  });
+
+  it("searches by type and enforces the minimum query length", async () => {
+    authState.userId = ids.user;
+    const tooShort = await get("search?q=i&type=all");
+    expect(tooShort.body.data).toEqual({
+      users: [],
+      games: [],
+      communities: [],
+      debates: [],
+    });
+    const debates = await get(
+      `search?q=${encodeURIComponent("integration game")}&type=debates`,
+    );
+    const debateData = debates.body.data as { debates: { id: string }[] };
+    expect(debateData.debates.map((d) => d.id)).toContain(ids.debate);
+    // A debates-typed search must not also run the people/games/communities
+    // queries -- only the requested type comes back populated.
+    expect(
+      (debates.body.data as Record<string, unknown[]>).users,
+    ).toEqual([]);
+    const people = await get(
+      `search?q=${encodeURIComponent("Integration Fan")}&type=people`,
+    );
+    const peopleData = people.body.data as {
+      users: { handle: string }[];
+    };
+    expect(peopleData.users.map((u) => u.handle)).toContain(
+      `user-${suffix}`,
+    );
+    // Authored takes are deferred pending privacy/moderation review
+    // (docs/pages/SEARCH.md) -- the response shape must never include them.
+    expect(debates.body.data).not.toHaveProperty("takes");
   });
 
   it("creates polls and prevents duplicate votes", async () => {
