@@ -443,8 +443,60 @@ click the flame button, assert the exact `fetch` call and resulting DOM/aria sta
 render check). Deployed to a live Preview and confirmed via direct HTTP fetch against the real
 database: homepage returns 200, new labels/button text render correctly, zero stray Follow buttons.
 
+## PHASE 6 — GAMES PAGE (complete, verified)
+
+Draft PR #13 (`claude/phase1-audit-phase6`).
+
+### High: `GameCard` never showed a start time for a game before it had a score
+Just a bare clock icon with zero information, on every page that renders it (games list, homepage,
+today's schedule). Added a `GameTime` component using `useSyncExternalStore`'s server/client
+snapshot split — not a `setState`-in-effect, which this repo's ESLint config correctly rejects as an
+anti-pattern — so the viewer sees their *own* local time, not whatever timezone the Vercel runtime
+happens to default to. Confirmed via a real render test the actual local-time string appears (e.g.
+"Sat, Aug 1, 2:00 PM"), not just that a placeholder exists. **Same latent gap already exists in
+`app/games/[gameId]/page.tsx`'s `.toLocaleString()` call** — flagged for whichever phase covers that
+page, not touched here to stay scoped to the games list.
+
+### High: team logos never passed through on `/games`
+`GameCard` has supported `homeTeamLogo`/`awayTeamLogo` since it was built, and `Team.logoUrl` is a
+real fetched field — `/games/page.tsx` just never passed it, even though the sibling
+`TodaysScheduleSection` already does this correctly. Wired it through on both.
+
+### High: league filter hardcoded two options instead of querying real data
+`<Select>` had exactly `<option>NFL</option>`/`<option>NBA</option>` hardcoded in JSX. Now built from
+`db.league.findMany()` — will automatically pick up new leagues once Phase 4's real sync lands
+without another code change.
+
+### High: unbounded query, no date window — real scaling problem, not just a UX one
+No `take` limit, ordered only by `scheduledAt` ascending — meaning the *oldest* FINAL game ever
+synced would render first, ahead of anything live or upcoming, and the list would grow unbounded as
+real data accumulates. Added real date navigation (Previous day / Next day / Jump to today, reusing
+the same UTC day-boundary convention already established in `lib/db/todays-schedule.ts`) with a
+`take: 60` safety cap — matches how an actual sports scoreboard behaves: default to today, browse
+other days explicitly. Also added POSTPONED/CANCELED as selectable status filters (schema already
+supports both; only LIVE/SCHEDULED/FINAL were offered).
+
+**Nice unintended side effect, confirmed live:** the fabricated seed game's `scheduledAt` (computed
+relative to whenever `prisma/seed.ts` last ran, now days in the past) no longer falls inside "today"
+under this new date window, so it stopped appearing on `/games` entirely — an honest empty state
+instead of the stale fake "LIVE" game, with no special-casing needed. Doesn't change the item 4
+finding (the fake game is still live on the homepage's differently-scoped queries and in the DB
+itself), but worth noting as a small, real improvement that fell out of the date-window fix.
+
+### A bug caught in my own first draft, worth flagging on its own
+Building filter-preserving pagination links via `new URLSearchParams({...filters, date})` silently
+stringifies `undefined` values as the literal text `"undefined"` (verified this is real
+`URLSearchParams` behavior via `node -e`, not assumed) — would have shipped broken
+`?status=undefined&league=undefined` URLs on every date-navigation click whenever no filter was
+active, which is the common case. Caught it before committing; replaced with a small helper that
+drops empty values before building the query string.
+
+**Verification:** typecheck/lint/build clean, 34/34 unit tests (2 new, covering team-logo rendering
+and the real local-time string). Deployed to a live Preview and confirmed via direct HTTP fetch
+against the real database.
+
 ## Next batches (not yet crawled)
-Phases 1–5 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+Phases 1–6 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
 per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
 Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 6 (Games page deep-dive) is next.
+not yet run, not blocked on anything. Phase 7 (Game Room) is next.
