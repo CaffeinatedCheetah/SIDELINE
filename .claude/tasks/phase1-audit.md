@@ -928,6 +928,78 @@ a retry or manual PR creation before merge review. GitHub's push output gives di
 audit-only, awaiting Babs's decision per the three options laid out there (now: following the
 roadmap, blocked on `BALLDONTLIE_KEY`). The prediction-resolution-pipeline gap found independently in
 both Phase 12 and Phase 13 (no `PredictionResult` is ever created anywhere) is worth a standing
-decision of its own, separate from either page. Full Phase 23 accessibility audit (axe scans) and
-full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything. Phase 14
-(Hall of Flame) is next.
+decision of its own, separate from either page.
+
+## PHASE 14 — HALL OF FLAME (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase14-hall-of-flame`, pushed. Cross-checked against `docs/pages/HALL_OF_FLAME.md`.
+
+### High: the period/sport selectors were a dead `<form>` — nothing was ever filtered by them
+No `action`, no `onSubmit`, no wiring from the selects to the query at all — "Apply" did nothing.
+The query itself ignored period entirely (`orderBy: [{ periodStart: "desc" }, { rank: "asc" }]` with
+no `where: { period }`), so whichever period the generation job most recently wrote won, regardless
+of what was selected. Made the period selector real and URL-backed (`?period=`). Removed "Sport"
+entirely rather than wire it to fake data: confirmed via source that
+`lib/services/hall-of-flame-job.ts` never sets `leagueId` on the entries it creates, so nothing real
+ever backed that filter — it would have "worked" as a control that always returned the same results
+regardless of selection, arguably worse than an obviously-dead one.
+
+### High: a real eligibility rule silently never fired — reports were hardcoded to 0
+`lib/scoring/hall-of-flame.ts`'s `hallScore` correctly excludes any take with `reports > 2` (matches
+the doc: "not currently sanctioned"), but `lib/services/hall-of-flame-job.ts` called it with
+`reports: 0` hardcoded for every candidate, always — so a take could accumulate any number of real
+reports and still rank, even top the list. Fixed: the job now joins real `Report` counts per take
+(`groupBy` on `targetType: "TAKE"`). Added an integration regression test that reports a take 3 times
+and asserts it never enters the `HallOfFlameEntry` table at all after the ranking job runs — asserted
+against the table directly rather than the top-50 response slice, since a real, populated database
+could otherwise push a low-scoring take out of the visible list for an unrelated reason and mask a
+regression here.
+
+### High: no Top 3 podium, no "How ranking works" explanation — both explicitly required, neither existed
+The doc's layout puts a distinct top-3 featured section (item 4) before the ranked list 4–50 (item 5),
+plus an explanation in the header and again in a footer (items 1 and 6). The old page was one flat
+`<ol>` covering ranks 1–50 with zero explanation of the methodology anywhere. Added a real top-3
+podium (author, evidence snippet, score) and a "How ranking works" explainer that states the actual
+formula plainly — including that "quality" is a take-length proxy, not a claim of deeper analysis it
+doesn't make. Documenting the real formula honestly here, not a more sophisticated-sounding version
+of it.
+
+### Found, not built — needs a product/schema decision, not a code fix
+**The doc's Category tabs (Predictors/Debaters/Community builders) have no backing data model at
+all.** Confirmed via `prisma/schema.prisma`: `HallOfFlameEntry` has no category field, and ranks
+individual `Take` rows only — one global score per take, no per-user aggregation of any kind. Building
+"Predictors" would require ranking users by prediction accuracy (a completely different computation
+from take-scoring); "Debaters" and "Community builders" have no defined metric anywhere in the
+codebase either. This isn't a labeling mismatch like Phase 9/10's tab-name discrepancies — the
+feature as documented cannot be built without new aggregation logic and likely new schema, which is a
+real scoping decision, not something to fake with tabs that would filter nothing. Did not build it.
+
+**No scheduled job exists anywhere, contradicting the doc's own stated assumption** ("Version 1
+rankings recompute on a scheduled job"). Confirmed: `vercel.json`'s crons are all SCOUT-related (same
+finding as Phase 4's sports-sync gap), and `generateHallOfFlame` is only reachable via an admin-only
+`POST /api/v1/jobs/hall-of-flame` — meaning rankings are only ever as fresh as whenever an admin last
+triggered it by hand, possibly never. Not adding a 7th cron unilaterally on a Hobby-plan project
+(Phase 4 already found Hobby-plan crons only run daily, which constrains what "scheduled" can even
+mean here) — this needs a scoping decision, flagged rather than silently worked around.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions). Added 1
+new integration test (reports-exclusion regression, described above) — 12 integration tests now
+gated behind `RUN_DATABASE_TESTS`, same as every prior phase's additions. Same verification gap as
+Phases 11–13: no local Postgres to run the gated integration tests, no live-Preview check possible
+this session — stated plainly rather than presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search), 12
+(Profile), 13 (My Arena), and 14 (Hall of Flame) are code-complete and pushed but **not yet opened as
+PRs or live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP
+connector disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all
+four need a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`.../claude/phase12-profile`, `.../claude/phase13-my-arena`, and `.../claude/phase14-hall-of-flame`.
+Phase 4 is audit-only, awaiting Babs's decision per the three options laid out there (now: following
+the roadmap, blocked on `BALLDONTLIE_KEY`). Two standing decisions now flagged across multiple
+phases: the prediction-resolution pipeline (Phases 12 and 13 both found no `PredictionResult` is ever
+created) and whether/how to build real scheduled-job infrastructure beyond SCOUT on a Hobby-plan
+project (Phase 4's sports sync and Phase 14's Hall of Flame ranking both need one and neither has it).
+Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
+not yet run, not blocked on anything. Phase 15 (Notifications) is next.
