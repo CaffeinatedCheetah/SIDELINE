@@ -201,41 +201,51 @@ async function handleGet(request: Request, context: Context) {
       }),
     );
   if (resource === "search") {
-    const query = url.searchParams.get("q")?.trim();
+    // Doc-specified bounds (docs/pages/SEARCH.md: "Query 2-100 chars").
+    const query = url.searchParams.get("q")?.trim().slice(0, 100);
+    const type = url.searchParams.get("type") ?? "all";
     if (!query || query.length < 2)
       return apiSuccess({
         users: [],
-        teams: [],
         games: [],
         communities: [],
         debates: [],
-        takes: [],
       });
     const contains = { contains: query, mode: "insensitive" as const };
-    const [users, teams, communities, debates, takes] = await Promise.all([
-      db.user.findMany({
-        where: { OR: [{ displayName: contains }, { handle: contains }] },
-        select: { handle: true, displayName: true, image: true },
-        take: 5,
-      }),
-      db.team.findMany({
-        where: { OR: [{ name: contains }, { abbreviation: contains }] },
-        take: 5,
-      }),
-      db.community.findMany({
-        where: { name: contains, status: ContentStatus.ACTIVE },
-        take: 5,
-      }),
-      db.debate.findMany({
-        where: { title: contains, status: DebateStatus.OPEN },
-        take: 5,
-      }),
-      db.take.findMany({
-        where: { body: contains, status: ContentStatus.ACTIVE },
-        take: 5,
-      }),
+    const [users, games, communities, debates] = await Promise.all([
+      type === "all" || type === "people"
+        ? db.user.findMany({
+            where: { OR: [{ displayName: contains }, { handle: contains }] },
+            select: { handle: true, displayName: true, image: true },
+            take: 5,
+          })
+        : [],
+      type === "all" || type === "games"
+        ? db.game.findMany({
+            where: {
+              OR: [
+                { homeTeam: { OR: [{ name: contains }, { abbreviation: contains }] } },
+                { awayTeam: { OR: [{ name: contains }, { abbreviation: contains }] } },
+              ],
+            },
+            include: { homeTeam: true, awayTeam: true, league: true },
+            take: 5,
+          })
+        : [],
+      type === "all" || type === "communities"
+        ? db.community.findMany({
+            where: { name: contains, status: ContentStatus.ACTIVE },
+            take: 5,
+          })
+        : [],
+      type === "all" || type === "debates"
+        ? db.debate.findMany({
+            where: { title: contains, status: DebateStatus.OPEN },
+            take: 5,
+          })
+        : [],
     ]);
-    return apiSuccess({ users, teams, communities, debates, takes });
+    return apiSuccess({ users, games, communities, debates });
   }
   return apiError("NOT_FOUND", "API resource not found.", 404);
 }
