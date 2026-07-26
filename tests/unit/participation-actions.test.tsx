@@ -9,8 +9,9 @@ import { TakeCard } from "@/components/takes/take-card";
 import { PollVoteCard } from "@/components/games/poll-vote-card";
 
 const routerPush = vi.fn();
+const routerRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: routerPush, refresh: vi.fn() }),
+  useRouter: () => ({ push: routerPush, refresh: routerRefresh }),
 }));
 
 afterEach(() => vi.unstubAllGlobals());
@@ -49,7 +50,8 @@ describe("participation actions", () => {
       }),
     );
   });
-  it("posts a take through the authenticated API", async () => {
+  it("posts a take through the authenticated API and refreshes the server-rendered feed", async () => {
+    routerRefresh.mockClear();
     const fetch = vi.fn(() => response({ id: "take-1" }));
     vi.stubGlobal("fetch", fetch);
     render(<TakeComposer gameId="game-1" />);
@@ -60,6 +62,11 @@ describe("participation actions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Post take" }));
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     expect(screen.getByRole("status")).toHaveTextContent("Posted.");
+    // The take lists this composer feeds (game room, debate detail,
+    // community detail, profile) are Server Components -- without a
+    // router.refresh() a newly posted take never appears without a manual
+    // page reload. Regression coverage for that exact bug.
+    expect(routerRefresh).toHaveBeenCalledOnce();
   });
   it("submits a selected debate option", async () => {
     const fetch = vi.fn(() => response({ id: "vote-1" }));
