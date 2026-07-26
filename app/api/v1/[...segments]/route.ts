@@ -835,6 +835,17 @@ async function handlePost(request: Request, context: Context) {
         where: { id: userId },
         select: { handle: true },
       });
+      // Settings' "New followers" toggle (UserPreference.notificationSettings)
+      // is the one real enforcement point wired up in this phase -- the other
+      // categories don't have anything to gate yet since nothing currently
+      // creates REPLY/PREDICTION/GAME/COMMUNITY notifications at all.
+      const recipientPrefs = await db.userPreference.findUnique({
+        where: { userId: parsed.data.userId },
+        select: { notificationSettings: true },
+      });
+      const notifyOnFollow =
+        (recipientPrefs?.notificationSettings as { follows?: boolean } | null)
+          ?.follows !== false;
       // Block/mute prevents future ordinary notifications (doc:
       // NOTIFICATIONS.md) -- the follow itself isn't blocked here, only the
       // notification it would otherwise generate for the recipient.
@@ -853,6 +864,8 @@ async function handlePost(request: Request, context: Context) {
           db.follow.create({
             data: { followerId: userId, followedId: parsed.data.userId },
           }),
+          ...(notifyOnFollow
+            ? [
           ...(suppressed
             ? []
             : [
@@ -866,6 +879,8 @@ async function handlePost(request: Request, context: Context) {
                     href: `/users/${actor.handle}`,
                   },
                 }),
+              ]
+            : []),
               ]),
         ]);
       } catch (error) {

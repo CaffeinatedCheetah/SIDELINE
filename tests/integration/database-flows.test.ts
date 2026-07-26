@@ -525,9 +525,11 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     ).toBe(0);
   });
 
-  it("suppresses the follow notification when the recipient has blocked the follower", async () => {
-    await db.block.create({
-      data: { blockerId: ids.secondUser, blockedId: ids.user },
+  it("suppresses the follow notification when the recipient turned it off in Settings", async () => {
+    await db.userPreference.upsert({
+      where: { userId: ids.secondUser },
+      create: { userId: ids.secondUser, notificationSettings: { follows: false } },
+      update: { notificationSettings: { follows: false } },
     });
     authState.userId = ids.user;
     const result = await request("POST", "follows", {
@@ -535,9 +537,6 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
       follow: true,
     });
     expect(result.status).toBe(201);
-    // The follow itself isn't blocked by this endpoint (only Phase 12's
-    // dedicated blocks endpoint enforces that) -- only the notification it
-    // would otherwise generate is suppressed, per the doc.
     expect(
       await db.follow.count({
         where: { followerId: ids.user, followedId: ids.secondUser },
@@ -554,6 +553,10 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     ).toBe(0);
     await db.follow.deleteMany({
       where: { followerId: ids.user, followedId: ids.secondUser },
+    });
+    await db.userPreference.update({
+      where: { userId: ids.secondUser },
+      data: { notificationSettings: {} },
     });
     await db.block.deleteMany({
       where: { blockerId: ids.secondUser, blockedId: ids.user },
