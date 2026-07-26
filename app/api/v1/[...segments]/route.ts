@@ -864,11 +864,8 @@ async function handlePost(request: Request, context: Context) {
           db.follow.create({
             data: { followerId: userId, followedId: parsed.data.userId },
           }),
-          ...(notifyOnFollow
+          ...(notifyOnFollow && !suppressed
             ? [
-          ...(suppressed
-            ? []
-            : [
                 db.notification.create({
                   data: {
                     recipientId: parsed.data.userId,
@@ -881,7 +878,6 @@ async function handlePost(request: Request, context: Context) {
                 }),
               ]
             : []),
-              ]),
         ]);
       } catch (error) {
         if (
