@@ -18,7 +18,9 @@ describe("content cards", () => {
       />,
     );
     expect(screen.getByRole("article")).toHaveTextContent("Defense wins this.");
-    expect(screen.getByRole("button", { name: "12 flames" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Give flame, 12 total" }),
+    ).toBeEnabled();
   });
 
   it("calculates debate percentages from votes", () => {

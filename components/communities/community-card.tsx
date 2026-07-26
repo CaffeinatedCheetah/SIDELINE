@@ -1,15 +1,17 @@
 import { Users } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { JoinCommunityButton } from "@/components/actions/join-community-button";
 import { Avatar, Card } from "@/components/ui/foundations";
 import { formatCount } from "@/lib/utils";
 export function CommunityCard({
+  id,
   slug,
   name,
   description,
   members,
   joined = false,
 }: {
+  id: string;
   slug: string;
   name: string;
   description: string;
@@ -37,9 +39,11 @@ export function CommunityCard({
           <Users aria-hidden className="size-4" />
           {formatCount(members)} members
         </span>
-        <Button variant={joined ? "secondary" : "primary"} size="sm">
-          {joined ? "Joined" : "Join"}
-        </Button>
+        <JoinCommunityButton
+          communityId={id}
+          initialJoined={joined}
+          size="sm"
+        />
       </div>
     </Card>
   );
