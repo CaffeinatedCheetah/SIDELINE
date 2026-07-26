@@ -1001,5 +1001,81 @@ the roadmap, blocked on `BALLDONTLIE_KEY`). Two standing decisions now flagged a
 phases: the prediction-resolution pipeline (Phases 12 and 13 both found no `PredictionResult` is ever
 created) and whether/how to build real scheduled-job infrastructure beyond SCOUT on a Hobby-plan
 project (Phase 4's sports sync and Phase 14's Hall of Flame ranking both need one and neither has it).
-Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 15 (Notifications) is next.
+
+## PHASE 15 — NOTIFICATIONS (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase15-notifications`, pushed. Cross-checked against `docs/pages/NOTIFICATIONS.md`.
+
+### High: opening a notification never marked it read
+Only the bulk "Mark all read" button did anything — individual rows were plain `<a href>` tags with
+no mutation attached, so a notification's unread state never cleared just by actually reading it
+(contradicts the doc's explicit "Opening a notification marks it read" requirement). Built a real
+per-row mark-on-click that fires the existing, already-correct `POST /api/v1/notifications/read`
+without blocking navigation on it — the doc only requires the read state land after a real navigation
+intent (the click itself), not that navigation wait on the network round trip.
+
+### High: no category tabs, no Today/Earlier this week/Older grouping, no Load More
+The page was a flat, `take: 50`-capped list with none of the doc's structure. Added the doc's tabs
+(All/Replies/Predictions/Games/Communities/Safety), URL-backed, mapped to real `NotificationType`
+values; added the missing date-bucket grouping; added real cursor-based Load More. Flagging a real
+mapping gap: `NotificationType` has 9 real values but the doc's tab list only names 5 categories —
+`FOLLOW` and `BADGE` don't fit any named tab. Rather than force them into an ill-fitting category,
+they only ever appear under All. `DEBATE` was folded into Communities and `REACTION` into Replies as
+the closest reasonable fit — both inferred, not directly specified, flagging that explicitly.
+
+### High: every row showed the exact same generic text regardless of what happened
+"Open the related activity" was hardcoded for every notification type, discarding the real `actor`
+relation and the real `payload` JSON (MODERATION notifications already write a real
+`{action, reason}` payload — confirmed via the moderation-action handler — that nothing ever read).
+Built real per-type messages (e.g. "{name} followed you", "Your content was removed: {reason}")
+instead of a single boilerplate line for every event.
+
+### High: block/mute did nothing to stop notifications, contradicting the doc directly
+The doc requires "Block/mute prevents future ordinary notifications." Confirmed via the `follows`
+POST handler: it creates a FOLLOW notification unconditionally, with no check of the recipient's
+block/mute state toward the actor at all — Phase 12 added Block/Mute *models* and an API surface, but
+nothing anywhere checks them at notification-creation time. Fixed at the one real creation site that
+exists today (FOLLOW, in the `follows` handler) — the follow itself still succeeds, only the
+notification it would otherwise generate is suppressed. Whether a blocked user should even be able to
+follow the person who blocked them is a separate, broader enforcement question (flagged for Phase 17,
+not fixed here — this phase's scope is notification suppression, not follow-eligibility). Added an
+integration regression test.
+
+### Medium: "Mark all read confirms for large count" — added, with an inferred threshold
+No confirmation existed for any count before. The doc doesn't specify what "large" means numerically
+— picked 10 as a reasonable threshold and flagged it plainly as inferred, not a documented value that
+should be treated as authoritative.
+
+### Also fixed
+Added `robots: { index: false, follow: false }` (doc: "noindex/no-store"; page had no metadata
+export at all). Added a visually-hidden "Unread:" prefix on unread rows for the doc's "unread text is
+explicit" accessibility requirement.
+
+### Found, not built — needs a decision, not a code fix
+Deleted/private notification targets don't get the doc's "neutral unavailable state" — building this
+would mean a per-type existence check for every rendered row (a real N+1 query cost on a list page,
+one extra query per notification just to pre-validate a target that in practice almost always still
+exists). Not built blind; the underlying detail pages already `notFound()` reasonably if a target is
+genuinely gone, just without notification-specific messaging.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions). Added 1
+new integration test (block-suppresses-follow-notification regression) — 13 integration tests now
+gated behind `RUN_DATABASE_TESTS`. Same verification gap as Phases 11–14: no local Postgres to run
+the gated integration tests, no live-Preview check possible this session — stated plainly rather than
+presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11–15 (Search,
+Profile, My Arena, Hall of Flame, Notifications) are code-complete and pushed but **not yet opened as
+PRs or live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP
+connector disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all
+five need a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`.../claude/phase12-profile`, `.../claude/phase13-my-arena`, `.../claude/phase14-hall-of-flame`, and
+`.../claude/phase15-notifications`. Phase 4 is audit-only, awaiting Babs's decision per the three
+options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`). Standing decisions
+flagged across multiple phases: the prediction-resolution pipeline (Phases 12, 13), scheduled-job
+infrastructure beyond SCOUT (Phases 4, 14), and now whether a blocked user should be able to follow
+their blocker at all (Phase 15, flagged forward to Phase 17). Full Phase 23 accessibility audit (axe
+scans) and full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything.
+Phase 16 (Settings) is next.
