@@ -575,6 +575,34 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     );
   });
 
+  it("excludes heavily-reported takes from Hall of Flame ranking", async () => {
+    const reported = await db.take.create({
+      data: { authorId: ids.user, body: "A take reported three times." },
+    });
+    authState.userId = ids.secondUser;
+    for (let i = 0; i < 3; i++) {
+      await request("POST", "reports", {
+        targetType: "TAKE",
+        targetId: reported.id,
+        reason: `Integration report ${i}`,
+      });
+    }
+    authState.userId = ids.moderator;
+    const result = await request("POST", "jobs/hall-of-flame", {
+      period: "ALL_TIME",
+    });
+    expect(result.status).toBe(200);
+    // reports was previously hardcoded to 0 in the ranking job, so a
+    // reported take was still eligible and could still rank -- this is a
+    // real regression test for that exclusion (asserted directly against
+    // the table rather than the top-100 response slice, which a real,
+    // populated database could otherwise push this take out of anyway).
+    expect(
+      await db.hallOfFlameEntry.count({ where: { takeId: reported.id } }),
+    ).toBe(0);
+    await db.take.delete({ where: { id: reported.id } });
+  });
+
   it("enforces moderation roles, content state, warnings, mutes, and bans", async () => {
     const reportTarget = await db.take.create({
       data: {
