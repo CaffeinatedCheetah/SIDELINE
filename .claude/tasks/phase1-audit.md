@@ -844,10 +844,90 @@ Phases 1–10 are complete and shipped as draft PRs (see their sections above). 
 12 (Profile) are code-complete and pushed but **not yet opened as PRs or live-verified** — blocked on
 Vercel MCP/GitHub tooling access this session (Vercel MCP connector disconnected mid-session, no `gh`
 CLI or accessible GitHub token in this environment); both need a retry or manual PR creation before
-merge review. GitHub's push output gives direct links:
-`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search` and
-`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase12-profile`. Phase 4 is
+merge review.
+
+## PHASE 13 — MY ARENA (code complete, PR/live-verify blocked on tooling — see Phase 11)
+
+Branch `claude/phase13-my-arena`, pushed. Cross-checked against `docs/pages/MY_ARENA.md`.
+
+### High: two of the doc's seven layout sections didn't exist at all
+"Your Predictions" and "Conversations" had zero UI anywhere on the page — not a rendering bug, the
+sections were simply never built. Added both: Predictions shows the viewer's own picks (open/locked/
+resolved, real `Prediction`/`PredictionResult` data); Conversations shows real replies to the
+viewer's own takes (`Take.parentId` pointing at one of their takes). Flagging plainly: the doc also
+says "mentions" belong in Conversations, and no @mention feature exists anywhere in this codebase
+(no parsing, no model) — not built here, out of scope for a page-level fix.
+
+### High: "Happening Now" and "Recommended takes" weren't personalized despite their names/section intent
+`Happening Now`'s query (`db.game.findMany({ where: { status: { in: ["LIVE","SCHEDULED"] } } } })`)
+returned any 3 live/scheduled games platform-wide — no filter on `GameFollow` or
+`Profile.favoriteTeams` at all, despite the doc specifying "followed/team-interest live GameCards."
+"Recommended takes" was the newest 4 takes platform-wide, completely unrelated to who the viewer
+follows — not a "Following" feed by any definition, just recent activity mislabeled as personalized.
+Fixed: Happening Now now filters on real `GameFollow` rows and the viewer's real `favoriteTeams`,
+LIVE only per the doc; replaced "Recommended takes" with a real Following section querying takes from
+followed users, matching the doc's actual section 6.
+
+### High: "Current ranking" wasn't a ranking
+`db.user.count({ where: { fanScoreEvents: { some: {} } } })` counts how many users have ever earned
+any Fan Score event — it has no relationship to *this* user's rank. Removed the stat rather than ship
+a number that looks like real personalization but isn't; a real leaderboard-position query is real
+work (needs a windowed rank over all users' summed scores), not something to fake with a placeholder
+that happens to render a plausible-looking `#N`.
+
+### Medium: prediction accuracy read from the same dead counters Phase 12 found
+`Profile.predictionCorrect`/`predictionTotal` are set once at onboarding and never updated anywhere —
+confirmed (again) via repo-wide search, no `PredictionResult` is ever created in this codebase.
+Same root cause as the Phase 12 finding, same fix applied here: computed live from real `Prediction`/
+`PredictionResult` rows instead of the stale counters. **This is now confirmed across two independent
+pages relying on the same broken data path** — worth a decision on building the actual prediction-
+resolution pipeline (presumably triggered when a `Game` goes `FINAL`), since nothing currently ever
+creates a `PredictionResult` row at all, anywhere.
+
+### Added: mobile URL-backed filter tabs, per the doc's own accessibility note
+The doc requires "URL-backed filter tabs For you/Predictions/Replies/Communities" on mobile while
+desktop shows the full 720/320 section grid at once. Built as real `<Link>`s (not an ARIA-tablist
+widget) directly per the doc's Accessibility/SEO line: "Tabs are links because they change
+URL-filtered views." Desktop ignores the `?view=` param and renders every section; mobile shows only
+the matching section via `hidden lg:block` on each section wrapper. "Improve Your Arena" isn't gated
+by any tab — it's a persistent nudge, not filterable content.
+
+### Added: server-side block/mute filtering
+The doc requires it explicitly ("Server filters blocks, mutes, removed/private content"), and neither
+the Following feed nor Conversations existed before this phase to filter in the first place. Both now
+exclude authors the viewer has blocked, has been blocked by, or has muted.
+
+### Added: noindex metadata
+The doc requires "noindex/no-store" for this personalized, per-session page; had no metadata export
+at all before. Added `robots: { index: false, follow: false }`; `no-store` is covered by the existing
+`export const dynamic = "force-dynamic"`, the same mechanism every other dynamic page in this app
+already relies on for this — no dedicated Cache-Control wiring exists anywhere else in the codebase
+either, so this isn't a new gap specific to this page.
+
+### Flagged, not built — needs a decision, not a code fix
+Community cards now show a real "N takes this week" activity count (computed live) instead of the
+static description they showed before, but this isn't true **unread** tracking — that would need a
+per-member `lastVisitedAt`-style field, which doesn't exist in the schema. Flagging the gap rather
+than presenting an activity count as if it were the doc's "unread activity" requirement.
+
+**Verification:** typecheck/lint/build clean. `npm run test` clean (40/40, no regressions -- this
+page has no existing dedicated test file, matching precedent: Phase 12's profile page is also a
+Server Component page without one). Same verification gap as Phases 11–12: no local Postgres to
+exercise a real end-to-end block/mute-filtering round trip, and no live-Preview check possible this
+session — stated plainly rather than presented as equally verified to Phases 5–10.
+
+## Next batches (not yet crawled)
+Phases 1–10 are complete and shipped as draft PRs (see their sections above). Phases 11 (Search), 12
+(Profile), and 13 (My Arena) are code-complete and pushed but **not yet opened as PRs or
+live-verified** — blocked on Vercel MCP/GitHub tooling access this session (Vercel MCP connector
+disconnected mid-session, no `gh` CLI or accessible GitHub token in this environment); all three need
+a retry or manual PR creation before merge review. GitHub's push output gives direct links:
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase11-search`,
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase12-profile`, and
+`https://github.com/CaffeinatedCheetah/SIDELINE/pull/new/claude/phase13-my-arena`. Phase 4 is
 audit-only, awaiting Babs's decision per the three options laid out there (now: following the
-roadmap, blocked on `BALLDONTLIE_KEY`). Full Phase 23 accessibility audit (axe scans) and full Phase
-24 responsive matrix are still pending — not yet run, not blocked on anything. Phase 13 (My Arena) is
-next.
+roadmap, blocked on `BALLDONTLIE_KEY`). The prediction-resolution-pipeline gap found independently in
+both Phase 12 and Phase 13 (no `PredictionResult` is ever created anywhere) is worth a standing
+decision of its own, separate from either page. Full Phase 23 accessibility audit (axe scans) and
+full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything. Phase 14
+(Hall of Flame) is next.
