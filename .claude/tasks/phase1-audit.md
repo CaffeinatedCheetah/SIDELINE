@@ -6,16 +6,19 @@ without review. Return findings/diffs per item before moving to the next.
 ## 🚨 NEEDS A FOLLOW-UP FIX — Production is resolved, Preview is not
 
 ### 1b. DATABASE_URL/DIRECT_URL point at the WRONG Supabase project — RESOLVED on Production, still broken on Preview
-**Production is confirmed fixed.** Independently re-verified live (not just reasoning from env
-vars): `curl https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all now return the
-real rows from `wleunpfiokcdbuydkhho` — Detroit Lions/Chicago Bears (LIVE), Boston Celtics @
-Detroit Pistons (SCHEDULED), the real "Who has the NFC North's best defense?" debate, a populated
-Hall of Flame. This matches exactly what was in the correct project earlier in this audit, so
-`DATABASE_URL`/`DIRECT_URL` on the Production target were corrected at some point during this
-session (not by Claude Code — most likely Babs, directly in Vercel). Original root cause for
-context: `DATABASE_URL` was pointed at Vercel's auto-provisioned Supabase integration project
-(`sbdqmqzgtegemskpewaq`, zero tables) instead of `wleunpfiokcdbuydkhho` (the one with real schema,
-data, and the item 6–8 migrations).
+**Production is confirmed fixed — the database-project mismatch is resolved.** Independently
+re-verified live (not just reasoning from env vars): `curl
+https://sideline-wheat.vercel.app/games|/debates|/hall-of-flame|/` all now return rows from
+`wleunpfiokcdbuydkhho` (the correct project) instead of the empty one. This matches exactly what was
+in the correct project earlier in this audit, so `DATABASE_URL`/`DIRECT_URL` on the Production target
+were corrected at some point during this session (not by Claude Code — most likely Babs, directly in
+Vercel). Original root cause for context: `DATABASE_URL` was pointed at Vercel's auto-provisioned
+Supabase integration project (`sbdqmqzgtegemskpewaq`, zero tables) instead of `wleunpfiokcdbuydkhho`
+(the one with real schema, data, and the item 6–8 migrations).
+**Correction to how this was originally described:** "Detroit Lions/Chicago Bears (LIVE)" etc. are
+**not real sports data** — they're `prisma/seed.ts` fixture rows (`providerRef: "demo-nfl-live"`).
+1b's fix means the app is now correctly reading the right *database* — it says nothing about whether
+that database's game content is real, which it isn't. See item 4 (Phase 4) for the full finding.
 
 **Preview is NOT fixed — same bug, different target.** Confirmed via direct request (with the
 project's automation-bypass header) against the PR #5 preview deployment
@@ -278,12 +281,72 @@ This is dead weight at best and unnecessary live attack surface at best-case-not
 `/api/admin-auth` is a real, callable, rate-limited password-guess endpoint with no UI in front of
 it). Worth an explicit call from Babs: delete the whole legacy layer, or is any of it still needed?
 
-## HIGH
+## PHASE 4 — REAL SPORTS DATA (audit complete, needs Babs's decision — not fixed, per instruction)
 
-### 4. Confirm real vs. seeded sports data source
-`BALLDONTLIE_KEY` exists (real API). Only 2 rows in `Game`/2 in `League` in `wleunpfiokcdbuydkhho`
-— confirm live-sync gap vs. still-demo-data once 1b is resolved and the app is actually reading
-from the right project.
+### 4. CONFIRMED: the "LIVE" game on Production right now is 100% fabricated — and there's zero live-data code anywhere
+Full audit of the sports-data architecture, as asked. Short version: there isn't one yet, and that
+turns out to be *documented, intentional* project scope, not sloppiness — but it collides with
+where the audit has gotten the rest of the app.
+
+**No live sports-data integration exists in code, at all.** Confirmed via repo-wide search:
+`balldontlie` (case-insensitive) appears in zero source files — only in this task doc. `BALLDONTLIE_KEY`
+(the real env var actually present in Vercel, both targets) doesn't even match the naming convention
+the app's own `lib/env.ts` schema expects (`SPORTS_API_BASE_URL`/`SPORTS_API_KEY`), and those two
+*are* schema-validated but **never read anywhere else in the codebase** — setting them right now
+would do nothing, there's no code path that consumes them. `lib/services/` has no sports-provider
+file; `vercel.json`'s crons are all SCOUT-related, none sync Game/League/Team data. The only thing
+that has ever populated `Game`/`League`/`Team` is `prisma/seed.ts`, run once.
+
+**This is documented as deliberately deferred, not forgotten.** `docs/ROADMAP.md` explicitly lists
+"Named live-data vendor integration beyond the adapter contract" under **Deferred roadmap**, and
+describes the current state — "provider-neutral game adapter with deterministic development fixture
+data" — as the intended Phase 2 scope (no such adapter abstraction was actually built either, just
+the raw seed script). `docs/BUILD_PROGRESS.md`'s "Remaining gaps" section independently confirms:
+"Google OAuth, email delivery, and **the sports provider** require external credentials and provider
+setup" — the same category as items already known to need Babs's input. `.env.example` documents
+`SPORTS_API_BASE_URL`/`SPORTS_API_KEY` as the intended real-data toggle ("leave blank to use
+deterministic demo sports data") — aspirational documentation for a switch that was never wired up.
+
+**But: the specific game currently live on Production is fabricated, unlabeled, and being shown to
+real users as if genuine — confirmed via `prisma/seed.ts` itself.** The "LIVE" Chicago Bears 14 –
+Detroit Lions 17, "3rd quarter, 08:42" game referenced throughout this audit (including my own
+earlier "Production is fixed!" note on item 1b) is seed data: `providerRef: "demo-nfl-live"`,
+`scheduledAt`/`startedAt` computed relative to whenever the seed script last ran (not real game
+time), and the seed script's own closing log line reads `"Seeded FanTakes development data. All
+records are demo-only."` The companion "upcoming" NBA game (`demo-nba-upcoming`), the debate, the
+takes, and the community are all the same seed batch. This directly conflicts with several explicit,
+non-negotiable requirements elsewhere in the spec: "Remove fake 'LIVE' games from user-facing
+Production," "Do not show fabricated current scores," "no fake live scores" (Phase 30's minimum
+launch bar), and "Platform-generated content must be labeled honestly" (Phase 19).
+
+**The tension worth naming plainly:** deferring live-vendor integration was a reasonable call for a
+documentation/foundation-building phase. But this audit has been closing the gaps that stood between
+"nobody can reach this app" and "a real user can sign in and use it" — the DB is fixed, dev-auth
+genuinely works end-to-end, Google OAuth is one credential-swap away from working. The moment a real
+visitor can actually reach the product, a fabricated "LIVE" score with a real-looking clock and
+period stops being an acceptable placeholder and starts being something a real user could reasonably
+feel misled by. **Not fixed here, by design** — per your instruction, this item needs your judgment
+call, not a unilateral fix. Three real options, not picking one for you:
+
+- **(a) Build the real integration now.** Needs you to confirm/pick a provider — is
+  `BALLDONTLIE_KEY`'s presence in Vercel a signal balldontlie.io is the intended one, and if so, does
+  the current plan actually cover live scores (not just historical stats) at a usable rate limit for
+  the leagues you want? This is real feature work (the adapter layer ROADMAP.md describes was never
+  built, not just an API key away) — polling, caching, provider-failure handling, a real
+  `Game`-syncing job — not a quick patch.
+- **(b) Filter seed/demo data out of user-facing "current"/"live" surfaces now, show the honest empty
+  states Phase 1 already built.** Low-risk, code-only, uses the existing `providerRef` "demo-" prefix
+  convention already established by the seed script itself as the filter signal (no schema migration
+  needed). Tradeoff: the product would show literally no games to any real visitor until (a) happens
+  — a stark, honest emptiness instead of a compelling-but-fake one.
+- **(c) Keep the demo game visible short-term but relabel it honestly** (a "Preview data" badge
+  instead of "LIVE," a real/obviously-fake score presentation). Smallest change, but Phase 30's "no
+  fake live scores" bar reads as a hard minimum, not a "labeled fake scores are fine" bar — worth you
+  weighing whether a label actually clears that requirement or just softens it.
+
+Also worth a decision alongside this: the `BALLDONTLIE_KEY` env var itself, since it's currently
+100% inert — either it's step one of option (a) and should stay, or it's a vestigial artifact from
+an earlier plan and should be removed like `CLERK_PUBLISHABLE_KEY` was.
 
 ### 5. Three tables have RLS enabled but zero policies
 `ModerationAction`, `RateLimitBucket`, `VerificationToken` on `wleunpfiokcdbuydkhho`. Add explicit
@@ -298,6 +361,7 @@ See above. Quick cleanup, not blocked.
 Supabase linter flags it as INFO only.
 
 ## Next batches (not yet crawled)
-Phases 1–3 are complete — see their sections above. Phase 4 (real sports data) is next. Full Phase
-23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending — not yet
-run, not blocked on anything.
+Phases 1–4 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+per the three options laid out there, nothing implemented. Full Phase 23 accessibility audit (axe
+scans) and full Phase 24 responsive matrix are still pending — not yet run, not blocked on anything.
+Phase 5 (homepage functionality deep-dive) is next.
