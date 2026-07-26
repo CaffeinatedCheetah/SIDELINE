@@ -495,8 +495,54 @@ drops empty values before building the query string.
 and the real local-time string). Deployed to a live Preview and confirmed via direct HTTP fetch
 against the real database.
 
+## PHASE 7 — GAME ROOM (complete, verified)
+
+Draft PR #14 (`claude/phase1-audit-phase7`). Cross-checked every finding against the project's own
+design spec (`docs/pages/GAME_ROOM.md`), not just my own read of the code — the doc turned out to
+settle several of these decisively rather than leaving them to my judgment.
+
+### High: Chat, Stats, Highlights tabs — removed, not relabeled
+All three rendered unconditionally with copy ("... is quiet. Live updates appear here when
+available.") implying a working feature with no current data, for every game, forever. The design
+doc's documented section order has no chat/stats/highlights anywhere — confirmed these were never
+part of the plan, not a build-in-progress. Removed rather than relabeled: there's nothing real behind
+them to honestly call "coming soon."
+
+### High: Play-by-play tab — removed per the design doc's own explicit condition
+The doc says play-by-play should be "shown only if the provider adapter supplies verified data; it is
+not synthesized." No provider currently supplies this (not even Phase 4's real adapter fetches it),
+and there's no schema field to store it if it did. Removed for now rather than ship a
+permanently-empty tab; reintroduce once a provider with play-by-play support exists, per the doc's
+own stated condition.
+
+### High: poll voting was completely fake
+`PollCard` was rendered with `disabled` hardcoded, no `onChange`/`onVote` — despite the component
+fully supporting both and a real, working `POST /api/v1/poll-votes` endpoint already existing
+(closesAt check, duplicate-vote handling). Built `PollVoteCard` to wire them together, plus a real
+per-viewer "did I already vote" check so a returning voter doesn't see the poll as fresh again.
+
+### High: `LiveGameRoom` polled the real endpoint every 15s but only showed a status label
+Correctly matches the design doc's "poll every 15 seconds" spec, but only ever extracted `status`
+from the response — the actual score/period/clock shown in the page header were rendered once from
+the initial server request and frozen for the rest of the session, even though the same poll response
+already contains fresh values for all of them. Fixed to track and render the full live scoreboard,
+and to stop polling once the live-tracked status leaves LIVE (previously it would poll a finished
+game forever). `PageHeading`'s description is now skipped for LIVE games (`LiveGameRoom` owns that
+display) and shows the real final score for FINAL games instead of just the scheduled time. Made
+`PageHeading`'s `description` prop optional rather than pass an empty string to satisfy a required
+prop that didn't need to be one.
+
+**Verification:** typecheck/lint/build clean, 36/36 unit tests (3 new — real poll-vote API call +
+resulting disabled state, live scoreboard shows the real score/period/clock, and renders nothing at
+all for a non-live game). Deployed to a live Preview and confirmed via direct HTTP fetch against the
+real database: Chat/Stats/Highlights/Play-by-play are completely gone from the rendered HTML, and the
+live scoreboard shows the real `14–17 · 3rd 08:42 · LIVE · connected` — not the old static
+status-only line.
+
 ## Next batches (not yet crawled)
-Phases 1–6 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
+Phases 1–7 are complete — see their sections above. Phase 4 is audit-only, awaiting Babs's decision
 per the three options laid out there (now: following the roadmap, blocked on `BALLDONTLIE_KEY`).
 Full Phase 23 accessibility audit (axe scans) and full Phase 24 responsive matrix are still pending —
-not yet run, not blocked on anything. Phase 7 (Game Room) is next.
+not yet run, not blocked on anything. Phase 8 (Create Take) is next — note item 1 (RESOLVED section)
+already partially covers this; Phase 8 should verify the full authenticated post-and-see-it-appear
+flow now that dev-auth-on-Preview genuinely works, which wasn't possible earlier in the audit.
