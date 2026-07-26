@@ -1,9 +1,14 @@
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DebateVote } from "@/components/actions/debate-vote";
 import { Navbar } from "@/components/navigation/navbar";
 import { Field, Input } from "@/components/ui/form-controls";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/",
+}));
 
 describe("accessibility smoke checks", () => {
   it("has no detectable navigation violations", async () => {
