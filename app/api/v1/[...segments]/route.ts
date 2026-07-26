@@ -912,6 +912,44 @@ async function handlePost(request: Request, context: Context) {
     });
     return apiSuccess({ saved: true }, 201);
   }
+  if (resource === "reports" && segments[1] && segments[2] === "dismiss") {
+    // ReportState.DISMISSED exists in the schema but nothing ever set it --
+    // moderation-actions always requires a punitive action + resolves the
+    // report as a side effect, leaving no way to close out a report that
+    // turns out not to be a violation without faking an action against it.
+    const moderator = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!moderator || moderator.role === "USER")
+      return apiError("FORBIDDEN", "Moderator permission is required.", 403);
+    const parsed = await parseJson(
+      request,
+      z.object({ resolution: z.string().min(5).max(500) }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "A resolution note is required to dismiss a report.",
+        400,
+        parsed.error.flatten(),
+      );
+    const result = await db.report.updateMany({
+      where: { id: segments[1], state: { in: ["OPEN", "IN_REVIEW"] } },
+      data: {
+        state: "DISMISSED",
+        resolution: parsed.data.resolution,
+        assignedModeratorId: userId,
+      },
+    });
+    if (!result.count)
+      return apiError(
+        "NOT_FOUND",
+        "Report not found or already resolved.",
+        404,
+      );
+    return apiSuccess({ dismissed: true });
+  }
   if (resource === "reports") {
     const parsed = await parseJson(
       request,
