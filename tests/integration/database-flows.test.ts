@@ -525,6 +525,41 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     ).toBe(0);
   });
 
+  it("suppresses the follow notification when the recipient turned it off in Settings", async () => {
+    await db.userPreference.upsert({
+      where: { userId: ids.secondUser },
+      create: { userId: ids.secondUser, notificationSettings: { follows: false } },
+      update: { notificationSettings: { follows: false } },
+    });
+    authState.userId = ids.user;
+    const result = await request("POST", "follows", {
+      userId: ids.secondUser,
+      follow: true,
+    });
+    expect(result.status).toBe(201);
+    expect(
+      await db.follow.count({
+        where: { followerId: ids.user, followedId: ids.secondUser },
+      }),
+    ).toBe(1);
+    expect(
+      await db.notification.count({
+        where: {
+          recipientId: ids.secondUser,
+          actorId: ids.user,
+          type: "FOLLOW",
+        },
+      }),
+    ).toBe(0);
+    await db.follow.deleteMany({
+      where: { followerId: ids.user, followedId: ids.secondUser },
+    });
+    await db.userPreference.update({
+      where: { userId: ids.secondUser },
+      data: { notificationSettings: {} },
+    });
+  });
+
   it("keeps Fan Score events idempotent and generates deterministic Hall entries", async () => {
     await recordFanScoreEvent(db, {
       userId: ids.user,
