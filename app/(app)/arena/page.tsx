@@ -152,7 +152,12 @@ export default async function Arena({
           },
           orderBy: { createdAt: "desc" },
           take: 10,
-          include: { author: true, parent: { select: { body: true } } },
+          // See app/games/[gameId]/page.tsx for why these are scoped
+          // selects, not `author: true`.
+          include: {
+            author: { select: { displayName: true } },
+            parent: { select: { body: true } },
+          },
         })
       : Promise.resolve([]),
     followedIds.length
@@ -161,7 +166,7 @@ export default async function Arena({
           orderBy: { createdAt: "desc" },
           take: 6,
           include: {
-            author: true,
+            author: { select: { handle: true, displayName: true, image: true } },
             _count: { select: { reactions: true, replies: true } },
           },
         })

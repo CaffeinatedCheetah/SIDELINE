@@ -17,12 +17,17 @@ export default async function DebateDetail({
     db.debate.findFirst({
       where: { OR: [{ id: debateId }, { slug: debateId }] },
       include: {
-        creator: true,
+        // See app/games/[gameId]/page.tsx for why these are scoped
+        // selects, not `creator: true` / `author: true`.
+        creator: { select: { displayName: true } },
         options: {
           orderBy: { displayOrder: "asc" },
           include: { _count: { select: { votes: true } } },
         },
-        takes: { where: { status: "ACTIVE" }, include: { author: true } },
+        takes: {
+          where: { status: "ACTIVE" },
+          include: { author: { select: { displayName: true } } },
+        },
       },
     }),
   ]);

@@ -417,7 +417,9 @@ async function TakesTab({
     orderBy: { createdAt: "desc" },
     ...paged,
     include: {
-      author: true,
+      // See app/games/[gameId]/page.tsx for why this is a scoped select,
+      // not `author: true`.
+      author: { select: { handle: true, displayName: true, image: true } },
       _count: { select: { reactions: true, replies: true } },
     },
   });
