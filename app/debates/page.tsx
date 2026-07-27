@@ -13,6 +13,7 @@ type DebateListItem = Prisma.DebateGetPayload<{
   include: {
     options: { include: { _count: { select: { votes: true } } } };
     _count: { select: { comments: true } };
+    game: { include: { league: true } };
   };
 }>;
 type CommunityOption = Prisma.CommunityGetPayload<{
@@ -25,17 +26,22 @@ export const metadata: Metadata = {
   description: "Clear questions, accountable votes, and room to change minds.",
 };
 
-// Design spec (docs/pages/DEBATE_CENTER.md) calls for tabs Active/Closing
-// soon/Resolved with sport/community filters. "Closing soon" is anything
-// OPEN with a closesAt inside this window.
-const CLOSING_SOON_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-type Tab = "active" | "closing" | "resolved";
+// Tab set below deliberately does NOT match docs/pages/DEBATE_CENTER.md,
+// which specifies Active/Closing soon/Resolved (implemented that way in
+// this project's own Phase 9 launch-readiness audit, with this exact
+// Popular/Latest/Trending/Unanswered set flagged there as a doc conflict
+// at the time). This is a deliberate re-request against a visual reference
+// the doc doesn't reflect -- flagging the reversal explicitly rather than
+// silently re-implementing without noting it, per this project's own
+// standing pattern for doc/brief conflicts.
+type Tab = "popular" | "latest" | "trending" | "unanswered";
 const TABS: { key: Tab; label: string }[] = [
-  { key: "active", label: "Active" },
-  { key: "closing", label: "Closing soon" },
-  { key: "resolved", label: "Resolved" },
+  { key: "popular", label: "Popular" },
+  { key: "latest", label: "Latest" },
+  { key: "trending", label: "Trending" },
+  { key: "unanswered", label: "Unanswered" },
 ];
+const TRENDING_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 function debateTotal(debate: DebateListItem) {
   return debate.options.reduce((sum, option) => sum + option._count.votes, 0);
@@ -49,28 +55,21 @@ export default async function DebatesPage({
   const params = await searchParams;
   const tab: Tab = TABS.some((t) => t.key === params.tab)
     ? (params.tab as Tab)
-    : "active";
+    : "popular";
 
   let debates: DebateListItem[] = [];
   let communities: CommunityOption[] = [];
+  let recentVoteCounts = new Map<string, number>();
   let failed = false;
   const now = new Date();
-  const closingSoonAt = new Date(now.getTime() + CLOSING_SOON_WINDOW_MS);
   try {
+    const communityFilter = params.community
+      ? { community: { slug: params.community } }
+      : {};
     [debates, communities] = await withTimeout(
       Promise.all([
         db.debate.findMany({
-          where: {
-            ...(tab === "resolved"
-              ? { status: { in: ["LOCKED", "ARCHIVED"] } }
-              : tab === "closing"
-                ? { status: "OPEN", closesAt: { lte: closingSoonAt, gte: now } }
-                : {
-                    status: "OPEN",
-                    OR: [{ closesAt: null }, { closesAt: { gt: closingSoonAt } }],
-                  }),
-            ...(params.community ? { community: { slug: params.community } } : {}),
-          },
+          where: { status: "OPEN", ...communityFilter },
           orderBy: { createdAt: "desc" },
           take: 60,
           include: {
@@ -79,6 +78,7 @@ export default async function DebatesPage({
               include: { _count: { select: { votes: true } } },
             },
             _count: { select: { comments: true } },
+            game: { include: { league: true } },
           },
         }),
         db.community.findMany({
@@ -89,6 +89,26 @@ export default async function DebatesPage({
       ]),
       "DebatesPage.findMany",
     );
+    if (tab === "trending" && debates.length) {
+      // Real vote velocity, not a fabricated score -- same approach Phase
+      // 10 used for "Trending" communities (7-day take velocity), just a
+      // shorter window since debate votes move faster than community posts.
+      const grouped = await db.vote.groupBy({
+        by: ["debateId"],
+        where: {
+          debateId: { in: debates.map((d) => d.id) },
+          createdAt: { gte: new Date(now.getTime() - TRENDING_WINDOW_MS) },
+        },
+        _count: { _all: true },
+      });
+      recentVoteCounts = new Map(
+        grouped
+          .filter((row): row is typeof row & { debateId: string } =>
+            Boolean(row.debateId),
+          )
+          .map((row) => [row.debateId, row._count._all]),
+      );
+    }
   } catch (error) {
     failed = true;
     console.error(
@@ -97,19 +117,27 @@ export default async function DebatesPage({
     );
   }
 
-  // Featured: the highest-participation Active debate. Deterministic, not
-  // random -- the design doc explicitly says featured content never
-  // auto-rotates. Only shown on the Active tab, matching the doc's layout
-  // (featured sits above the tabs, ahead of the general list).
-  const featured =
-    tab === "active" && debates.length
-      ? [...debates].sort(
-          (a, b) =>
-            debateTotal(b) - debateTotal(a) ||
-            a.id.localeCompare(b.id),
-        )[0]
-      : null;
-  const rest = featured ? debates.filter((d) => d.id !== featured.id) : debates;
+  const filtered =
+    tab === "unanswered"
+      ? debates.filter((d) => debateTotal(d) === 0)
+      : debates;
+  const sorted = [...filtered].sort((a, b) => {
+    if (tab === "popular")
+      return debateTotal(b) - debateTotal(a) || a.id.localeCompare(b.id);
+    if (tab === "trending")
+      return (
+        (recentVoteCounts.get(b.id) ?? 0) - (recentVoteCounts.get(a.id) ?? 0) ||
+        a.id.localeCompare(b.id)
+      );
+    // latest and unanswered both keep the query's createdAt-desc order.
+    return 0;
+  });
+
+  // Featured: the highest-participation debate, deterministic (never
+  // auto-rotates). Only on Popular, where it doesn't duplicate the tab's
+  // own ordering signal.
+  const featured = tab === "popular" && sorted.length ? sorted[0] : null;
+  const rest = featured ? sorted.filter((d) => d.id !== featured.id) : sorted;
 
   return (
     <div className="page-container py-10">
@@ -139,6 +167,7 @@ export default async function DebatesPage({
                 id={featured.slug}
                 title={featured.title}
                 category="Featured"
+                league={featured.game?.league.abbreviation}
                 options={featured.options.map((option) => ({
                   label: option.label,
                   votes: option._count.votes,
@@ -149,12 +178,12 @@ export default async function DebatesPage({
             </div>
           )}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <nav aria-label="Debate status" className="flex gap-1">
+            <nav aria-label="Debate sort" className="flex gap-1">
               {TABS.map(({ key, label }) => (
                 <Link
                   key={key}
                   href={`/debates?${new URLSearchParams({
-                    ...(key !== "active" ? { tab: key } : {}),
+                    ...(key !== "popular" ? { tab: key } : {}),
                     ...(params.community ? { community: params.community } : {}),
                   }).toString()}`}
                   aria-current={tab === key ? "page" : undefined}
@@ -168,27 +197,39 @@ export default async function DebatesPage({
                 </Link>
               ))}
             </nav>
-            <form className="flex items-center gap-2">
-              <input type="hidden" name="tab" value={tab === "active" ? "" : tab} />
-              <label className="text-sm font-bold" htmlFor="community-filter">
-                Community
-              </label>
-              <Select
-                id="community-filter"
-                name="community"
-                defaultValue={params.community ?? ""}
+            <div className="flex items-center gap-4">
+              <form className="flex items-center gap-2">
+                <input type="hidden" name="tab" value={tab === "popular" ? "" : tab} />
+                <label className="text-sm font-bold" htmlFor="community-filter">
+                  Community
+                </label>
+                <Select
+                  id="community-filter"
+                  name="community"
+                  defaultValue={params.community ?? ""}
+                >
+                  <option value="">All communities</option>
+                  {communities.map((community) => (
+                    <option key={community.slug} value={community.slug}>
+                      {community.name}
+                    </option>
+                  ))}
+                </Select>
+                <button className="bg-brand min-h-11 rounded-sm px-3 text-sm font-bold">
+                  Apply
+                </button>
+              </form>
+              {/* Popular/Latest/Trending/Unanswered only ever cover OPEN
+                  debates -- this keeps LOCKED/ARCHIVED debates reachable so
+                  this tab change doesn't quietly reopen the exact
+                  unreachable-resolved-debates bug Phase 9 fixed. */}
+              <Link
+                href="/debates/resolved"
+                className="text-brand text-sm font-bold hover:underline"
               >
-                <option value="">All communities</option>
-                {communities.map((community) => (
-                  <option key={community.slug} value={community.slug}>
-                    {community.name}
-                  </option>
-                ))}
-              </Select>
-              <button className="bg-brand min-h-11 rounded-sm px-3 text-sm font-bold">
-                Apply
-              </button>
-            </form>
+                View resolved
+              </Link>
+            </div>
           </div>
           {rest.length ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -198,6 +239,7 @@ export default async function DebatesPage({
                   id={debate.slug}
                   title={debate.title}
                   category={debate.status}
+                  league={debate.game?.league.abbreviation}
                   options={debate.options.map((option) => ({
                     label: option.label,
                     votes: option._count.votes,
@@ -210,11 +252,9 @@ export default async function DebatesPage({
           ) : featured ? null : (
             <EmptyState
               title={
-                tab === "resolved"
-                  ? "No resolved debates yet"
-                  : tab === "closing"
-                    ? "Nothing closing soon"
-                    : "No open debates"
+                tab === "unanswered"
+                  ? "No unanswered debates right now"
+                  : "No open debates"
               }
               description="Be the first to frame a great sports question."
             />

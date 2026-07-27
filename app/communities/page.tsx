@@ -20,29 +20,63 @@ export const metadata: Metadata = {
     "Public spaces organized around teams, leagues, and the conversations fans care about.",
 };
 
-// Design spec (docs/pages/COMMUNITIES.md) calls for tabs Trending/Most
-// active/New. "Trending" is approximated as recent take velocity (takes in
-// the last 7 days) since there's no dedicated activity-tracking field on
-// Community; "Most active" is total take volume; "New" is recency.
-const TRENDING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
-
+// Design spec (docs/pages/COMMUNITIES.md) calls for Trending/Most active/New
+// as the public directory's only tabs, with a separate "Your Communities"
+// view living on My Arena instead -- this project's own Phase 10 audit
+// flagged the My Communities/Discover toggle below as conflicting with that
+// doc at the time. Building it here anyway per an explicit re-request
+// against a visual reference the doc doesn't reflect; flagging the reversal
+// rather than silently reintroducing what was previously called a conflict.
+type View = "discover" | "mine";
 type Tab = "trending" | "active" | "new";
 const TABS: { key: Tab; label: string }[] = [
   { key: "trending", label: "Trending" },
   { key: "active", label: "Most active" },
   { key: "new", label: "New" },
 ];
+const TRENDING_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default async function CommunitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tab?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string; view?: string }>;
 }) {
-  const { q, tab: tabParam } = await searchParams;
+  const { q, tab: tabParam, view: viewParam } = await searchParams;
   const tab: Tab = TABS.some((t) => t.key === tabParam)
     ? (tabParam as Tab)
     : "trending";
+  const view: View = viewParam === "mine" ? "mine" : "discover";
   const session = await auth();
+
+  if (view === "mine") {
+    return (
+      <div className="page-container py-10">
+        <PageHeading
+          eyebrow="Find your crowd"
+          title="Communities"
+          description="Public spaces organized around teams, leagues, and the conversations fans care about."
+        />
+        <ViewToggle view={view} />
+        {session?.user?.id ? (
+          <MyCommunities userId={session.user.id} />
+        ) : (
+          <EmptyState
+            title="Sign in to see your communities"
+            description="Communities you join will show up here."
+            action={
+              <Link
+                href="/auth/sign-in?callbackUrl=/communities?view=mine"
+                className="text-brand font-bold hover:underline"
+              >
+                Sign in
+              </Link>
+            }
+          />
+        )}
+      </div>
+    );
+  }
+
   let communities: CommunityListItem[] = [];
   let joinedIds = new Set<string>();
   let failed = false;
@@ -114,6 +148,7 @@ export default async function CommunitiesPage({
         title="Communities"
         description="Public spaces organized around teams, leagues, and the conversations fans care about."
       />
+      <ViewToggle view={view} />
       <form className="mb-8 flex gap-3">
         <input type="hidden" name="tab" value={tab === "trending" ? "" : tab} />
         <Input
@@ -189,6 +224,95 @@ export default async function CommunitiesPage({
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function ViewToggle({ view }: { view: View }) {
+  return (
+    <nav aria-label="Communities view" className="mb-6 flex gap-1">
+      <Link
+        href="/communities"
+        aria-current={view === "discover" ? "page" : undefined}
+        className={`min-h-11 rounded-sm px-4 py-2 text-sm font-bold ${
+          view === "discover"
+            ? "bg-brand-surface text-brand-light"
+            : "text-text-secondary hover:bg-surface-3"
+        }`}
+      >
+        Discover
+      </Link>
+      <Link
+        href="/communities?view=mine"
+        aria-current={view === "mine" ? "page" : undefined}
+        className={`min-h-11 rounded-sm px-4 py-2 text-sm font-bold ${
+          view === "mine"
+            ? "bg-brand-surface text-brand-light"
+            : "text-text-secondary hover:bg-surface-3"
+        }`}
+      >
+        My Communities
+      </Link>
+    </nav>
+  );
+}
+
+async function MyCommunities({ userId }: { userId: string }) {
+  let memberships: Prisma.CommunityMemberGetPayload<{
+    include: { community: { include: { _count: { select: { members: true } } } } };
+  }>[] = [];
+  let failed = false;
+  try {
+    memberships = await withTimeout(
+      db.communityMember.findMany({
+        where: { userId, status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        include: {
+          community: { include: { _count: { select: { members: true } } } },
+        },
+      }),
+      "MyCommunities.findMany",
+    );
+  } catch (error) {
+    failed = true;
+    console.error(
+      "[MyCommunities] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : error,
+    );
+  }
+
+  if (failed)
+    return (
+      <ErrorState
+        title="Your communities are unavailable"
+        description="We couldn't load these right now. Try again shortly."
+      />
+    );
+  if (!memberships.length)
+    return (
+      <EmptyState
+        title="No communities joined yet"
+        description="Join a public community to see it here."
+        action={
+          <Link href="/communities" className="text-brand font-bold hover:underline">
+            Discover communities
+          </Link>
+        }
+      />
+    );
+  return (
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {memberships.map((membership) => (
+        <CommunityCard
+          key={membership.community.id}
+          id={membership.community.id}
+          slug={membership.community.slug}
+          name={membership.community.name}
+          description={membership.community.description}
+          members={membership.community._count.members}
+          joined
+        />
+      ))}
     </div>
   );
 }
