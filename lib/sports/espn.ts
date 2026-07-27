@@ -56,6 +56,11 @@ export type EspnGame = {
   broadcast?: string;
 };
 
+// F1 is deliberately NOT a clickable tab (see file header): it's excluded
+// from LEAGUES because it has no home/away pairing, so a tab that existed
+// here would always render the generic "No games today" empty state --
+// indistinguishable from a real quiet day, i.e. a permanently-dead tab
+// dressed up as a live one. Confirmed via production audit.
 export const SPORT_TABS = [
   "ALL",
   "NBA",
@@ -67,9 +72,8 @@ export const SPORT_TABS = [
   "NCAA",
   "UFC",
   "Soccer",
-  "F1",
 ] as const;
-export type SportTab = (typeof SPORT_TABS)[number];
+export type SportTab = (typeof SPORT_TABS)[number] | "F1";
 
 export type LeagueConfig = {
   key: string;

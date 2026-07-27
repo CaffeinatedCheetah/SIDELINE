@@ -12,10 +12,23 @@ export default async function DebateDetail({
   params: Promise<{ debateId: string }>;
 }) {
   const { debateId } = await params;
+  // Debate.id is a native Postgres `uuid` column, so passing a non-UUID
+  // slug into an `{ id: debateId }` OR branch fails at the query level
+  // (Postgres can't cast "nfc-north-standings" to uuid) before the slug
+  // branch is ever evaluated -- confirmed via production error logs:
+  // "column User.isOfficial does not exist" was a red herring here, the
+  // real error was `Error creating UUID, invalid character`. Nearly every
+  // DebateCard in the app links by slug (see app/page.tsx, app/debates/
+  // page.tsx, app/debates/resolved/page.tsx, app/communities/[slug]/
+  // page.tsx), so this broke the majority of real debate navigation.
+  const UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   const [session, debate] = await Promise.all([
     auth(),
     db.debate.findFirst({
-      where: { OR: [{ id: debateId }, { slug: debateId }] },
+      where: UUID_RE.test(debateId)
+        ? { OR: [{ id: debateId }, { slug: debateId }] }
+        : { slug: debateId },
       include: {
         // See app/games/[gameId]/page.tsx for why these are scoped
         // selects, not `creator: true` / `author: true`.

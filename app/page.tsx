@@ -254,7 +254,21 @@ export default async function Home() {
             />
           ))}
         </Section>
-        <Section title="Debates worth entering" href="/debates">
+        <Section
+          title="Debates worth entering"
+          href="/debates"
+          isEmpty={!data.debates.length}
+          emptyState={
+            <EmptyState
+              title={
+                data.failed ? "Debates are unavailable" : "No open debates yet"
+              }
+              description={
+                data.failed ? "Try again shortly." : "Start the first one."
+              }
+            />
+          }
+        >
           {data.debates.map((debate) => (
             <DebateCard
               key={debate.id}

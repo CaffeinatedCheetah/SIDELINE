@@ -1,15 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-const TAB_LABELS: Record<string, string> = {
-  takes: "Takes",
-  predictions: "Predictions",
-  debates: "Debates",
-  communities: "Communities",
-  about: "About",
-};
-export const PROFILE_TABS = Object.keys(TAB_LABELS);
+import { PROFILE_TABS, TAB_LABELS } from "@/lib/profile/tabs";
 
 export function ProfileTabs({
   handle,
