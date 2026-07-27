@@ -6,6 +6,7 @@ import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
 import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-preview-section";
+import { LiveRightNowSection } from "@/components/home/live-right-now-section";
 import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
 import { ProfileCard } from "@/components/profile/profile-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -215,21 +216,7 @@ export default async function Home() {
         </div>
       </section>
       <div className="page-container grid gap-16 py-14">
-        <Section title="Live right now" href="/games">
-          {data.games.map((game) => (
-            <GameCard
-              key={game.id}
-              id={game.id}
-              league={game.league.abbreviation}
-              homeTeam={game.homeTeam.name}
-              awayTeam={game.awayTeam.name}
-              homeScore={game.homeScore ?? undefined}
-              awayScore={game.awayScore ?? undefined}
-              status={game.status}
-              statusText={game.status}
-            />
-          ))}
-        </Section>
+        <LiveRightNowSection />
         <TodaysScheduleSection />
         <Section
           title="Trending takes"
