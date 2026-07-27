@@ -34,6 +34,10 @@ export type EspnTeam = {
   name: string;
   abbreviation: string;
   logo?: string;
+  /** ESPN's own numeric team id -- only populated by fetchEspnEvent, for
+   * building a stable Team.key when materializing into Prisma. The
+   * scoreboard endpoint's mappers don't need it and leave it undefined. */
+  externalId?: string;
 };
 
 export type EspnGame = {
@@ -67,7 +71,7 @@ export const SPORT_TABS = [
 ] as const;
 export type SportTab = (typeof SPORT_TABS)[number];
 
-type LeagueConfig = {
+export type LeagueConfig = {
   key: string;
   tab: Exclude<SportTab, "ALL" | "F1">;
   label: string;
@@ -76,7 +80,7 @@ type LeagueConfig = {
   kind: "team" | "fighter";
 };
 
-const LEAGUES: LeagueConfig[] = [
+export const LEAGUES: LeagueConfig[] = [
   { key: "nba", tab: "NBA", label: "NBA", espnSport: "basketball", espnLeague: "nba", kind: "team" },
   { key: "nfl", tab: "NFL", label: "NFL", espnSport: "football", espnLeague: "nfl", kind: "team" },
   { key: "mlb", tab: "MLB", label: "MLB", espnSport: "baseball", espnLeague: "mlb", kind: "team" },
@@ -302,6 +306,110 @@ export async function fetchScoreboardsForTab(
   return results.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
   );
+}
+
+/** Parses a card's `espn-<leagueKey>-<eventId>` id back into its parts, for
+ * routing a click into the single-event materialization flow. Only matches
+ * team-sport leagues -- fighter-sport events (UFC) have no home/away
+ * pairing to materialize into a Game row, so this returns null for them
+ * and the card renders with no link at all, same as an F1 card. */
+export function parseEspnGameId(
+  id: string,
+): { leagueKey: string; eventId: string } | null {
+  const match = /^espn-([a-z]+)-(.+)$/.exec(id);
+  if (!match) return null;
+  const [, leagueKey, eventId] = match;
+  if (!LEAGUES.some((l) => l.key === leagueKey && l.kind === "team")) return null;
+  return { leagueKey: leagueKey!, eventId: eventId! };
+}
+
+type EspnSummaryTeam = {
+  id?: string;
+  displayName?: string;
+  shortDisplayName?: string;
+  abbreviation?: string;
+  logos?: { href?: string }[];
+};
+type EspnSummaryCompetitor = {
+  homeAway?: "home" | "away";
+  score?: string;
+  team?: EspnSummaryTeam;
+};
+
+/**
+ * Single-event lookup (`.../summary?event=<id>`), confirmed against a real
+ * response -- distinct shape from the scoreboard endpoint: team logos live
+ * under `logos[]` (an array of sized variants), not a single `logo` string,
+ * and `competitor.score` is frequently absent entirely (not just "0") for
+ * games that haven't started. Team-sport leagues only; UFC fights have no
+ * home/away pairing on this endpoint either, so materialization is scoped
+ * to team sports (see LEAGUES `kind` and the Game Room resolver route).
+ */
+export async function fetchEspnEvent(
+  leagueKey: string,
+  eventId: string,
+): Promise<EspnGame | null> {
+  const league = LEAGUES.find((l) => l.key === leagueKey && l.kind === "team");
+  if (!league) return null;
+  try {
+    const url = new URL(
+      `https://site.api.espn.com/apis/site/v2/sports/${league.espnSport}/${league.espnLeague}/summary`,
+    );
+    url.searchParams.set("event", eventId);
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!response.ok) return null;
+    const data = (await response.json()) as {
+      header?: {
+        id?: string;
+        competitions?: {
+          date?: string;
+          competitors?: EspnSummaryCompetitor[];
+          status?: EspnStatus;
+        }[];
+      };
+      gameInfo?: { venue?: EspnVenue };
+      broadcasts?: EspnBroadcast[];
+    };
+    const competition = data.header?.competitions?.[0];
+    const competitors = competition?.competitors ?? [];
+    const home = competitors.find((c) => c.homeAway === "home");
+    const away = competitors.find((c) => c.homeAway === "away");
+    if (!data.header?.id || !competition?.date || !home?.team || !away?.team)
+      return null;
+    return {
+      id: `espn-${league.key}-${data.header.id}`,
+      tab: league.tab,
+      leagueLabel: league.label,
+      homeTeam: {
+        name: home.team.displayName ?? home.team.shortDisplayName ?? "Home",
+        abbreviation: home.team.abbreviation ?? "",
+        logo: home.team.logos?.[0]?.href,
+        externalId: home.team.id,
+      },
+      awayTeam: {
+        name: away.team.displayName ?? away.team.shortDisplayName ?? "Away",
+        abbreviation: away.team.abbreviation ?? "",
+        logo: away.team.logos?.[0]?.href,
+        externalId: away.team.id,
+      },
+      homeScore: scoreOf(home),
+      awayScore: scoreOf(away),
+      status: mapStatus(competition.status),
+      statusDetail:
+        competition.status?.type?.shortDetail ??
+        competition.status?.type?.description ??
+        "",
+      scheduledAt: competition.date,
+      venue: venueLabel(data.gameInfo?.venue),
+      broadcast: data.broadcasts?.[0]?.names?.[0],
+    };
+  } catch (error) {
+    console.error(
+      `[espn] single-event fetch failed for ${leagueKey}/${eventId}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return null;
+  }
 }
 
 const STATUS_WEIGHT: Record<EspnGameStatus, number> = {

@@ -11,6 +11,7 @@ import { TakeCard } from "@/components/takes/take-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import { fetchEspnEvent } from "@/lib/sports/espn";
 
 export const dynamic = "force-dynamic";
 
@@ -55,14 +56,45 @@ export async function generateMetadata({
   };
 }
 
+// Games materialized from ESPN (see lib/sports/espn-materialize.ts) have no
+// ongoing sync into the DB after their first click -- the row would freeze
+// at whatever score/status existed at materialization time otherwise. On
+// each real page load, re-fetch live ESPN data and persist it, so every
+// visit refreshes the stored row and LiveGameRoom's existing 15s polling
+// (which reads that row) benefits too. Never blocks rendering on this: a
+// failed refetch just means this load shows the last-known values, same as
+// every other "always have a fallback" data path in this app.
+async function refreshFromEspnIfMaterialized(
+  game: NonNullable<Awaited<ReturnType<typeof getGame>>>,
+) {
+  if (!game.providerRef?.startsWith("espn-")) return game;
+  const match = /^espn-([a-z]+)-(.+)$/.exec(game.providerRef);
+  if (!match) return game;
+  const [, leagueKey, eventId] = match;
+  const fresh = await fetchEspnEvent(leagueKey!, eventId!);
+  if (!fresh) return game;
+  const updated = await db.game.update({
+    where: { id: game.id },
+    data: {
+      status: fresh.status,
+      homeScore: fresh.homeScore,
+      awayScore: fresh.awayScore,
+      startedAt:
+        fresh.status === "LIVE" && !game.startedAt ? new Date() : undefined,
+    },
+  });
+  return { ...game, ...updated };
+}
+
 export default async function GameRoom({
   params,
 }: {
   params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
-  const [session, game] = await Promise.all([auth(), getGame(gameId)]);
-  if (!game) notFound();
+  const [session, rawGame] = await Promise.all([auth(), getGame(gameId)]);
+  if (!rawGame) notFound();
+  const game = await refreshFromEspnIfMaterialized(rawGame);
 
   const myPollVotes = session?.user?.id
     ? await db.pollVote.findMany({

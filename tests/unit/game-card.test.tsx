@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { GameCard } from "@/components/games/game-card";
 
@@ -43,5 +43,53 @@ describe("GameCard", () => {
     expect(timeEl).not.toBeNull();
     expect(timeEl).toHaveAttribute("datetime", "2026-08-01T18:00:00.000Z");
     expect(timeEl?.textContent?.trim()).not.toBe("");
+  });
+
+  it("routes a real Prisma id straight to /games/[id]", () => {
+    render(
+      <GameCard
+        id="real-uuid-123"
+        league="NFL"
+        homeTeam="Lions"
+        awayTeam="Bears"
+        status="SCHEDULED"
+        statusText="SCHEDULED"
+      />,
+    );
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "/games/real-uuid-123",
+    );
+  });
+
+  it("routes an ESPN team-sport id through the materialization resolver", () => {
+    render(
+      <GameCard
+        id="espn-nba-401898716"
+        league="NBA"
+        homeTeam="Lakers"
+        awayTeam="Kings"
+        status="SCHEDULED"
+        statusText="SCHEDULED"
+      />,
+    );
+    expect(screen.getByRole("link")).toHaveAttribute(
+      "href",
+      "/games/from-espn/nba/401898716",
+    );
+  });
+
+  it("renders no link at all for an ESPN fighter-sport id (UFC has nothing to materialize into)", () => {
+    render(
+      <GameCard
+        id="espn-ufc-600054321"
+        league="UFC"
+        homeTeam="Fighter A"
+        awayTeam="Fighter B"
+        status="FINAL"
+        statusText="Final"
+      />,
+    );
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 });

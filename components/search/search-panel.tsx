@@ -45,9 +45,11 @@ function writeRecent(next: string[]) {
 export function SearchPanel({
   initialQuery = "",
   initialType = "all",
+  trendingSearches = [],
 }: {
   initialQuery?: string;
   initialType?: string;
+  trendingSearches?: string[];
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(initialQuery);
@@ -220,6 +222,24 @@ export function SearchPanel({
             <p className="text-text-muted text-sm">
               Search for people, games, communities, or debates.
             </p>
+          )}
+          {trendingSearches.length > 0 && (
+            <div className="mt-6">
+              <h2 className="mb-2 font-bold">Trending searches</h2>
+              <ul className="flex flex-wrap gap-2">
+                {trendingSearches.map((value) => (
+                  <li key={value}>
+                    <button
+                      type="button"
+                      onClick={() => commit(value)}
+                      className="border-border-subtle bg-surface-1 hover:border-border-strong rounded-full border px-3 py-1.5 text-sm"
+                    >
+                      {value}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}
