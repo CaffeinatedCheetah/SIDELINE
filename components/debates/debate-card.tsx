@@ -8,6 +8,10 @@ export interface DebateCardProps {
   id: string;
   title: string;
   category: string;
+  /** Only real when the debate is attached to a real Game -- a debate with
+   * no gameId has no league at all in this data model, so this stays
+   * undefined rather than showing a fabricated/generic badge. */
+  league?: string;
   options: readonly { label: string; votes: number }[];
   replyCount: number;
   closesAt?: string;
@@ -17,6 +21,7 @@ export function DebateCard({
   id,
   title,
   category,
+  league,
   options,
   replyCount,
   closesAt,
@@ -27,7 +32,10 @@ export function DebateCard({
     <Card className="hover:border-border-strong hover:bg-surface-3 relative transition">
       <article aria-labelledby={`debate-${id}`}>
         <div className="flex items-center justify-between gap-3">
-          <Badge>{category}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge>{category}</Badge>
+            {league && <Badge tone="neutral">{league}</Badge>}
+          </div>
           {closesAt && (
             <span className="text-text-muted text-xs">Closes {closesAt}</span>
           )}
