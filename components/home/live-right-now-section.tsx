@@ -29,6 +29,7 @@ export async function LiveRightNowSection() {
           {visible.map((game) => (
             <div key={game.id} className="w-72 shrink-0 snap-start">
               <GameCard
+                id={game.id}
                 league={game.leagueLabel}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}

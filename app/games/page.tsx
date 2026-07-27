@@ -147,6 +147,7 @@ export default async function GamesPage({
           {games.map((game) => (
             <GameCard
               key={game.id}
+              id={game.id}
               league={game.leagueLabel}
               homeTeam={game.homeTeam.name}
               awayTeam={game.awayTeam.name}

@@ -1,12 +1,16 @@
 import { Clock, Flame } from "lucide-react";
 import Link from "next/link";
 import { GameTime } from "@/components/games/game-time";
+import { parseEspnGameId } from "@/lib/sports/espn";
 import { Badge, Card } from "@/components/ui/foundations";
 
 export interface GameCardProps {
-  /** Omit for games with no Sideline detail page (e.g. live ESPN-sourced
-   * schedule data not backed by a Game row) -- the card renders without a
-   * link instead of pointing at a nonexistent /games/[id]. */
+  /** A real Prisma Game id (links straight to /games/[id]), an ESPN card
+   * id in the `espn-<leagueKey>-<eventId>` form this app's ESPN fetchers
+   * produce (links through the /games/from-espn resolver, which
+   * materializes a real row on click), or omitted entirely for a card with
+   * nothing real to link to (e.g. a fighter-sport event, which the
+   * resolver doesn't support). */
   id?: string;
   league: string;
   homeTeam: string;
@@ -27,6 +31,13 @@ export interface GameCardProps {
 export function GameCard(p: GameCardProps) {
   const hasScore =
     typeof p.homeScore === "number" && typeof p.awayScore === "number";
+  const isEspnId = p.id?.startsWith("espn-") ?? false;
+  const espnRef = isEspnId && p.id ? parseEspnGameId(p.id) : null;
+  const href = espnRef
+    ? `/games/from-espn/${espnRef.leagueKey}/${espnRef.eventId}`
+    : !isEspnId && p.id
+      ? `/games/${p.id}`
+      : undefined;
   return (
     <Card
       className={`group hover:border-border-strong hover:bg-surface-3 relative min-w-0 overflow-hidden transition ${p.featured ? "p-6" : ""}`}
@@ -39,9 +50,9 @@ export function GameCard(p: GameCardProps) {
           {p.statusText}
         </Badge>
       </div>
-      {p.id && (
+      {href && (
         <Link
-          href={`/games/${p.id}`}
+          href={href}
           className="after:absolute after:inset-0 after:content-['']"
         >
           <span className="sr-only">
