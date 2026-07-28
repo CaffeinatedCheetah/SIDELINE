@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { auth } from "@/auth";
 import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
-import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-preview-section";
-import { LiveRightNowSection } from "@/components/home/live-right-now-section";
-import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
 import { ProfileCard } from "@/components/profile/profile-card";
 import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import {
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -24,95 +24,53 @@ export const metadata: Metadata = {
   },
 };
 
-async function discovery(viewerId: string | undefined) {
+async function discovery() {
   try {
-    const [games, takes, debates, communities] = await Promise.all([
-      db.game.findMany({
-        take: 3,
-        orderBy: [{ status: "asc" }, { scheduledAt: "asc" }],
-        include: {
-          league: true,
-          homeTeam: true,
-          awayTeam: true,
-          _count: { select: { takes: true } },
-        },
-      }),
-      db.take.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          // See app/games/[gameId]/page.tsx for why this is a scoped
-          // select, not `author: true`.
-          author: { select: { handle: true, displayName: true, image: true } },
-          _count: { select: { reactions: true, replies: true } },
-        },
-      }),
-      db.debate.findMany({
-        take: 3,
-        where: { status: "OPEN" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          options: {
-            include: { _count: { select: { votes: true } } },
-            orderBy: { displayOrder: "asc" },
+    const [gameDirectory, takes, debates, communities, leader] =
+      await Promise.all([
+        getSportsGameDirectory({ limit: 12 }),
+        db.take.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            author: true,
+            _count: { select: { reactions: true, replies: true } },
           },
-          _count: { select: { comments: true } },
-        },
-      }),
-      db.community.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { name: "asc" },
-        include: { _count: { select: { members: true, takes: true } } },
-      }),
-    ]);
-
-    let viewer = null;
-    let reactedTakeIds = new Set<string>();
-    let joinedCommunityIds = new Set<string>();
-    if (viewerId) {
-      const [viewerRow, reactions, memberships] = await Promise.all([
-        db.user.findUnique({
-          where: { id: viewerId },
-          include: { profile: true },
         }),
-        db.reaction.findMany({
-          where: {
-            userId: viewerId,
-            kind: "FIRE",
-            takeId: { in: takes.map((take) => take.id) },
+        db.debate.findMany({
+          take: 3,
+          where: { status: "OPEN" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            options: {
+              include: { _count: { select: { votes: true } } },
+              orderBy: { displayOrder: "asc" },
+            },
+            _count: { select: { comments: true } },
           },
-          select: { takeId: true },
         }),
-        db.communityMember.findMany({
-          where: {
-            userId: viewerId,
-            status: "ACTIVE",
-            communityId: { in: communities.map((community) => community.id) },
-          },
-          select: { communityId: true },
+        db.community.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { name: "asc" },
+          include: { _count: { select: { members: true, takes: true } } },
+        }),
+        db.user.findFirst({
+          where: { status: "ACTIVE" },
+          orderBy: { fanScoreEvents: { _count: "desc" } },
+          include: { profile: true, _count: { select: { followers: true } } },
         }),
       ]);
-      viewer = viewerRow;
-      reactedTakeIds = new Set(
-        reactions
-          .map((reaction) => reaction.takeId)
-          .filter((takeId): takeId is string => takeId !== null),
-      );
-      joinedCommunityIds = new Set(
-        memberships.map((membership) => membership.communityId),
-      );
-    }
-
     return {
-      games,
+      games: gameDirectory.games.slice(0, 3),
       takes,
       debates,
       communities,
-      viewer,
-      reactedTakeIds,
-      joinedCommunityIds,
+      leader,
+      gameDataFailed:
+        gameDirectory.providerError && gameDirectory.games.length === 0,
+      gameDataStale: gameDirectory.stale,
       failed: false,
     };
   } catch {
@@ -121,17 +79,16 @@ async function discovery(viewerId: string | undefined) {
       takes: [],
       debates: [],
       communities: [],
-      viewer: null,
-      reactedTakeIds: new Set<string>(),
-      joinedCommunityIds: new Set<string>(),
+      leader: null,
+      gameDataFailed: true,
+      gameDataStale: false,
       failed: true,
     };
   }
 }
 
 export default async function Home() {
-  const session = await auth();
-  const data = await discovery(session?.user?.id);
+  const data = await discovery();
   return (
     <>
       <section className="hero-grid">
@@ -153,27 +110,12 @@ export default async function Home() {
               <Link href="/games" className={buttonStyles({ size: "lg" })}>
                 Explore live games
               </Link>
-              {session?.user ? (
-                <Link
-                  href="/arena"
-                  className={buttonStyles({
-                    variant: "secondary",
-                    size: "lg",
-                  })}
-                >
-                  Go to My Arena
-                </Link>
-              ) : (
-                <Link
-                  href="/auth/sign-up"
-                  className={buttonStyles({
-                    variant: "secondary",
-                    size: "lg",
-                  })}
-                >
-                  Join FanTakes
-                </Link>
-              )}
+              <Link
+                href="/auth/sign-up"
+                className={buttonStyles({ variant: "secondary", size: "lg" })}
+              >
+                Join FanTakes
+              </Link>
             </div>
           </div>
           {data.games[0] ? (
@@ -183,26 +125,26 @@ export default async function Home() {
               league={data.games[0].league.abbreviation}
               homeTeam={data.games[0].homeTeam.name}
               awayTeam={data.games[0].awayTeam.name}
+              homeLogoUrl={data.games[0].homeTeam.logoUrl}
+              awayLogoUrl={data.games[0].awayTeam.logoUrl}
               homeScore={data.games[0].homeScore ?? undefined}
               awayScore={data.games[0].awayScore ?? undefined}
               status={data.games[0].status}
-              statusText={
-                data.games[0].status === "LIVE"
-                  ? `${data.games[0].period ?? "Live"} ${data.games[0].clock ?? ""}`
-                  : data.games[0].status
-              }
+              statusText={gameStatusLabel(data.games[0])}
+              scheduledAt={data.games[0].scheduledAt.toISOString()}
+              broadcast={data.games[0].broadcast}
               conversationCount={data.games[0]._count.takes}
             />
           ) : (
             <EmptyState
               title={
-                data.failed
-                  ? "Live data is unavailable"
+                data.gameDataFailed
+                  ? "Schedules could not refresh"
                   : "No live game right now"
               }
               description={
-                data.failed
-                  ? "Try Games for the latest schedule."
+                data.gameDataFailed
+                  ? "No synchronized schedule is available yet. Try again shortly."
                   : "See what starts next."
               }
               action={
@@ -218,25 +160,33 @@ export default async function Home() {
         </div>
       </section>
       <div className="page-container grid gap-16 py-14">
-        <LiveRightNowSection />
-        <TodaysScheduleSection />
         <Section
-          title="Trending takes"
-          href="/games"
-          isEmpty={!data.takes.length}
-          emptyState={
-            <EmptyState
-              title={
-                data.failed ? "Takes are unavailable" : "No trending takes yet"
-              }
-              description={
-                data.failed
-                  ? "Try again shortly."
-                  : "Be the first to share a take."
-              }
-            />
+          title={
+            data.games.some((game) => game.status === "LIVE")
+              ? "Live right now"
+              : "Games to watch"
           }
+          href="/games"
         >
+          {data.games.map((game) => (
+            <GameCard
+              key={game.id}
+              id={game.id}
+              league={game.league.abbreviation}
+              homeTeam={game.homeTeam.name}
+              awayTeam={game.awayTeam.name}
+              homeLogoUrl={game.homeTeam.logoUrl}
+              awayLogoUrl={game.awayTeam.logoUrl}
+              homeScore={game.homeScore ?? undefined}
+              awayScore={game.awayScore ?? undefined}
+              status={game.status}
+              statusText={gameStatusLabel(game)}
+              scheduledAt={game.scheduledAt.toISOString()}
+              broadcast={game.broadcast}
+            />
+          ))}
+        </Section>
+        <Section title="Trending takes" href="/games">
           {data.takes.map((take) => (
             <TakeCard
               key={take.id}
@@ -247,28 +197,14 @@ export default async function Home() {
                 avatarUrl: take.author.image,
               }}
               body={take.body}
-              createdAt={take.createdAt.toLocaleDateString()}
+              createdAt=""
+              createdAtIso={take.createdAt.toISOString()}
               reactions={take._count.reactions}
               replies={take._count.replies}
-              initialReacted={data.reactedTakeIds.has(take.id)}
             />
           ))}
         </Section>
-        <Section
-          title="Debates worth entering"
-          href="/debates"
-          isEmpty={!data.debates.length}
-          emptyState={
-            <EmptyState
-              title={
-                data.failed ? "Debates are unavailable" : "No open debates yet"
-              }
-              description={
-                data.failed ? "Try again shortly." : "Start the first one."
-              }
-            />
-          }
-        >
+        <Section title="Debates worth entering" href="/debates">
           {data.debates.map((debate) => (
             <DebateCard
               key={debate.id}
@@ -283,36 +219,17 @@ export default async function Home() {
             />
           ))}
         </Section>
-        <Section
-          title="Find your crowd"
-          href="/communities"
-          isEmpty={!data.communities.length}
-          emptyState={
-            <EmptyState
-              title={
-                data.failed
-                  ? "Communities are unavailable"
-                  : "No communities yet"
-              }
-              description={
-                data.failed ? "Try again shortly." : "Check back soon."
-              }
-            />
-          }
-        >
+        <Section title="Find your crowd" href="/communities">
           {data.communities.map((community) => (
             <CommunityCard
               key={community.id}
-              id={community.id}
               slug={community.slug}
               name={community.name}
               description={community.description}
               members={community._count.members}
-              joined={data.joinedCommunityIds.has(community.id)}
             />
           ))}
         </Section>
-        <HallOfFlamePreviewSection />
         <section>
           <h2 className="font-display text-3xl font-black">Fan identity</h2>
           <p className="text-text-secondary mt-2">
@@ -320,28 +237,20 @@ export default async function Home() {
             reputation—together.
           </p>
           <div className="mt-6 max-w-md">
-            {data.viewer ? (
+            {data.leader ? (
               <ProfileCard
-                handle={data.viewer.handle}
-                displayName={data.viewer.displayName}
+                handle={data.leader.handle}
+                displayName={data.leader.displayName}
                 bio={
-                  data.viewer.profile?.bio ??
+                  data.leader.profile?.bio ??
                   "Building a fan identity one take at a time."
                 }
-                fanScore={data.viewer.profile?.reputation ?? 0}
+                fanScore={data.leader.profile?.reputation ?? 0}
               />
             ) : (
               <EmptyState
                 title="Build your fan identity"
                 description="Sign in to start earning reputation."
-                action={
-                  <Link
-                    className={buttonStyles({ variant: "secondary" })}
-                    href="/auth/sign-up"
-                  >
-                    Create your profile
-                  </Link>
-                }
               />
             )}
           </div>
@@ -370,33 +279,20 @@ function Section({
   title,
   href,
   children,
-  isEmpty,
-  emptyState,
 }: {
   title: string;
   href: string;
   children: React.ReactNode;
-  isEmpty?: boolean;
-  emptyState?: React.ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <h2 className="font-display min-w-0 text-3xl font-black">{title}</h2>
-        <Link
-          href={href}
-          className="text-brand shrink-0 font-bold hover:underline"
-        >
+      <div className="mb-5 flex items-end justify-between">
+        <h2 className="font-display text-3xl font-black">{title}</h2>
+        <Link href={href} className="text-brand font-bold hover:underline">
           View all
         </Link>
       </div>
-      {isEmpty && emptyState ? (
-        emptyState
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {children}
-        </div>
-      )}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{children}</div>
     </section>
   );
 }

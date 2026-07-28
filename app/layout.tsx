@@ -22,19 +22,26 @@ export default async function RootLayout({
 }>) {
   const session = await auth();
   const userId = session?.user?.id;
-  const unread = userId
-    ? await db.notification
-        .count({ where: { recipientId: userId, readAt: null } })
-        .catch((error: unknown) => {
-          console.error(
-            "[RootLayout] unread count query failed:",
-            error instanceof Error ? `${error.name}: ${error.message}` : error,
-          );
-          return 0;
-        })
-    : 0;
+  const [preferences, unread] = userId
+    ? await Promise.all([
+        db.userPreference.findUnique({
+          where: { userId },
+          select: { theme: true, reducedMotion: true, reducedData: true },
+        }),
+        db.notification.count({
+          where: { recipientId: userId, readAt: null },
+        }),
+      ])
+    : [null, 0];
+  const theme = preferences?.theme ?? "dark";
   return (
-    <html lang="en" className="h-full antialiased">
+    <html
+      lang="en"
+      className={`h-full antialiased theme-${theme}${preferences?.reducedMotion ? " reduce-motion" : ""}`}
+      data-scroll-behavior="smooth"
+      data-reduced-data={preferences?.reducedData ? "true" : "false"}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-full flex-col">
         <RailProvider>
           <Navbar authenticated={Boolean(userId)} unread={unread} />
