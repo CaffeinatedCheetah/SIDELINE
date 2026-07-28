@@ -1,19 +1,4 @@
-"use client";
-import { useSyncExternalStore } from "react";
-
-function noopSubscribe() {
-  return () => {};
-}
-
-function formatLocal(scheduledAt: string) {
-  return new Date(scheduledAt).toLocaleString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
+import { LocalDateTime } from "@/components/ui/local-date-time";
 
 /**
  * Renders a game's scheduled start time in the viewer's own local timezone.
@@ -27,15 +12,10 @@ function formatLocal(scheduledAt: string) {
  * and the real snapshot is used from the very first client render.
  */
 export function GameTime({ scheduledAt }: { scheduledAt: string }) {
-  const label = useSyncExternalStore(
-    noopSubscribe,
-    () => formatLocal(scheduledAt),
-    () => null,
-  );
-
   return (
-    <time dateTime={scheduledAt} className="text-text-secondary text-sm">
-      {label ?? " "}
-    </time>
+    <LocalDateTime
+      value={scheduledAt}
+      className="text-text-secondary text-sm"
+    />
   );
 }

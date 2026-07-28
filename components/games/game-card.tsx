@@ -38,7 +38,7 @@ export function GameCard(p: GameCardProps) {
     : !isEspnId && p.id
       ? `/games/${p.id}`
       : undefined;
-  return (
+  const card = (
     <Card
       className={`group hover:border-border-strong hover:bg-surface-3 relative min-w-0 overflow-hidden transition ${p.featured ? "p-6" : ""}`}
     >
@@ -50,16 +50,6 @@ export function GameCard(p: GameCardProps) {
           {p.statusText}
         </Badge>
       </div>
-      {href && (
-        <Link
-          href={href}
-          className="after:absolute after:inset-0 after:content-['']"
-        >
-          <span className="sr-only">
-            Open {p.awayTeam} at {p.homeTeam}
-          </span>
-        </Link>
-      )}
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <div className="grid min-w-0 gap-3">
           <div className="flex min-w-0 items-center gap-2 font-bold">
@@ -121,5 +111,16 @@ export function GameCard(p: GameCardProps) {
         </div>
       )}
     </Card>
+  );
+  return href ? (
+    <Link
+      href={href}
+      aria-label={`Open ${p.awayTeam} at ${p.homeTeam}`}
+      className="focus-visible:outline-brand block rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2"
+    >
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }

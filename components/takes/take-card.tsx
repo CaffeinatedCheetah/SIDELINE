@@ -5,6 +5,7 @@ import { useState } from "react";
 import { apiAction } from "@/components/actions/api-action";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { Avatar, Card } from "@/components/ui/foundations";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { Modal } from "@/components/ui/modal";
 import { formatCount } from "@/lib/utils";
 export interface TakeCardProps {
@@ -13,6 +14,7 @@ export interface TakeCardProps {
   body: string;
   context?: string;
   createdAt: string;
+  createdAtIso?: string;
   reactions: number;
   replies: number;
   initialReacted?: boolean;
@@ -23,6 +25,7 @@ export function TakeCard({
   body,
   context,
   createdAt,
+  createdAtIso,
   reactions,
   replies,
   initialReacted = false,
@@ -77,7 +80,12 @@ export function TakeCard({
               {author.displayName}
             </Link>
             <div className="text-text-muted text-sm">
-              @{author.handle} · <time>{createdAt}</time>
+              @{author.handle} ·{" "}
+              {createdAtIso ? (
+                <LocalDateTime value={createdAtIso} />
+              ) : (
+                <time>{createdAt}</time>
+              )}
             </div>
           </div>
         </header>

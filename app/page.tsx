@@ -13,6 +13,10 @@ import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import {
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -26,17 +30,8 @@ export const metadata: Metadata = {
 
 async function discovery(viewerId: string | undefined) {
   try {
-    const [games, takes, debates, communities] = await Promise.all([
-      db.game.findMany({
-        take: 3,
-        orderBy: [{ status: "asc" }, { scheduledAt: "asc" }],
-        include: {
-          league: true,
-          homeTeam: true,
-          awayTeam: true,
-          _count: { select: { takes: true } },
-        },
-      }),
+    const [gameDirectory, takes, debates, communities] = await Promise.all([
+      getSportsGameDirectory({ limit: 3 }),
       db.take.findMany({
         take: 3,
         where: { status: "ACTIVE" },
@@ -106,7 +101,7 @@ async function discovery(viewerId: string | undefined) {
     }
 
     return {
-      games,
+      games: gameDirectory.games,
       takes,
       debates,
       communities,
@@ -114,6 +109,8 @@ async function discovery(viewerId: string | undefined) {
       reactedTakeIds,
       joinedCommunityIds,
       failed: false,
+      gameDataFailed:
+        gameDirectory.providerError && gameDirectory.games.length === 0,
     };
   } catch {
     return {
@@ -125,6 +122,7 @@ async function discovery(viewerId: string | undefined) {
       reactedTakeIds: new Set<string>(),
       joinedCommunityIds: new Set<string>(),
       failed: true,
+      gameDataFailed: true,
     };
   }
 }
@@ -183,26 +181,26 @@ export default async function Home() {
               league={data.games[0].league.abbreviation}
               homeTeam={data.games[0].homeTeam.name}
               awayTeam={data.games[0].awayTeam.name}
+              homeTeamLogo={data.games[0].homeTeam.logoUrl ?? undefined}
+              awayTeamLogo={data.games[0].awayTeam.logoUrl ?? undefined}
               homeScore={data.games[0].homeScore ?? undefined}
               awayScore={data.games[0].awayScore ?? undefined}
               status={data.games[0].status}
-              statusText={
-                data.games[0].status === "LIVE"
-                  ? `${data.games[0].period ?? "Live"} ${data.games[0].clock ?? ""}`
-                  : data.games[0].status
-              }
+              statusText={gameStatusLabel(data.games[0])}
+              scheduledAt={data.games[0].scheduledAt.toISOString()}
+              broadcast={data.games[0].broadcast ?? undefined}
               conversationCount={data.games[0]._count.takes}
             />
           ) : (
             <EmptyState
               title={
-                data.failed
-                  ? "Live data is unavailable"
+                data.gameDataFailed
+                  ? "Schedules could not refresh"
                   : "No live game right now"
               }
               description={
-                data.failed
-                  ? "Try Games for the latest schedule."
+                data.gameDataFailed
+                  ? "No synchronized schedule is available yet. Try again shortly."
                   : "See what starts next."
               }
               action={

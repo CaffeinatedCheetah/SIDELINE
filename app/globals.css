@@ -34,6 +34,40 @@
   --rail-width: 280px;
 }
 
+.text-brand {
+  color: var(--brand-light);
+}
+
+.theme-high-contrast {
+  --canvas: #000000;
+  --surface-1: #050505;
+  --surface-2: #0a0a0a;
+  --surface-3: #111111;
+  --border-subtle: #b5b5b5;
+  --border-strong: #ffffff;
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted: #e5e5e5;
+  --brand: #ff2933;
+  --focus: #ffeb3b;
+}
+
+@media (prefers-color-scheme: light) {
+  .theme-system {
+    color-scheme: light;
+    --canvas: #f6f6f6;
+    --surface-1: #ffffff;
+    --surface-2: #eeeeee;
+    --surface-3: #e4e4e4;
+    --border-subtle: #c7c7c7;
+    --border-strong: #777777;
+    --text-primary: #101010;
+    --text-secondary: #393939;
+    --text-muted: #5d5d5d;
+    --focus: #000000;
+  }
+}
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface-1: var(--surface-1);
@@ -161,6 +195,18 @@ select {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  scroll-behavior: auto !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+html[data-reduced-data="true"] .provider-logo {
+  display: none;
 }
 @media (forced-colors: active) {
   * {

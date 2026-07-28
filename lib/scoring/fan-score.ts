@@ -21,18 +21,66 @@ export async function recordFanScoreEvent(
     reason: string;
   },
 ) {
-  return db.fanScoreEvent.upsert({
-    where: { idempotencyKey: input.idempotencyKey },
-    update: {},
-    create: {
-      userId: input.userId,
-      eventType: input.type,
-      sourceType: input.sourceType,
-      sourceId: input.sourceId,
-      points: FAN_SCORE_POINTS[input.type],
-      reason: input.reason,
-      idempotencyKey: input.idempotencyKey,
-    },
+  return db.$transaction(async (transaction) => {
+    const existing = await transaction.fanScoreEvent.findUnique({
+      where: { idempotencyKey: input.idempotencyKey },
+    });
+    if (existing) return existing;
+    const event = await transaction.fanScoreEvent.create({
+      data: {
+        userId: input.userId,
+        eventType: input.type,
+        sourceType: input.sourceType,
+        sourceId: input.sourceId,
+        points: FAN_SCORE_POINTS[input.type],
+        reason: input.reason,
+        idempotencyKey: input.idempotencyKey,
+      },
+    });
+    await transaction.profile.upsert({
+      where: { userId: input.userId },
+      create: {
+        userId: input.userId,
+        favoriteSports: [],
+        favoriteTeams: [],
+        reputation: event.points,
+      },
+      update: { reputation: { increment: event.points } },
+    });
+    return event;
+  });
+}
+
+export async function reverseFanScoreEvent(
+  db: PrismaClient,
+  input: { eventId: string; reason: string },
+) {
+  const original = await db.fanScoreEvent.findUnique({
+    where: { id: input.eventId },
+  });
+  if (!original) return null;
+  return db.$transaction(async (transaction) => {
+    const existing = await transaction.fanScoreEvent.findUnique({
+      where: { reversalOfEventId: original.id },
+    });
+    if (existing) return existing;
+    const reversal = await transaction.fanScoreEvent.create({
+      data: {
+        userId: original.userId,
+        eventType: `${original.eventType}_REVERSAL`,
+        sourceType: original.sourceType,
+        sourceId: original.sourceId,
+        points: -original.points,
+        reason: input.reason,
+        idempotencyKey: `reversal:${original.id}`,
+        reversalOfEventId: original.id,
+      },
+    });
+    await transaction.profile.update({
+      where: { userId: original.userId },
+      data: { reputation: { increment: reversal.points } },
+    });
+    return reversal;
   });
 }
 

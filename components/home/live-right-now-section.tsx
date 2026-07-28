@@ -2,13 +2,17 @@ import Link from "next/link";
 import { GameCard } from "@/components/games/game-card";
 import { LiveAutoRefresh } from "@/components/games/live-auto-refresh";
 import { EmptyState } from "@/components/ui/foundations";
-import { fetchScoreboardsForTab } from "@/lib/sports/espn";
+import {
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export async function LiveRightNowSection() {
-  const games = (await fetchScoreboardsForTab("ALL")).filter(
-    (game) => game.status === "LIVE",
-  );
-  const visible = games.slice(0, 8);
+  const directory = await getSportsGameDirectory({
+    status: "LIVE",
+    limit: 8,
+  });
+  const visible = directory.games;
 
   return (
     <section>
@@ -30,25 +34,34 @@ export async function LiveRightNowSection() {
             <div key={game.id} className="w-72 shrink-0 snap-start">
               <GameCard
                 id={game.id}
-                league={game.leagueLabel}
+                league={game.league.abbreviation}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}
-                homeTeamLogo={game.homeTeam.logo}
-                awayTeamLogo={game.awayTeam.logo}
+                homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
+                awayTeamLogo={game.awayTeam.logoUrl ?? undefined}
                 homeScore={game.homeScore}
                 awayScore={game.awayScore}
                 status={game.status}
-                scheduledAt={game.scheduledAt}
-                broadcast={game.broadcast}
-                statusText={game.statusDetail || "Live"}
+                scheduledAt={game.scheduledAt.toISOString()}
+                broadcast={game.broadcast ?? undefined}
+                statusText={gameStatusLabel(game)}
+                conversationCount={game._count.takes}
               />
             </div>
           ))}
         </div>
       ) : (
         <EmptyState
-          title="No live game right now"
-          description="See what starts next."
+          title={
+            directory.providerError
+              ? "Schedules could not refresh"
+              : "No live game right now"
+          }
+          description={
+            directory.providerError
+              ? "No synchronized live schedule is available yet."
+              : "See what starts next."
+          }
           action={
             <Link href="/games" className="text-brand font-bold hover:underline">
               View games

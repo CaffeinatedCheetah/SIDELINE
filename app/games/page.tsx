@@ -4,12 +4,11 @@ import { GameCard } from "@/components/games/game-card";
 import { LiveAutoRefresh } from "@/components/games/live-auto-refresh";
 import { PageHeading } from "@/components/layout/page-heading";
 import { EmptyState } from "@/components/ui/foundations";
+import { SUPPORTED_LEAGUES } from "@/lib/sports/leagues";
 import {
-  SPORT_TABS,
-  fetchScoreboardsForTab,
-  sortByLiveFirst,
-  type SportTab,
-} from "@/lib/sports/espn";
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -18,6 +17,10 @@ export const metadata: Metadata = {
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const SPORT_TABS = [
+  "ALL",
+  ...SUPPORTED_LEAGUES.map((league) => league.abbreviation),
+];
 
 function toDateParam(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -52,11 +55,13 @@ export default async function GamesPage({
   searchParams: Promise<{ tab?: string; date?: string }>;
 }) {
   const filters = await searchParams;
-  const tab: SportTab = (SPORT_TABS as readonly string[]).includes(
-    filters.tab ?? "",
-  )
-    ? (filters.tab as SportTab)
+  const tab = SPORT_TABS.includes(filters.tab ?? "")
+    ? (filters.tab ?? "ALL")
     : "ALL";
+  const leagueKey =
+    tab === "ALL"
+      ? undefined
+      : SUPPORTED_LEAGUES.find((league) => league.abbreviation === tab)?.key;
   const day = startOfDay(filters.date);
   const today = startOfDay(undefined);
   const yesterdayParam = toDateParam(addDays(today, -1));
@@ -66,8 +71,11 @@ export default async function GamesPage({
   const isTomorrow = toDateParam(day) === tomorrowParam;
   const dateParam = toDateParam(day);
 
-  const rawGames = await fetchScoreboardsForTab(tab, dateParam);
-  const games = sortByLiveFirst(rawGames);
+  const directory = await getSportsGameDirectory({
+    date: dateParam,
+    leagueKey,
+  });
+  const games = directory.games;
   const hasLive = games.some((game) => game.status === "LIVE");
 
   const dateLabel = day.toLocaleDateString(undefined, {
@@ -148,30 +156,35 @@ export default async function GamesPage({
             <GameCard
               key={game.id}
               id={game.id}
-              league={game.leagueLabel}
+              league={game.league.abbreviation}
               homeTeam={game.homeTeam.name}
               awayTeam={game.awayTeam.name}
-              homeTeamLogo={game.homeTeam.logo}
-              awayTeamLogo={game.awayTeam.logo}
+              homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
+              awayTeamLogo={game.awayTeam.logoUrl ?? undefined}
               homeScore={game.homeScore}
               awayScore={game.awayScore}
               status={game.status}
-              scheduledAt={game.scheduledAt}
-              broadcast={game.broadcast}
-              statusText={
-                game.status === "LIVE"
-                  ? game.statusDetail || "Live"
-                  : game.status === "FINAL"
-                    ? "Final"
-                    : game.statusDetail || game.status
-              }
+              scheduledAt={game.scheduledAt.toISOString()}
+              broadcast={game.broadcast ?? undefined}
+              statusText={gameStatusLabel(game)}
+              conversationCount={game._count.takes}
             />
           ))}
         </div>
       ) : (
         <EmptyState
-          title={isToday ? "No games today" : `No games on ${dateLabel}`}
-          description="Try another day or sport."
+          title={
+            directory.providerError
+              ? "Schedules could not refresh"
+              : isToday
+                ? "No games today"
+                : `No games on ${dateLabel}`
+          }
+          description={
+            directory.providerError
+              ? "No synchronized schedule is available yet. Try again shortly."
+              : "Try another day or sport."
+          }
         />
       )}
     </div>

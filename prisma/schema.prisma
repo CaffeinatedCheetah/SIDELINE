@@ -302,6 +302,17 @@ model Game {
   homeTeamId   String            @db.Uuid
   awayTeamId   String            @db.Uuid
   providerRef  String?           @unique
+  provider     String?
+  providerState String?
+  providerPayloadVersion String?
+  providerSchemaVersion  String?
+  providerAdapterVersion String?
+  season       String?
+  venue        String?
+  broadcast    String?
+  statusDetail String?
+  providerUpdatedAt DateTime?
+  lastSyncedAt DateTime?
   scheduledAt  DateTime
   startedAt    DateTime?
   endedAt      DateTime?
@@ -325,6 +336,7 @@ model Game {
 
   @@index([status, scheduledAt])
   @@index([leagueId, scheduledAt])
+  @@index([provider, lastSyncedAt])
   @@index([homeTeamId, scheduledAt])
   @@index([awayTeamId, scheduledAt])
 }
@@ -653,6 +665,7 @@ model Notification {
   entityId    String
   href        String
   payload     Json             @default("{}")
+  deduplicationKey String?     @unique
   readAt      DateTime?
   createdAt   DateTime         @default(now())
   recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
@@ -693,6 +706,7 @@ model FanScoreEvent {
   points         Int
   reason         String
   idempotencyKey String   @unique
+  reversalOfEventId String? @unique
   occurredAt     DateTime @default(now())
   user           User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -716,6 +730,27 @@ model HallOfFlameEntry {
 
   @@unique([period, periodStart, rank, leagueId, communityId])
   @@index([period, periodStart, rank])
+}
+
+model OperationalJobRun {
+  id            String   @id @default(uuid()) @db.Uuid
+  jobKey        String
+  period        String?
+  status        String
+  lockKey       String?  @unique
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
+  eligibleCount Int      @default(0)
+  processedCount Int     @default(0)
+  skippedCount  Int      @default(0)
+  errorCount    Int      @default(0)
+  errorMessage  String?
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([jobKey, period, startedAt(sort: Desc)])
+  @@index([status, startedAt])
 }
 
 model SavedItem {

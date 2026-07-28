@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
+import { LogoutButton } from "@/components/actions/logout-button";
 import { AccountDangerZone } from "@/components/profile/account-danger-zone";
 import { DirtyForm } from "@/components/settings/dirty-form";
 import { ManagedUserList } from "@/components/settings/managed-user-list";
 import { SectionSelect } from "@/components/settings/section-select";
 import { PageHeading } from "@/components/layout/page-heading";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/foundations";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form-controls";
 import { db } from "@/lib/db/client";
@@ -385,34 +385,18 @@ export default async function Settings({
                 ended here -- there is no record of other signed-in devices to
                 list or revoke individually yet.
               </p>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/" });
-                }}
-                className="mt-4"
-              >
-                <Button variant="secondary" type="submit">
-                  Sign out this device
-                </Button>
-              </form>
+              <div className="mt-4">
+                <LogoutButton>Sign out this device</LogoutButton>
+              </div>
             </Card>
           )}
 
           {section === "account" && (
             <Card>
               <h2 className="font-display text-2xl font-black">Account</h2>
-              <form
-                action={async () => {
-                  "use server";
-                  await signOut({ redirectTo: "/" });
-                }}
-                className="mt-4"
-              >
-                <Button variant="secondary" type="submit">
-                  Log out
-                </Button>
-              </form>
+              <div className="mt-4">
+                <LogoutButton />
+              </div>
               <AccountDangerZone />
             </Card>
           )}
