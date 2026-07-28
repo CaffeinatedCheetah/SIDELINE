@@ -113,8 +113,8 @@ export default async function ReleaseDashboard() {
           <Badge tone="warning">NOT READY FOR PUBLIC BETA</Badge>
         </div>
         <p className="text-text-secondary mt-3 text-sm">
-          48 unit/component/accessibility tests, 12 PostgreSQL integration
-          tests, and 30 desktop/mobile Playwright journeys pass. The production
+          81 unit/component/accessibility tests, 18 PostgreSQL integration
+          tests, and 46 desktop/mobile Playwright journeys pass. The production
           build also passes.
         </p>
       </Card>

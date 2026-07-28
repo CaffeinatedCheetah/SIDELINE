@@ -2,6 +2,7 @@ import type { GameStatus, Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db/client";
 import { materializeContests } from "@/lib/sports/materializer";
+import { recordSportsMetric } from "@/lib/sports/observability";
 import { getSportsSchedule } from "@/lib/sports/service";
 import type { ContestState } from "@/lib/sports/types";
 
@@ -58,27 +59,43 @@ export async function getSportsGameDirectory({
     }
   }
 
-  const games = await db.game.findMany({
-    where: {
-      ...(statusFilter(status) ? { status: statusFilter(status) } : {}),
-      ...(leagueKey ? { league: { key: leagueKey } } : {}),
-    },
-    orderBy: { scheduledAt: "asc" },
-    take: limit,
-    include: {
-      league: true,
-      homeTeam: true,
-      awayTeam: true,
-      _count: { select: { takes: true } },
-    },
-  });
-  return {
-    games,
-    providerError: Boolean(schedule.error),
-    stale: schedule.stale,
-    source: "database",
-    fetchedAt: schedule.fetchedAt,
-  };
+  try {
+    const games = await db.game.findMany({
+      where: {
+        ...(statusFilter(status) ? { status: statusFilter(status) } : {}),
+        ...(leagueKey ? { league: { key: leagueKey } } : {}),
+      },
+      orderBy: { scheduledAt: "asc" },
+      take: limit,
+      include: {
+        league: true,
+        homeTeam: true,
+        awayTeam: true,
+        _count: { select: { takes: true } },
+      },
+    });
+    return {
+      games,
+      providerError: Boolean(schedule.error),
+      stale: schedule.stale,
+      source: "database",
+      fetchedAt: schedule.fetchedAt,
+    };
+  } catch (error) {
+    recordSportsMetric("materialization_failure", {
+      metadata: {
+        operation: "database_fallback",
+        error: error instanceof Error ? error.name : "unknown",
+      },
+    });
+    return {
+      games: [],
+      providerError: true,
+      stale: schedule.stale,
+      source: "database",
+      fetchedAt: schedule.fetchedAt,
+    };
+  }
 }
 
 function filterAndLimit(games: SportsGame[], status?: string, limit?: number) {
