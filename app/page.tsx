@@ -9,6 +9,10 @@ import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import {
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -22,51 +26,53 @@ export const metadata: Metadata = {
 
 async function discovery() {
   try {
-    const [games, takes, debates, communities, leader] = await Promise.all([
-      db.game.findMany({
-        take: 3,
-        orderBy: [{ status: "asc" }, { scheduledAt: "asc" }],
-        include: {
-          league: true,
-          homeTeam: true,
-          awayTeam: true,
-          _count: { select: { takes: true } },
-        },
-      }),
-      db.take.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          author: true,
-          _count: { select: { reactions: true, replies: true } },
-        },
-      }),
-      db.debate.findMany({
-        take: 3,
-        where: { status: "OPEN" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          options: {
-            include: { _count: { select: { votes: true } } },
-            orderBy: { displayOrder: "asc" },
+    const [gameDirectory, takes, debates, communities, leader] =
+      await Promise.all([
+        getSportsGameDirectory({ limit: 12 }),
+        db.take.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            author: true,
+            _count: { select: { reactions: true, replies: true } },
           },
-          _count: { select: { comments: true } },
-        },
-      }),
-      db.community.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { name: "asc" },
-        include: { _count: { select: { members: true, takes: true } } },
-      }),
-      db.user.findFirst({
-        where: { status: "ACTIVE" },
-        orderBy: { fanScoreEvents: { _count: "desc" } },
-        include: { profile: true, _count: { select: { followers: true } } },
-      }),
-    ]);
-    return { games, takes, debates, communities, leader, failed: false };
+        }),
+        db.debate.findMany({
+          take: 3,
+          where: { status: "OPEN" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            options: {
+              include: { _count: { select: { votes: true } } },
+              orderBy: { displayOrder: "asc" },
+            },
+            _count: { select: { comments: true } },
+          },
+        }),
+        db.community.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { name: "asc" },
+          include: { _count: { select: { members: true, takes: true } } },
+        }),
+        db.user.findFirst({
+          where: { status: "ACTIVE" },
+          orderBy: { fanScoreEvents: { _count: "desc" } },
+          include: { profile: true, _count: { select: { followers: true } } },
+        }),
+      ]);
+    return {
+      games: gameDirectory.games.slice(0, 3),
+      takes,
+      debates,
+      communities,
+      leader,
+      gameDataFailed:
+        gameDirectory.providerError && gameDirectory.games.length === 0,
+      gameDataStale: gameDirectory.stale,
+      failed: false,
+    };
   } catch {
     return {
       games: [],
@@ -74,6 +80,8 @@ async function discovery() {
       debates: [],
       communities: [],
       leader: null,
+      gameDataFailed: true,
+      gameDataStale: false,
       failed: true,
     };
   }
@@ -117,26 +125,26 @@ export default async function Home() {
               league={data.games[0].league.abbreviation}
               homeTeam={data.games[0].homeTeam.name}
               awayTeam={data.games[0].awayTeam.name}
+              homeLogoUrl={data.games[0].homeTeam.logoUrl}
+              awayLogoUrl={data.games[0].awayTeam.logoUrl}
               homeScore={data.games[0].homeScore ?? undefined}
               awayScore={data.games[0].awayScore ?? undefined}
               status={data.games[0].status}
-              statusText={
-                data.games[0].status === "LIVE"
-                  ? `${data.games[0].period ?? "Live"} ${data.games[0].clock ?? ""}`
-                  : data.games[0].status
-              }
+              statusText={gameStatusLabel(data.games[0])}
+              scheduledAt={data.games[0].scheduledAt.toISOString()}
+              broadcast={data.games[0].broadcast}
               conversationCount={data.games[0]._count.takes}
             />
           ) : (
             <EmptyState
               title={
-                data.failed
-                  ? "Live data is unavailable"
+                data.gameDataFailed
+                  ? "Schedules could not refresh"
                   : "No live game right now"
               }
               description={
-                data.failed
-                  ? "Try Games for the latest schedule."
+                data.gameDataFailed
+                  ? "No synchronized schedule is available yet. Try again shortly."
                   : "See what starts next."
               }
               action={
@@ -152,7 +160,14 @@ export default async function Home() {
         </div>
       </section>
       <div className="page-container grid gap-16 py-14">
-        <Section title="Live right now" href="/games">
+        <Section
+          title={
+            data.games.some((game) => game.status === "LIVE")
+              ? "Live right now"
+              : "Games to watch"
+          }
+          href="/games"
+        >
           {data.games.map((game) => (
             <GameCard
               key={game.id}
@@ -160,10 +175,14 @@ export default async function Home() {
               league={game.league.abbreviation}
               homeTeam={game.homeTeam.name}
               awayTeam={game.awayTeam.name}
+              homeLogoUrl={game.homeTeam.logoUrl}
+              awayLogoUrl={game.awayTeam.logoUrl}
               homeScore={game.homeScore ?? undefined}
               awayScore={game.awayScore ?? undefined}
               status={game.status}
-              statusText={game.status}
+              statusText={gameStatusLabel(game)}
+              scheduledAt={game.scheduledAt.toISOString()}
+              broadcast={game.broadcast}
             />
           ))}
         </Section>
@@ -178,7 +197,8 @@ export default async function Home() {
                 avatarUrl: take.author.image,
               }}
               body={take.body}
-              createdAt={take.createdAt.toLocaleDateString()}
+              createdAt=""
+              createdAtIso={take.createdAt.toISOString()}
               reactions={take._count.reactions}
               replies={take._count.replies}
             />

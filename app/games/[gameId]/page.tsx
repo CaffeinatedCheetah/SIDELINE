@@ -7,7 +7,9 @@ import { PollCard } from "@/components/games/poll-card";
 import { TakeCard } from "@/components/takes/take-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/foundations";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,30 +19,39 @@ export default async function GameRoom({
   params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
-  const game = await db.game.findUnique({
-    where: { id: gameId },
-    include: {
-      league: true,
-      homeTeam: true,
-      awayTeam: true,
-      takes: {
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          author: true,
-          _count: { select: { reactions: true, replies: true } },
+  const session = await auth();
+  const [game, preferences] = await Promise.all([
+    db.game.findUnique({
+      where: { id: gameId },
+      include: {
+        league: true,
+        homeTeam: true,
+        awayTeam: true,
+        takes: {
+          where: { status: "ACTIVE" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            author: true,
+            _count: { select: { reactions: true, replies: true } },
+          },
         },
-      },
-      polls: {
-        include: {
-          options: {
-            orderBy: { displayOrder: "asc" },
-            include: { _count: { select: { votes: true } } },
+        polls: {
+          include: {
+            options: {
+              orderBy: { displayOrder: "asc" },
+              include: { _count: { select: { votes: true } } },
+            },
           },
         },
       },
-    },
-  });
+    }),
+    session?.user?.id
+      ? db.userPreference.findUnique({
+          where: { userId: session.user.id },
+          select: { reducedData: true },
+        })
+      : null,
+  ]);
   if (!game) notFound();
   return (
     <div className="page-container py-10">
@@ -50,10 +61,20 @@ export default async function GameRoom({
         description={
           game.status === "LIVE"
             ? `${game.awayScore ?? 0}–${game.homeScore ?? 0} · ${game.period ?? "Live"} ${game.clock ?? ""}`
-            : game.scheduledAt.toLocaleString()
+            : "Game details and fan conversation."
         }
       />
-      <LiveGameRoom gameId={game.id} initialStatus={game.status} />
+      {game.status !== "LIVE" && (
+        <p className="text-text-secondary -mt-6 mb-6 text-sm">
+          Starts{" "}
+          <LocalDateTime value={game.scheduledAt.toISOString()} calendar />
+        </p>
+      )}
+      <LiveGameRoom
+        gameId={game.id}
+        initialStatus={game.status}
+        reducedData={preferences?.reducedData}
+      />
       <Tabs defaultValue="takes">
         <TabsList>
           {[
@@ -84,7 +105,8 @@ export default async function GameRoom({
                     avatarUrl: take.author.image,
                   }}
                   body={take.body}
-                  createdAt={take.createdAt.toLocaleTimeString()}
+                  createdAt=""
+                  createdAtIso={take.createdAt.toISOString()}
                   reactions={take._count.reactions}
                   replies={take._count.replies}
                 />

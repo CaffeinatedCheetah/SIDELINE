@@ -64,13 +64,18 @@ async function main() {
 
   const demoUsers = await Promise.all(
     [
-      ["demo@fantakes.local", "demo-fan", "Demo Fan"],
-      ["maya@fantakes.local", "maya-knows-ball", "Maya Carter"],
-      ["devon@fantakes.local", "fourth-quarter-dev", "Devon Reed"],
+      ["demo@fantakes.local", "fantakes-demo", "FanTakes Demo"],
+      ["maya@fantakes.local", "demo-maya", "FanTakes Demo — Maya"],
+      ["devon@fantakes.local", "demo-devon", "FanTakes Demo — Devon"],
     ].map(([email, handle, displayName]) =>
       db.user.upsert({
         where: { email },
-        update: {},
+        update: {
+          handle,
+          normalizedHandle: handle.toLowerCase(),
+          displayName,
+          name: displayName,
+        },
         create: {
           email,
           emailVerified: new Date(),
@@ -124,13 +129,17 @@ async function main() {
 
   const community = await db.community.upsert({
     where: { slug: "motor-city-faithful" },
-    update: {},
+    update: {
+      name: "FanTakes Official — Motor City",
+      description:
+        "Official FanTakes discussion space for Detroit game days and roster conversations.",
+    },
     create: {
       ownerId: demoUsers[1].id,
       slug: "motor-city-faithful",
-      name: "Motor City Faithful",
+      name: "FanTakes Official — Motor City",
       description:
-        "Detroit fans talking every possession, drive, and roster move.",
+        "Official FanTakes discussion space for Detroit game days and roster conversations.",
       rules: "Be specific. Debate the take, not the fan. No slurs or threats.",
     },
   });
@@ -151,13 +160,15 @@ async function main() {
 
   const debate = await db.debate.upsert({
     where: { slug: "nfc-north-best-defense" },
-    update: {},
+    update: {
+      title: "Official prompt: Who has the NFC North's best defense?",
+    },
     create: {
       creatorId: demoUsers[1].id,
       gameId: liveGame.id,
       communityId: community.id,
       slug: "nfc-north-best-defense",
-      title: "Who has the NFC North's best defense?",
+      title: "Official prompt: Who has the NFC North's best defense?",
       prompt: "Make the case using this season's performance, not reputation.",
       status: DebateStatus.OPEN,
       opensAt: now,
@@ -174,23 +185,27 @@ async function main() {
 
   const take = await db.take.upsert({
     where: { id: "00000000-0000-4000-8000-000000000101" },
-    update: {},
+    update: {
+      body: "[Official demo] Detroit's pressure packages are deciding this game before the snap.",
+    },
     create: {
       id: "00000000-0000-4000-8000-000000000101",
       authorId: demoUsers[2].id,
       gameId: liveGame.id,
       communityId: community.id,
-      body: "Detroit's pressure packages are deciding this game before the snap.",
+      body: "[Official demo] Detroit's pressure packages are deciding this game before the snap.",
     },
   });
   await db.take.upsert({
     where: { id: "00000000-0000-4000-8000-000000000102" },
-    update: {},
+    update: {
+      body: "[Official demo] Consistency on third down puts Detroit ahead right now.",
+    },
     create: {
       id: "00000000-0000-4000-8000-000000000102",
       authorId: demoUsers[1].id,
       debateId: debate.id,
-      body: "Consistency on third down puts Detroit ahead right now.",
+      body: "[Official demo] Consistency on third down puts Detroit ahead right now.",
     },
   });
 

@@ -87,7 +87,8 @@ export default async function ProfilePage({
                     avatarUrl: user.image,
                   }}
                   body={take.body}
-                  createdAt={take.createdAt.toLocaleDateString()}
+                  createdAt=""
+                  createdAtIso={take.createdAt.toISOString()}
                   reactions={take._count.reactions}
                   replies={take._count.replies}
                 />
