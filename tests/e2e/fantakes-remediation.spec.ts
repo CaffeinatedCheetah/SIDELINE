@@ -11,11 +11,13 @@ test("guest sees synchronized sports data and reaches a persistent Game Room", a
   await page.goto("/");
   await expect(page.getByText("Detroit Tigers").first()).toBeVisible();
   await expect(page.getByText("Chicago Cubs").first()).toBeVisible();
-  await page
-    .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
-    .first()
-    .click();
-  await expect(page).toHaveURL(/\/games\/[0-9a-f-]+/);
+  await Promise.all([
+    page.waitForURL(/\/games\/[0-9a-f-]+/, { timeout: 15_000 }),
+    page
+      .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
+      .first()
+      .click(),
+  ]);
   await expect(
     page.getByRole("heading", {
       level: 1,
@@ -35,13 +37,20 @@ test("guest participation preserves the callback destination", async ({
   page,
 }) => {
   await page.goto("/games");
+  await Promise.all([
+    page.waitForURL(/\/games\/[0-9a-f-]+/, { timeout: 15_000 }),
+    page
+      .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
+      .first()
+      .click(),
+  ]);
   await page
-    .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
-    .first()
-    .click();
-  await page.getByRole("textbox").fill("A guest take should require sign in.");
-  await page.getByRole("button", { name: /post take/i }).click();
-  await expect(page).toHaveURL(/\/auth\/sign-in\?callbackUrl=/);
+    .getByRole("textbox", { name: /add your take/i })
+    .fill("A guest take should require sign in.");
+  await Promise.all([
+    page.waitForURL(/\/auth\/sign-in\?callbackUrl=/, { timeout: 15_000 }),
+    page.getByRole("button", { name: /post take/i }).click(),
+  ]);
   expect(decodeURIComponent(page.url())).toContain("/games/");
 });
 

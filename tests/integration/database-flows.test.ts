@@ -747,18 +747,26 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     });
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
+    expect(first.body.data).toMatchObject({ status: "SUCCEEDED" });
+    expect(second.body.data).toMatchObject({ status: "SUCCEEDED" });
+    const firstEntries = (
+      first.body.data as {
+        entries: { takeId: string; rank: number; score: string }[];
+      }
+    ).entries;
+    const secondEntries = (
+      second.body.data as {
+        entries: { takeId: string; rank: number; score: string }[];
+      }
+    ).entries;
     expect(
-      (
-        first.body.data as { takeId: string; rank: number; score: string }[]
-      ).map(({ takeId, rank, score }) => ({
+      firstEntries.map(({ takeId, rank, score }) => ({
         takeId,
         rank,
         score: String(score),
       })),
     ).toEqual(
-      (
-        second.body.data as { takeId: string; rank: number; score: string }[]
-      ).map(({ takeId, rank, score }) => ({
+      secondEntries.map(({ takeId, rank, score }) => ({
         takeId,
         rank,
         score: String(score),
