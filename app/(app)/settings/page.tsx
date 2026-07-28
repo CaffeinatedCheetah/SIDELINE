@@ -36,7 +36,6 @@ export default async function Settings() {
         "COMMUNITY",
         "GAME",
         "PREDICTION",
-        "MODERATION",
         "BADGE",
       ].map((type) => [type, formData.get(`notify-${type}`) === "on"]),
     );
@@ -129,7 +128,6 @@ export default async function Settings() {
                 "COMMUNITY",
                 "GAME",
                 "PREDICTION",
-                "MODERATION",
                 "BADGE",
               ].map((type) => {
                 const settings = (user.preferences?.notificationSettings ??
@@ -151,13 +149,10 @@ export default async function Settings() {
           <h2 className="font-display text-2xl font-black">
             Account and safety
           </h2>
-          <ul className="text-text-secondary mt-4 grid gap-3">
-            <li>Notification preferences</li>
-            <li>Privacy controls</li>
-            <li>Linked accounts</li>
-            <li>Blocked and muted users</li>
-            <li>Security and data export</li>
-          </ul>
+          <p className="text-text-secondary mt-3">
+            Sign out of this browser or schedule account deletion. Additional
+            account controls will appear only when they are fully operational.
+          </p>
           <form
             action={async () => {
               "use server";

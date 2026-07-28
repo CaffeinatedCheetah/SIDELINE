@@ -1,5 +1,6 @@
 import type { Contest, ContestState, Participant } from "@/lib/sports/types";
 import type { SupportedLeague } from "@/lib/sports/leagues";
+import { recordSportsMetric } from "@/lib/sports/observability";
 
 interface EspnCompetitor {
   homeAway?: string;
@@ -151,7 +152,19 @@ export async function fetchEspnSchedule(
   if (!response.ok) throw new Error(`ESPN request failed: ${response.status}`);
   const payload = (await response.json()) as { events?: EspnEvent[] };
   const fetchedAt = new Date();
-  return (payload.events ?? [])
-    .map((event) => normalizeEspnEvent(event, league, fetchedAt))
-    .filter((contest): contest is Contest => Boolean(contest));
+  const contests: Contest[] = [];
+  for (const event of payload.events ?? []) {
+    const contest = normalizeEspnEvent(event, league, fetchedAt);
+    if (contest) contests.push(contest);
+    else
+      recordSportsMetric("normalization_failure", {
+        league: league.key,
+        metadata: {
+          provider: "espn",
+          adapterVersion: ESPN_ADAPTER_VERSION,
+          payloadVersion: ESPN_PAYLOAD_VERSION,
+        },
+      });
+  }
+  return contests;
 }

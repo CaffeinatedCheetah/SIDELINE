@@ -16,7 +16,9 @@ import {
   reverseFanScoreEvent,
 } from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
-import { generateHallOfFlame } from "@/lib/services/hall-of-flame-job";
+import { runHallOfFlameJob } from "@/lib/services/hall-of-flame-job";
+import { materializeContests } from "@/lib/sports/materializer";
+import { getSportsSchedule } from "@/lib/sports/service";
 
 type Context = { params: Promise<{ segments: string[] }> };
 
@@ -96,6 +98,27 @@ async function handleGet(request: Request, context: Context) {
   };
 
   if (resource === "games" && segments[1]) {
+    const current = await db.game.findUnique({
+      where: { id: segments[1] },
+      select: {
+        providerRef: true,
+        status: true,
+        league: { select: { key: true } },
+      },
+    });
+    if (current?.providerRef && current.status !== "FINAL") {
+      try {
+        const schedule = await getSportsSchedule({
+          leagueKeys: [current.league.key],
+        });
+        const contest = schedule.contests.find(
+          (candidate) => candidate.id === current.providerRef,
+        );
+        if (contest) await materializeContests([contest]);
+      } catch {
+        // The persisted Game Room remains available during provider failures.
+      }
+    }
     const game = await db.game.findUnique({
       where: { id: segments[1] },
       include: { league: true, homeTeam: true, awayTeam: true },
@@ -353,7 +376,7 @@ async function handlePost(request: Request, context: Context) {
       );
     const community = await db.community.findFirst({
       where: { id: parsed.data.communityId, status: ContentStatus.ACTIVE },
-      select: { id: true },
+      select: { id: true, ownerId: true, slug: true },
     });
     if (!community) return apiError("NOT_FOUND", "Community not found.", 404);
     if (!parsed.data.join) {
@@ -373,6 +396,16 @@ async function handlePost(request: Request, context: Context) {
         notifications: parsed.data.notifications,
         rulesAcceptedAt: new Date(),
       },
+    });
+    await createNotification(db, {
+      recipientId: community.ownerId,
+      actorId: userId,
+      type: "COMMUNITY",
+      entityType: "COMMUNITY",
+      entityId: community.id,
+      href: `/communities/${community.slug}`,
+      deduplicationKey: `community-join:${community.id}:${userId}`,
+      payload: { action: "joined" },
     });
     return apiSuccess({ joined: true }, 201);
   }
@@ -468,12 +501,23 @@ async function handlePost(request: Request, context: Context) {
     const recipient = parsed.data.parentId
       ? await db.comment.findUnique({
           where: { id: parsed.data.parentId },
-          select: { authorId: true },
+          select: {
+            authorId: true,
+            takeId: true,
+            debateId: true,
+            author: { select: { handle: true } },
+          },
         })
       : parsed.data.takeId
         ? await db.take.findUnique({
             where: { id: parsed.data.takeId },
-            select: { authorId: true },
+            select: {
+              authorId: true,
+              gameId: true,
+              debateId: true,
+              communityId: true,
+              author: { select: { handle: true } },
+            },
           })
         : await db.debate.findUnique({
             where: { id: parsed.data.debateId! },
@@ -486,15 +530,29 @@ async function handlePost(request: Request, context: Context) {
           ? recipient.creatorId
           : undefined;
     if (recipientId) {
+      const href =
+        recipient && "gameId" in recipient && recipient.gameId
+          ? `/games/${recipient.gameId}`
+          : recipient && "communityId" in recipient && recipient.communityId
+            ? `/communities/${(await db.community.findUnique({ where: { id: recipient.communityId }, select: { slug: true } }))?.slug ?? ""}`
+            : (recipient && "debateId" in recipient && recipient.debateId) ||
+                parsed.data.debateId
+              ? `/debates/${
+                  (recipient &&
+                    "debateId" in recipient &&
+                    recipient.debateId) ??
+                  parsed.data.debateId
+                }`
+              : recipient && "author" in recipient
+                ? `/users/${recipient.author.handle}`
+                : "/notifications";
       await createNotification(db, {
         recipientId,
         actorId: userId,
         type: "REPLY",
         entityType: "COMMENT",
         entityId: comment.id,
-        href: parsed.data.takeId
-          ? `/takes/${parsed.data.takeId}`
-          : `/debates/${parsed.data.debateId}`,
+        href,
         deduplicationKey: `reply:${comment.id}`,
       });
     }
@@ -549,22 +607,39 @@ async function handlePost(request: Request, context: Context) {
     const target = parsed.data.takeId
       ? await db.take.findUnique({
           where: { id: parsed.data.takeId },
-          select: { authorId: true },
+          select: {
+            authorId: true,
+            gameId: true,
+            debateId: true,
+            community: { select: { slug: true } },
+            author: { select: { handle: true } },
+          },
         })
       : await db.comment.findUnique({
           where: { id: parsed.data.commentId! },
-          select: { authorId: true },
+          select: {
+            authorId: true,
+            takeId: true,
+            debateId: true,
+            author: { select: { handle: true } },
+          },
         });
     if (target) {
+      const href =
+        "gameId" in target && target.gameId
+          ? `/games/${target.gameId}`
+          : "community" in target && target.community
+            ? `/communities/${target.community.slug}`
+            : target.debateId
+              ? `/debates/${target.debateId}`
+              : `/users/${target.author.handle}`;
       await createNotification(db, {
         recipientId: target.authorId,
         actorId: userId,
         type: "REACTION",
         entityType: parsed.data.takeId ? "TAKE" : "COMMENT",
         entityId: parsed.data.takeId ?? parsed.data.commentId!,
-        href: parsed.data.takeId
-          ? `/takes/${parsed.data.takeId}`
-          : "/notifications",
+        href,
         deduplicationKey: `reaction:${reaction.id}`,
         payload: { kind: reaction.kind },
       });
@@ -645,6 +720,30 @@ async function handlePost(request: Request, context: Context) {
       },
       include: { options: true },
     });
+    if (debate.communityId) {
+      const members = await db.communityMember.findMany({
+        where: {
+          communityId: debate.communityId,
+          status: "ACTIVE",
+          notifications: true,
+        },
+        select: { userId: true },
+      });
+      await Promise.allSettled(
+        members.map(({ userId: recipientId }) =>
+          createNotification(db, {
+            recipientId,
+            actorId: userId,
+            type: "DEBATE",
+            entityType: "DEBATE",
+            entityId: debate.id,
+            href: `/debates/${debate.slug}`,
+            deduplicationKey: `debate-opened:${debate.id}:${recipientId}`,
+            payload: { title: debate.title },
+          }),
+        ),
+      );
+    }
     return apiSuccess(debate, 201);
   }
   if (resource === "votes") {
@@ -943,20 +1042,7 @@ async function handlePost(request: Request, context: Context) {
         where: { id: userId },
         select: { handle: true },
       });
-      // Settings' "New followers" toggle (UserPreference.notificationSettings)
-      // is the one real enforcement point wired up in this phase -- the other
-      // categories don't have anything to gate yet since nothing currently
-      // creates REPLY/PREDICTION/GAME/COMMUNITY notifications at all.
-      const recipientPrefs = await db.userPreference.findUnique({
-        where: { userId: parsed.data.userId },
-        select: { notificationSettings: true },
-      });
-      const notifyOnFollow =
-        (recipientPrefs?.notificationSettings as { follows?: boolean } | null)
-          ?.follows !== false;
-      // Block/mute prevents future ordinary notifications (doc:
-      // NOTIFICATIONS.md) -- the follow itself isn't blocked here, only the
-      // notification it would otherwise generate for the recipient.
+      // Block and mute relationships suppress ordinary notifications.
       const suppressed = await db.user.findFirst({
         where: {
           id: parsed.data.userId,
@@ -968,25 +1054,19 @@ async function handlePost(request: Request, context: Context) {
         select: { id: true },
       });
       try {
-        await db.$transaction([
-          db.follow.create({
-            data: { followerId: userId, followedId: parsed.data.userId },
-          }),
-          ...(notifyOnFollow && !suppressed
-            ? [
-                db.notification.create({
-                  data: {
-                    recipientId: parsed.data.userId,
-                    actorId: userId,
-                    type: "FOLLOW",
-                    entityType: "USER",
-                    entityId: userId,
-                    href: `/users/${actor.handle}`,
-                  },
-                }),
-              ]
-            : []),
-        ]);
+        await db.follow.create({
+          data: { followerId: userId, followedId: parsed.data.userId },
+        });
+        if (!suppressed)
+          await createNotification(db, {
+            recipientId: parsed.data.userId,
+            actorId: userId,
+            type: "FOLLOW",
+            entityType: "USER",
+            entityId: userId,
+            href: `/users/${actor.handle}`,
+            deduplicationKey: `follow:${userId}:${parsed.data.userId}`,
+          });
       } catch (error) {
         if (
           !(
@@ -1308,6 +1388,64 @@ async function handlePost(request: Request, context: Context) {
           where: { id: target.userId },
           data: { status: "SUSPENDED", bannedAt: new Date() },
         });
+      if (["REMOVE_CONTENT", "BAN_USER"].includes(parsed.data.action)) {
+        await transaction.fanScoreEvent.create({
+          data: {
+            userId: target.userId,
+            eventType: "MODERATION_PENALTY",
+            sourceType: parsed.data.targetType,
+            sourceId: parsed.data.targetId,
+            points: -25,
+            reason: parsed.data.reason,
+            idempotencyKey: `moderation-penalty:${created.id}`,
+          },
+        });
+        await transaction.profile.upsert({
+          where: { userId: target.userId },
+          create: {
+            userId: target.userId,
+            favoriteSports: [],
+            favoriteTeams: [],
+            reputation: -25,
+          },
+          update: { reputation: { decrement: 25 } },
+        });
+      }
+      if (parsed.data.action === "RESTORE_CONTENT") {
+        const penalty = await transaction.fanScoreEvent.findFirst({
+          where: {
+            userId: target.userId,
+            eventType: "MODERATION_PENALTY",
+            sourceType: parsed.data.targetType,
+            sourceId: parsed.data.targetId,
+            reversalOfEventId: null,
+          },
+          orderBy: { occurredAt: "desc" },
+        });
+        if (
+          penalty &&
+          !(await transaction.fanScoreEvent.findUnique({
+            where: { reversalOfEventId: penalty.id },
+          }))
+        ) {
+          await transaction.fanScoreEvent.create({
+            data: {
+              userId: target.userId,
+              eventType: "MODERATION_PENALTY_REVERSAL",
+              sourceType: parsed.data.targetType,
+              sourceId: parsed.data.targetId,
+              points: -penalty.points,
+              reason: `Restored: ${parsed.data.reason}`,
+              idempotencyKey: `moderation-restore:${created.id}`,
+              reversalOfEventId: penalty.id,
+            },
+          });
+          await transaction.profile.update({
+            where: { userId: target.userId },
+            data: { reputation: { increment: -penalty.points } },
+          });
+        }
+      }
       if (
         ["WARN_USER", "TEMPORARY_MUTE", "BAN_USER"].includes(parsed.data.action)
       )
@@ -1360,7 +1498,7 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    return apiSuccess(await generateHallOfFlame(db, parsed.data.period));
+    return apiSuccess(await runHallOfFlameJob(db, parsed.data.period));
   }
   return apiError("NOT_FOUND", "API operation not found.", 404);
 }
