@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from "react";
 export function LiveGameRoom({
   gameId,
   initialStatus,
+  reducedData = false,
 }: {
   gameId: string;
   initialStatus: string;
+  reducedData?: boolean;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [connection, setConnection] = useState<
@@ -33,12 +35,12 @@ export function LiveGameRoom({
           setConnection(navigator.onLine ? "retrying" : "offline");
       }
     };
-    const timer = setInterval(poll, 15_000);
+    const timer = setInterval(poll, reducedData ? 60_000 : 15_000);
     return () => {
       controller.abort();
       clearInterval(timer);
     };
-  }, [gameId, initialStatus]);
+  }, [gameId, initialStatus, reducedData]);
   return (
     <p role="status" className="text-text-secondary mb-4 text-sm">
       Game status: <strong>{status}</strong> · {connection}

@@ -27,6 +27,19 @@ export default async function Settings() {
     const displayName = String(formData.get("displayName") ?? "").trim();
     const bio = String(formData.get("bio") ?? "").trim();
     const theme = String(formData.get("theme") ?? "dark");
+    const notificationSettings = Object.fromEntries(
+      [
+        "REPLY",
+        "REACTION",
+        "FOLLOW",
+        "DEBATE",
+        "COMMUNITY",
+        "GAME",
+        "PREDICTION",
+        "MODERATION",
+        "BADGE",
+      ].map((type) => [type, formData.get(`notify-${type}`) === "on"]),
+    );
     await db.user.update({
       where: { id: current.user.id },
       data: {
@@ -42,10 +55,14 @@ export default async function Settings() {
             create: {
               theme,
               reducedMotion: formData.get("reducedMotion") === "on",
+              reducedData: formData.get("reducedData") === "on",
+              notificationSettings,
             },
             update: {
               theme,
               reducedMotion: formData.get("reducedMotion") === "on",
+              reducedData: formData.get("reducedData") === "on",
+              notificationSettings,
             },
           },
         },
@@ -97,6 +114,36 @@ export default async function Settings() {
               defaultChecked={user.preferences?.reducedMotion}
               label="Reduce motion"
             />
+            <Checkbox
+              name="reducedData"
+              defaultChecked={user.preferences?.reducedData}
+              label="Data saver — hide provider logos and refresh live games less often"
+            />
+            <fieldset className="border-border-subtle grid gap-2 rounded-md border p-4">
+              <legend className="px-2 font-bold">Notifications</legend>
+              {[
+                "REPLY",
+                "REACTION",
+                "FOLLOW",
+                "DEBATE",
+                "COMMUNITY",
+                "GAME",
+                "PREDICTION",
+                "MODERATION",
+                "BADGE",
+              ].map((type) => {
+                const settings = (user.preferences?.notificationSettings ??
+                  {}) as Record<string, unknown>;
+                return (
+                  <Checkbox
+                    key={type}
+                    name={`notify-${type}`}
+                    defaultChecked={settings[type] !== false}
+                    label={type.toLowerCase().replaceAll("_", " ")}
+                  />
+                );
+              })}
+            </fieldset>
             <Button type="submit">Save settings</Button>
           </form>
         </Card>

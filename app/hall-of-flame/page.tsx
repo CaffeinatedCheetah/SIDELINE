@@ -1,8 +1,9 @@
 import { PageHeading } from "@/components/layout/page-heading";
 import { Card, EmptyState } from "@/components/ui/foundations";
 import { Select } from "@/components/ui/form-controls";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
-import type { Prisma } from "@prisma/client";
+import { HallPeriod, type Prisma } from "@prisma/client";
 
 type HallListItem = Prisma.HallOfFlameEntryGetPayload<{
   include: {
@@ -16,22 +17,49 @@ type HallListItem = Prisma.HallOfFlameEntryGetPayload<{
   };
 }>;
 export const dynamic = "force-dynamic";
-export default async function HallPage() {
+export default async function HallPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ period?: string }>;
+}) {
+  const params = await searchParams;
+  const period = Object.values(HallPeriod).includes(params.period as HallPeriod)
+    ? (params.period as HallPeriod)
+    : HallPeriod.WEEKLY;
   let entries: HallListItem[] = [];
+  let latestRun: {
+    status: string;
+    finishedAt: Date | null;
+    eligibleCount: number;
+    errorMessage: string | null;
+  } | null = null;
   try {
-    entries = (await db.hallOfFlameEntry.findMany({
-      take: 50,
-      orderBy: [{ periodStart: "desc" }, { rank: "asc" }],
-      include: {
-        take: {
-          select: {
-            body: true,
-            author: { select: { handle: true, displayName: true } },
+    [entries, latestRun] = await Promise.all([
+      db.hallOfFlameEntry.findMany({
+        where: { period },
+        take: 50,
+        orderBy: [{ periodStart: "desc" }, { rank: "asc" }],
+        include: {
+          take: {
+            select: {
+              body: true,
+              author: { select: { handle: true, displayName: true } },
+            },
           },
+          league: { select: { abbreviation: true } },
         },
-        league: { select: { abbreviation: true } },
-      },
-    })) as typeof entries;
+      }),
+      db.operationalJobRun.findFirst({
+        where: { jobKey: "hall-of-flame", period },
+        orderBy: { startedAt: "desc" },
+        select: {
+          status: true,
+          finishedAt: true,
+          eligibleCount: true,
+          errorMessage: true,
+        },
+      }),
+    ]);
   } catch {}
   return (
     <div className="page-container py-10">
@@ -41,11 +69,11 @@ export default async function HallPage() {
         description="The strongest fan contributions, ranked by quality, conversation, and trusted participation."
       />
       <form className="mb-8 grid gap-3 sm:grid-cols-3">
-        <Select aria-label="Period" name="period">
-          <option>Weekly</option>
-          <option>Daily</option>
-          <option>Monthly</option>
-          <option>All time</option>
+        <Select aria-label="Period" name="period" defaultValue={period}>
+          <option value="WEEKLY">Weekly</option>
+          <option value="DAILY">Daily</option>
+          <option value="MONTHLY">Monthly</option>
+          <option value="ALL_TIME">All time</option>
         </Select>
         <Select aria-label="Sport" name="sport">
           <option>All sports</option>
@@ -54,6 +82,12 @@ export default async function HallPage() {
         </Select>
         <button className="bg-brand rounded-sm px-4 font-bold">Apply</button>
       </form>
+      {latestRun?.finishedAt ? (
+        <p className="text-text-secondary mb-5 text-sm">
+          Last calculated{" "}
+          <LocalDateTime value={latestRun.finishedAt.toISOString()} calendar />
+        </p>
+      ) : null}
       {entries.length ? (
         <ol className="grid gap-3">
           {entries.map((entry) => (
@@ -83,8 +117,24 @@ export default async function HallPage() {
         </ol>
       ) : (
         <EmptyState
-          title="Rankings are being calculated"
-          description="Eligible takes appear after the scheduled ranking job runs."
+          title={
+            !latestRun
+              ? "Rankings have not been calculated"
+              : latestRun.status === "FAILED"
+                ? "Ranking calculation failed"
+                : latestRun.status === "RUNNING"
+                  ? "Rankings are being calculated"
+                  : "No eligible takes yet"
+          }
+          description={
+            !latestRun
+              ? "The first scheduled ranking run has not completed."
+              : latestRun.status === "FAILED"
+                ? "The previous rankings remain unchanged while the job is retried."
+                : latestRun.status === "RUNNING"
+                  ? "This period is currently being processed."
+                  : "No active, eligible contributions qualified for this period."
+          }
         />
       )}
     </div>

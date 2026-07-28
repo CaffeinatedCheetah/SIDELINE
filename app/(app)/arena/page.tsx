@@ -95,7 +95,8 @@ export default async function Arena() {
               avatarUrl: take.author.image,
             }}
             body={take.body}
-            createdAt={take.createdAt.toLocaleDateString()}
+            createdAt=""
+            createdAtIso={take.createdAt.toISOString()}
             reactions={take._count.reactions}
             replies={take._count.replies}
           />

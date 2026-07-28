@@ -9,7 +9,12 @@ import {
   rateLimitPolicy,
 } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
-import { recordFanScoreEvent } from "@/lib/scoring/fan-score";
+import { awardBadge } from "@/lib/badges/service";
+import { createNotification } from "@/lib/notifications/service";
+import {
+  recordFanScoreEvent,
+  reverseFanScoreEvent,
+} from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
 import { generateHallOfFlame } from "@/lib/services/hall-of-flame-job";
 
@@ -394,6 +399,13 @@ async function handlePost(request: Request, context: Context) {
         ? "Posted a constructive reply"
         : "Posted a substantive take",
     });
+    if (!parsed.data.parentId) {
+      await awardBadge(db, {
+        userId,
+        badgeKey: "first-take",
+        reason: "Posted their first take",
+      });
+    }
     return apiSuccess(take, 201);
   }
   if (resource === "comments") {
@@ -418,10 +430,51 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    return apiSuccess(
-      await db.comment.create({ data: { authorId: userId, ...parsed.data } }),
-      201,
-    );
+    const comment = await db.comment.create({
+      data: { authorId: userId, ...parsed.data },
+    });
+    await recordFanScoreEvent(db, {
+      userId,
+      type: "CONSTRUCTIVE_REPLY",
+      sourceType: "COMMENT",
+      sourceId: comment.id,
+      idempotencyKey: `comment:${comment.id}`,
+      reason: "Posted a constructive comment",
+    });
+    const recipient = parsed.data.parentId
+      ? await db.comment.findUnique({
+          where: { id: parsed.data.parentId },
+          select: { authorId: true },
+        })
+      : parsed.data.takeId
+        ? await db.take.findUnique({
+            where: { id: parsed.data.takeId },
+            select: { authorId: true },
+          })
+        : await db.debate.findUnique({
+            where: { id: parsed.data.debateId! },
+            select: { creatorId: true },
+          });
+    const recipientId =
+      recipient && "authorId" in recipient
+        ? recipient.authorId
+        : recipient && "creatorId" in recipient
+          ? recipient.creatorId
+          : undefined;
+    if (recipientId) {
+      await createNotification(db, {
+        recipientId,
+        actorId: userId,
+        type: "REPLY",
+        entityType: "COMMENT",
+        entityId: comment.id,
+        href: parsed.data.takeId
+          ? `/takes/${parsed.data.takeId}`
+          : `/debates/${parsed.data.debateId}`,
+        deduplicationKey: `reply:${comment.id}`,
+      });
+    }
+    return apiSuccess(comment, 201);
   }
   if (resource === "reactions") {
     const parsed = await parseJson(
@@ -454,9 +507,54 @@ async function handlePost(request: Request, context: Context) {
     });
     if (existing) {
       await db.reaction.delete({ where: { id: existing.id } });
+      if (existing.kind === "INSIGHTFUL") {
+        const scoreEvent = await db.fanScoreEvent.findUnique({
+          where: { idempotencyKey: `reaction-insightful:${existing.id}` },
+        });
+        if (scoreEvent)
+          await reverseFanScoreEvent(db, {
+            eventId: scoreEvent.id,
+            reason: "Insightful reaction removed",
+          });
+      }
       return apiSuccess({ active: false });
     }
-    await db.reaction.create({ data: { userId, ...parsed.data } });
+    const reaction = await db.reaction.create({
+      data: { userId, ...parsed.data },
+    });
+    const target = parsed.data.takeId
+      ? await db.take.findUnique({
+          where: { id: parsed.data.takeId },
+          select: { authorId: true },
+        })
+      : await db.comment.findUnique({
+          where: { id: parsed.data.commentId! },
+          select: { authorId: true },
+        });
+    if (target) {
+      await createNotification(db, {
+        recipientId: target.authorId,
+        actorId: userId,
+        type: "REACTION",
+        entityType: parsed.data.takeId ? "TAKE" : "COMMENT",
+        entityId: parsed.data.takeId ?? parsed.data.commentId!,
+        href: parsed.data.takeId
+          ? `/takes/${parsed.data.takeId}`
+          : "/notifications",
+        deduplicationKey: `reaction:${reaction.id}`,
+        payload: { kind: reaction.kind },
+      });
+      if (reaction.kind === "INSIGHTFUL" && target.authorId !== userId) {
+        await recordFanScoreEvent(db, {
+          userId: target.authorId,
+          type: "RECEIVED_INSIGHTFUL",
+          sourceType: "REACTION",
+          sourceId: reaction.id,
+          idempotencyKey: `reaction-insightful:${reaction.id}`,
+          reason: "Received an insightful reaction",
+        });
+      }
+    }
     return apiSuccess({ active: true }, 201);
   }
   if (resource === "debates") {

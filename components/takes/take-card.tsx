@@ -1,6 +1,7 @@
 import { Flame, MessageCircle, MoreHorizontal, Share2 } from "lucide-react";
 import Link from "next/link";
 import { Avatar, Card } from "@/components/ui/foundations";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { formatCount } from "@/lib/utils";
 export interface TakeCardProps {
   id: string;
@@ -8,6 +9,7 @@ export interface TakeCardProps {
   body: string;
   context?: string;
   createdAt: string;
+  createdAtIso?: string;
   reactions: number;
   replies: number;
 }
@@ -17,6 +19,7 @@ export function TakeCard({
   body,
   context,
   createdAt,
+  createdAtIso,
   reactions,
   replies,
 }: TakeCardProps) {
@@ -34,7 +37,12 @@ export function TakeCard({
               {author.displayName}
             </Link>
             <div className="text-text-muted text-sm">
-              @{author.handle} · <time>{createdAt}</time>
+              @{author.handle} ·{" "}
+              {createdAtIso ? (
+                <LocalDateTime value={createdAtIso} calendar />
+              ) : (
+                <time>{createdAt}</time>
+              )}
             </div>
           </div>
           <button

@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Button } from "@/components/ui/button";
 import { Card, EmptyState } from "@/components/ui/foundations";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
 export const dynamic = "force-dynamic";
 export default async function NotificationsPage() {
@@ -48,9 +49,11 @@ export default async function NotificationsPage() {
                       Open the related activity
                     </p>
                   </div>
-                  <time className="text-text-muted text-xs">
-                    {item.createdAt.toLocaleDateString()}
-                  </time>
+                  <LocalDateTime
+                    className="text-text-muted text-xs"
+                    value={item.createdAt.toISOString()}
+                    calendar
+                  />
                 </div>
               </Card>
             </a>
