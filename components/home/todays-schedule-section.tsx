@@ -2,13 +2,14 @@ import Link from "next/link";
 import { GameCard } from "@/components/games/game-card";
 import { LiveAutoRefresh } from "@/components/games/live-auto-refresh";
 import { EmptyState } from "@/components/ui/foundations";
-import { fetchScoreboardsForTab, sortByLiveFirst } from "@/lib/sports/espn";
+import {
+  gameStatusLabel,
+  getSportsGameDirectory,
+} from "@/lib/sports/read-model";
 
 export async function TodaysScheduleSection() {
-  const games = sortByLiveFirst(await fetchScoreboardsForTab("ALL")).slice(
-    0,
-    6,
-  );
+  const directory = await getSportsGameDirectory({ limit: 6 });
+  const games = directory.games;
   const hasLive = games.some((game) => game.status === "LIVE");
 
   return (
@@ -31,30 +32,34 @@ export async function TodaysScheduleSection() {
             <div key={game.id} className="w-72 shrink-0 snap-start">
               <GameCard
                 id={game.id}
-                league={game.leagueLabel}
+                league={game.league.abbreviation}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}
-                homeTeamLogo={game.homeTeam.logo}
-                awayTeamLogo={game.awayTeam.logo}
+                homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
+                awayTeamLogo={game.awayTeam.logoUrl ?? undefined}
                 homeScore={game.homeScore ?? undefined}
                 awayScore={game.awayScore ?? undefined}
                 status={game.status}
-                scheduledAt={game.scheduledAt}
-                statusText={
-                  game.status === "LIVE"
-                    ? game.statusDetail || "Live"
-                    : game.status === "FINAL"
-                      ? "Final"
-                      : game.statusDetail || game.status
-                }
+                scheduledAt={game.scheduledAt.toISOString()}
+                broadcast={game.broadcast ?? undefined}
+                statusText={gameStatusLabel(game)}
+                conversationCount={game._count.takes}
               />
             </div>
           ))}
         </div>
       ) : (
         <EmptyState
-          title="No games scheduled today"
-          description="Check back tomorrow, or browse the full schedule."
+          title={
+            directory.providerError
+              ? "Schedules could not refresh"
+              : "No games scheduled today"
+          }
+          description={
+            directory.providerError
+              ? "No synchronized schedule is available yet. Try again shortly."
+              : "Check back tomorrow, or browse the full schedule."
+          }
           action={
             <Link
               href="/games"

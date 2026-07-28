@@ -17,9 +17,9 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: `${nodeBin} ./node_modules/.bin/next dev --hostname 127.0.0.1 --port 3000`,
+    command: `${nodeBin} ./node_modules/.bin/next dev --webpack --hostname 127.0.0.1 --port 3000`,
     url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     env: {
       ...process.env,
       SPORTS_DATA_FIXTURE_PATH:

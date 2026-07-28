@@ -34,6 +34,10 @@
   --rail-width: 280px;
 }
 
+.text-brand {
+  color: var(--brand-light);
+}
+
 .theme-high-contrast {
   --canvas: #000000;
   --surface-1: #050505;

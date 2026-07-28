@@ -805,20 +805,28 @@ async function handlePost(request: Request, context: Context) {
     });
     if (!option)
       return apiError("INVALID_OPTION", "That option is not available.", 409);
-    // upsert (not create): a fan can change their declared position on an
-    // open debate. The unique constraint is on (userId, debateId), so
-    // switching from one option to another is a normal update, not a
-    // duplicate-vote conflict.
-    const vote = await db.vote.upsert({
-      where: { userId_debateId: { userId, debateId: parsed.data.debateId } },
-      update: { debateOptionId: option.id },
-      create: {
+    let vote;
+    try {
+      vote = await db.vote.create({
+        data: {
         userId,
         debateId: parsed.data.debateId,
         debateOptionId: option.id,
         kind: VoteKind.DEBATE_OPTION,
-      },
-    });
+        },
+      });
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2002"
+      )
+        throw error;
+      return apiError(
+        "DUPLICATE_VOTE",
+        "You already voted in this debate.",
+        409,
+      );
+    }
     const options = await db.debateOption.findMany({
       where: { debateId: parsed.data.debateId },
       orderBy: { displayOrder: "asc" },
@@ -831,17 +839,20 @@ async function handlePost(request: Request, context: Context) {
       (sum, debateOption) => sum + debateOption._count.votes,
       0,
     );
-    return apiSuccess({
-      vote,
-      total,
-      results: options.map((debateOption) => ({
-        optionId: debateOption.id,
-        votes: debateOption._count.votes,
-        percentage: total
-          ? Number(((debateOption._count.votes / total) * 100).toFixed(2))
-          : 0,
-      })),
-    });
+    return apiSuccess(
+      {
+        vote,
+        total,
+        results: options.map((debateOption) => ({
+          optionId: debateOption.id,
+          votes: debateOption._count.votes,
+          percentage: total
+            ? Number(((debateOption._count.votes / total) * 100).toFixed(2))
+            : 0,
+        })),
+      },
+      201,
+    );
   }
   if (resource === "polls") {
     const parsed = await parseJson(
@@ -1024,9 +1035,18 @@ async function handlePost(request: Request, context: Context) {
     });
     if (!target) return apiError("NOT_FOUND", "User not found.", 404);
     if (!parsed.data.follow) {
-      await db.follow.deleteMany({
-        where: { followerId: userId, followedId: parsed.data.userId },
-      });
+      await db.$transaction([
+        db.follow.deleteMany({
+          where: { followerId: userId, followedId: parsed.data.userId },
+        }),
+        db.notification.deleteMany({
+          where: {
+            deduplicationKey: `follow:${userId}:${parsed.data.userId}`,
+            recipientId: parsed.data.userId,
+            actorId: userId,
+          },
+        }),
+      ]);
       return apiSuccess({ following: false });
     }
     const existing = await db.follow.findUnique({

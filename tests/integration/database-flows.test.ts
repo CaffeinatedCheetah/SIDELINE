@@ -25,9 +25,10 @@ vi.setConfig({ hookTimeout: 120_000, testTimeout: 120_000 });
 type JsonBody = { data?: unknown; error?: { code: string; message: string } };
 
 function context(path: string) {
+  const pathname = path.split("?")[0];
   return {
     params: Promise.resolve({
-      segments: path.split("/").filter(Boolean),
+      segments: pathname.split("/").filter(Boolean),
     }),
   };
 }
@@ -481,13 +482,13 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
       (debates.body.data as Record<string, unknown[]>).users,
     ).toEqual([]);
     const people = await get(
-      `search?q=${encodeURIComponent("Integration Fan")}&type=people`,
+      `search?q=${encodeURIComponent("Persistent Fan")}&type=people`,
     );
     const peopleData = people.body.data as {
       users: { handle: string }[];
     };
     expect(peopleData.users.map((u) => u.handle)).toContain(
-      `user-${suffix}`,
+      `verified-${suffix}`,
     );
     // Authored takes are deferred pending privacy/moderation review
     // (docs/pages/SEARCH.md) -- the response shape must never include them.

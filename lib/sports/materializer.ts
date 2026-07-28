@@ -22,8 +22,11 @@ export async function materializeContest(
     try {
       const materialized = await db.$transaction(
         async (tx) => {
-          const synchronized = await tx.game.findUnique({
-            where: { providerRef: contest.id },
+          const legacyProviderRef = `${contest.provider}-${contest.league.key}-${contest.providerGameId}`;
+          let synchronized = await tx.game.findFirst({
+            where: {
+              providerRef: { in: [contest.id, legacyProviderRef] },
+            },
             include: {
               league: true,
               homeTeam: true,
@@ -31,6 +34,17 @@ export async function materializeContest(
               _count: { select: { takes: true } },
             },
           });
+          if (synchronized && synchronized.providerRef !== contest.id)
+            synchronized = await tx.game.update({
+              where: { id: synchronized.id },
+              data: { providerRef: contest.id },
+              include: {
+                league: true,
+                homeTeam: true,
+                awayTeam: true,
+                _count: { select: { takes: true } },
+              },
+            });
           if (
             synchronized?.providerUpdatedAt?.toISOString() ===
             contest.providerUpdatedAt

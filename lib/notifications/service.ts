@@ -16,6 +16,14 @@ const DEFAULT_NOTIFICATION_SETTINGS: Record<NotificationType, boolean> = {
   BADGE: true,
 };
 
+const PREFERENCE_KEYS: Partial<Record<NotificationType, string>> = {
+  REPLY: "replies",
+  FOLLOW: "follows",
+  COMMUNITY: "communities",
+  GAME: "games",
+  PREDICTION: "predictions",
+};
+
 export async function createNotification(
   db: PrismaClient,
   input: {
@@ -40,10 +48,11 @@ export async function createNotification(
     !Array.isArray(preferences.notificationSettings)
       ? (preferences.notificationSettings as Record<string, unknown>)
       : {};
+  const preferenceKey = PREFERENCE_KEYS[input.type] ?? input.type;
   if (
-    configured[input.type] === false ||
+    configured[preferenceKey] === false ||
     (!DEFAULT_NOTIFICATION_SETTINGS[input.type] &&
-      configured[input.type] !== true)
+      configured[preferenceKey] !== true)
   )
     return null;
 

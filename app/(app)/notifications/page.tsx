@@ -1,118 +1,182 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { startOfDay, startOfWeek } from "date-fns";
+import type { Notification, NotificationType } from "@prisma/client";
 import { auth } from "@/auth";
 import { PageHeading } from "@/components/layout/page-heading";
-import { Button } from "@/components/ui/button";
-import { Card, EmptyState } from "@/components/ui/foundations";
-import { LocalDateTime } from "@/components/ui/local-date-time";
+import { MarkAllReadButton } from "@/components/notifications/mark-all-read-button";
+import { NotificationRow } from "@/components/notifications/notification-row";
+import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "Notifications",
+  robots: { index: false, follow: false },
+};
+
+const PAGE_SIZE = 20;
+
+const TABS = [
+  { key: "all", label: "All", types: null },
+  { key: "replies", label: "Replies", types: ["REPLY", "REACTION"] },
+  { key: "predictions", label: "Predictions", types: ["PREDICTION"] },
+  { key: "games", label: "Games", types: ["GAME"] },
+  { key: "communities", label: "Communities", types: ["COMMUNITY", "DEBATE"] },
+  { key: "safety", label: "Safety", types: ["MODERATION"] },
+] as const satisfies readonly {
+  key: string;
+  label: string;
+  types: readonly NotificationType[] | null;
+}[];
+
+const MODERATION_LABELS: Record<string, string> = {
+  REMOVE_CONTENT: "Your content was removed",
+  WARN_USER: "You received a warning",
+  TEMPORARY_MUTE: "Your account was temporarily muted",
+  BAN_USER: "Your account was suspended",
+  RESTORE_CONTENT: "Your content was restored",
+};
+
+type NotificationRowData = Notification & {
+  actor: { displayName: string } | null;
+};
+
+function describe(n: NotificationRowData): { message: string; detail?: string } {
+  const actorName = n.actor?.displayName ?? "Someone";
+  switch (n.type) {
+    case "FOLLOW":
+      return { message: `${actorName} followed you` };
+    case "REPLY":
+      return { message: `${actorName} replied to your take` };
+    case "REACTION":
+      return { message: `${actorName} reacted to your take` };
+    case "DEBATE":
+      return { message: `${actorName} started a debate` };
+    case "COMMUNITY":
+      return { message: "New activity in a community you follow" };
+    case "GAME":
+      return { message: "A game you follow has an update" };
+    case "PREDICTION":
+      return { message: "Your prediction was resolved" };
+    case "BADGE":
+      return { message: "You earned a badge" };
+    case "MODERATION": {
+      const payload = n.payload as { action?: string; reason?: string };
+      return {
+        message:
+          (payload.action && MODERATION_LABELS[payload.action]) ||
+          "Account notice",
+        detail: payload.reason,
+      };
+    }
+    default:
+      return { message: (n.type as string).replaceAll("_", " ") };
+  }
+}
+
 export default async function NotificationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ tab?: string; cursor?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/auth/sign-in?callbackUrl=/notifications");
-  const params = await searchParams;
-  const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
-  const items = await db.notification.findMany({
-    where: { recipientId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 26,
-    skip: (page - 1) * 25,
-  });
-  const hasNext = items.length > 25;
-  const visibleItems = items.slice(0, 25);
-  async function readAll() {
-    "use server";
-    const current = await auth();
-    if (current?.user?.id)
-      await db.notification.updateMany({
-        where: { recipientId: current.user.id, readAt: null },
-        data: { readAt: new Date() },
-      });
+  const { tab: rawTab, cursor } = await searchParams;
+  const tab = TABS.find((t) => t.key === rawTab) ?? TABS[0];
+
+  const [items, unreadCount] = await Promise.all([
+    db.notification.findMany({
+      where: {
+        recipientId: session.user.id,
+        ...(tab.types ? { type: { in: [...tab.types] } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: PAGE_SIZE + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      include: { actor: { select: { displayName: true } } },
+    }),
+    db.notification.count({
+      where: { recipientId: session.user.id, readAt: null },
+    }),
+  ]);
+  const hasMore = items.length > PAGE_SIZE;
+  const page = items.slice(0, PAGE_SIZE);
+
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const groups: { label: string; items: NotificationRowData[] }[] = [
+    { label: "Today", items: [] },
+    { label: "Earlier this week", items: [] },
+    { label: "Older", items: [] },
+  ];
+  for (const item of page) {
+    const bucket =
+      item.createdAt >= todayStart ? 0 : item.createdAt >= weekStart ? 1 : 2;
+    groups[bucket]!.items.push(item);
   }
-  async function openNotification(formData: FormData) {
-    "use server";
-    const current = await auth();
-    if (!current?.user?.id)
-      redirect("/auth/sign-in?callbackUrl=/notifications");
-    const notificationId = String(formData.get("notificationId") ?? "");
-    const notification = await db.notification.findFirst({
-      where: { id: notificationId, recipientId: current.user.id },
-      select: { href: true },
-    });
-    if (!notification) redirect("/notifications");
-    await db.notification.update({
-      where: { id: notificationId },
-      data: { readAt: new Date() },
-    });
-    redirect(notification.href);
-  }
+
   return (
     <>
       <PageHeading
         eyebrow="Stay in the conversation"
         title="Notifications"
-        description="Replies, reactions, follows, predictions, and moderation updates."
-        action={
-          <form action={readAll}>
-            <Button variant="secondary" type="submit">
-              Mark all read
-            </Button>
-          </form>
-        }
+        description={`${unreadCount} unread`}
+        action={<MarkAllReadButton unreadCount={unreadCount} />}
       />
-      {visibleItems.length ? (
-        <div className="grid gap-2">
-          {visibleItems.map((item) => (
-            <form action={openNotification} key={item.id}>
-              <input type="hidden" name="notificationId" value={item.id} />
-              <button className="w-full text-left" type="submit">
-                <Card
-                  className={item.readAt ? "opacity-70" : "border-brand/50"}
-                >
-                  <div className="flex justify-between gap-4">
-                    <div>
-                      <strong>{item.type.replaceAll("_", " ")}</strong>
-                      <p className="text-text-secondary text-sm">
-                        Open the related activity
-                      </p>
-                    </div>
-                    <LocalDateTime
-                      className="text-text-muted text-xs"
-                      value={item.createdAt.toISOString()}
-                      calendar
-                    />
-                  </div>
-                </Card>
-              </button>
-            </form>
-          ))}
-          <nav
-            aria-label="Notification pages"
-            className="mt-4 flex justify-between"
+      <nav aria-label="Notification categories" className="mb-6 flex flex-wrap gap-1">
+        {TABS.map(({ key, label }) => (
+          <Link
+            key={key}
+            href={key === "all" ? "/notifications" : `/notifications?tab=${key}`}
+            aria-current={tab.key === key ? "page" : undefined}
+            className={`min-h-11 rounded-sm px-4 py-2 text-sm font-bold ${
+              tab.key === key
+                ? "bg-brand-surface text-brand-light"
+                : "text-text-secondary hover:bg-surface-3"
+            }`}
           >
-            {page > 1 ? (
-              <Link
-                className="text-brand font-bold"
-                href={`/notifications?page=${page - 1}`}
-              >
-                Newer
-              </Link>
-            ) : (
-              <span />
-            )}
-            {hasNext ? (
-              <Link
-                className="text-brand font-bold"
-                href={`/notifications?page=${page + 1}`}
-              >
-                Older
-              </Link>
-            ) : null}
-          </nav>
+            {label}
+          </Link>
+        ))}
+      </nav>
+      {page.length ? (
+        <div className="grid gap-6">
+          {groups
+            .filter((group) => group.items.length)
+            .map((group) => (
+              <section key={group.label}>
+                <h2 className="text-text-secondary mb-2 text-sm font-bold tracking-wide uppercase">
+                  {group.label}
+                </h2>
+                <div className="grid gap-2">
+                  {group.items.map((item) => {
+                    const { message, detail } = describe(item);
+                    return (
+                      <NotificationRow
+                        key={item.id}
+                        id={item.id}
+                        href={item.href}
+                        message={message}
+                        detail={detail}
+                        createdAt={item.createdAt.toLocaleDateString()}
+                        read={Boolean(item.readAt)}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          {hasMore && (
+            <Link
+              href={`/notifications?tab=${tab.key}&cursor=${page[page.length - 1]!.id}`}
+              className="text-brand text-sm font-bold hover:underline"
+            >
+              Load more
+            </Link>
+          )}
         </div>
       ) : (
         <EmptyState
