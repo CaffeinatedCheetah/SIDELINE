@@ -25,8 +25,10 @@ test("development login persists and logout protects the authenticated shell", a
   ).toBeVisible({ timeout: 30_000 });
 
   await page.goto("/settings");
-  await page.getByRole("button", { name: "Log out" }).click();
-  await expect(page).toHaveURL("/");
+  await Promise.all([
+    page.waitForURL("/", { timeout: 15_000 }),
+    page.getByRole("button", { name: "Log out" }).click(),
+  ]);
 
   await page.goto("/arena");
   await expect(page).toHaveURL(/\/auth\/sign-in/);

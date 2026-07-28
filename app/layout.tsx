@@ -34,7 +34,8 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`h-full antialiased theme-${theme}${preferences?.reducedMotion ? "reduce-motion" : ""}`}
+      className={`h-full antialiased theme-${theme}${preferences?.reducedMotion ? " reduce-motion" : ""}`}
+      data-scroll-behavior="smooth"
       data-reduced-data={preferences?.reducedData ? "true" : "false"}
       suppressHydrationWarning
     >
