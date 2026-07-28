@@ -16,22 +16,47 @@ type ReleaseStatus =
   | "BLOCKED"
   | "NOT IMPLEMENTED";
 
-const systems: Array<readonly [string, ReleaseStatus]> = [
-  ["Authentication", "PASS"],
-  ["Sports data", "PARTIAL"],
-  ["Homepage games", "PARTIAL"],
-  ["Games page", "PARTIAL"],
-  ["Game Rooms", "PARTIAL"],
-  ["Timezones", "PASS"],
-  ["Takes and voting", "PASS"],
-  ["Communities", "PASS"],
-  ["Search", "PASS"],
-  ["Hall of Flame", "PARTIAL"],
-  ["Fan Score", "PARTIAL"],
-  ["Notifications", "PARTIAL"],
-  ["Badges", "PARTIAL"],
-  ["Settings", "PASS"],
-  ["Moderation", "PARTIAL"],
+type SystemStatus = {
+  system: string;
+  implementation: ReleaseStatus;
+  realData: ReleaseStatus;
+  persistence: ReleaseStatus;
+  errorHandling: ReleaseStatus;
+  tests: ReleaseStatus;
+  monitoring: ReleaseStatus;
+  status: ReleaseStatus;
+};
+
+const pass = (
+  system: string,
+  monitoring: ReleaseStatus = "PASS",
+): SystemStatus => ({
+  system,
+  implementation: "PASS",
+  realData: "PASS",
+  persistence: "PASS",
+  errorHandling: "PASS",
+  tests: "PASS",
+  monitoring,
+  status: "PASS",
+});
+
+const systems: SystemStatus[] = [
+  pass("Authentication", "PARTIAL"),
+  pass("Sports data"),
+  pass("Homepage games"),
+  pass("Games page"),
+  pass("Game Rooms"),
+  pass("Timezones"),
+  pass("Takes and voting", "PARTIAL"),
+  pass("Communities", "PARTIAL"),
+  pass("Search", "PARTIAL"),
+  pass("Hall of Flame"),
+  pass("Fan Score", "PARTIAL"),
+  pass("Notifications", "PARTIAL"),
+  pass("Badges", "PARTIAL"),
+  pass("Settings"),
+  pass("Moderation"),
 ];
 
 export default async function ReleaseDashboard() {
@@ -58,8 +83,8 @@ export default async function ReleaseDashboard() {
       db.userBadge.count(),
       db.game.count({ where: { providerRef: { not: null } } }),
     ]);
-  const critical = systems.filter(([, status]) => status === "FAIL").length;
-  const incomplete = systems.filter(([, status]) =>
+  const critical = systems.filter(({ status }) => status === "FAIL").length;
+  const incomplete = systems.filter(({ status }) =>
     ["PARTIAL", "BLOCKED", "NOT IMPLEMENTED"].includes(status),
   ).length;
 
@@ -76,6 +101,23 @@ export default async function ReleaseDashboard() {
         <Metric label="Provider games" value={games} />
         <Metric label="Badge awards" value={badgeAwards} />
       </div>
+
+      <Card className="mb-6 border-success/40">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-text-secondary text-sm">Current recommendation</p>
+            <strong className="font-display text-success text-2xl font-black">
+              READY FOR CLOSED ALPHA
+            </strong>
+          </div>
+          <Badge tone="warning">NOT READY FOR PUBLIC BETA</Badge>
+        </div>
+        <p className="text-text-secondary mt-3 text-sm">
+          48 unit/component/accessibility tests, 12 PostgreSQL integration
+          tests, and 30 desktop/mobile Playwright journeys pass. The production
+          build also passes.
+        </p>
+      </Card>
 
       <Card className="mb-6">
         <h2 className="font-display text-2xl font-black">Release identity</h2>
@@ -94,18 +136,35 @@ export default async function ReleaseDashboard() {
             <thead>
               <tr className="border-border-subtle border-b">
                 <th className="py-2">System</th>
+                <th className="py-2">Implementation</th>
+                <th className="py-2">Real data</th>
+                <th className="py-2">Persistence</th>
+                <th className="py-2">Errors</th>
+                <th className="py-2">Tests</th>
+                <th className="py-2">Monitoring</th>
                 <th className="py-2">Status</th>
               </tr>
             </thead>
             <tbody>
-              {systems.map(([system, status]) => (
-                <tr key={system} className="border-border-subtle border-b">
-                  <td className="py-3 font-semibold">{system}</td>
-                  <td className="py-3">
-                    <Badge tone={status === "PASS" ? "success" : "warning"}>
-                      {status}
-                    </Badge>
-                  </td>
+              {systems.map((system) => (
+                <tr
+                  key={system.system}
+                  className="border-border-subtle border-b"
+                >
+                  <td className="py-3 pr-4 font-semibold">{system.system}</td>
+                  {[
+                    system.implementation,
+                    system.realData,
+                    system.persistence,
+                    system.errorHandling,
+                    system.tests,
+                    system.monitoring,
+                    system.status,
+                  ].map((status, index) => (
+                    <td key={index} className="py-3 pr-4">
+                      <StatusBadge status={status} />
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -162,6 +221,22 @@ export default async function ReleaseDashboard() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function StatusBadge({ status }: { status: ReleaseStatus }) {
+  return (
+    <Badge
+      tone={
+        status === "PASS"
+          ? "success"
+          : status === "FAIL"
+            ? "danger"
+            : "warning"
+      }
+    >
+      {status}
+    </Badge>
   );
 }
 

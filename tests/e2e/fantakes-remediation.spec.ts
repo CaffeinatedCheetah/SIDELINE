@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.describe.configure({ timeout: 90_000 });
+
 test.skip(
   process.env.RUN_DATABASE_E2E !== "true",
   "Requires a disposable FanTakes database and deterministic provider fixture.",

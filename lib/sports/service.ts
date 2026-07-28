@@ -1,4 +1,7 @@
-import { SUPPORTED_LEAGUES } from "@/lib/sports/leagues";
+import {
+  SUPPORTED_LEAGUES,
+  type SupportedLeague,
+} from "@/lib/sports/leagues";
 import { materializeContests } from "@/lib/sports/materializer";
 import { recordSportsMetric } from "@/lib/sports/observability";
 import { fetchEspnSchedule } from "@/lib/sports/providers/espn";
@@ -13,8 +16,11 @@ const cache = new Map<
 >();
 
 export interface SportsProviderAdapter {
-  readonly provider: Contest["provider"];
-  fetchSchedule: typeof fetchEspnSchedule;
+  readonly provider: string;
+  fetchSchedule(
+    league: SupportedLeague,
+    query?: { date?: string },
+  ): Promise<Contest[]>;
 }
 
 const espnAdapter: SportsProviderAdapter = {
