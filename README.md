@@ -107,3 +107,13 @@ RUN_DATABASE_TESTS=true node --env-file=.env.local \
 RUN_DATABASE_E2E=true node --env-file=.env.local \
   node_modules/@playwright/test/cli.js test
 ```
+
+For a disposable FanTakes-only database, prefer the guarded project command:
+
+```bash
+FANTAKES_TEST_DATABASE_URL="postgresql://..." npm run test:db:fantakes
+```
+
+It refuses a declared Production URL and requires an explicit override for
+remote Supabase hosts. FanTakes verification does not use another project's
+database, schema, scripts, or test harness.

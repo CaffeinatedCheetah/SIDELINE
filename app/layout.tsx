@@ -19,12 +19,17 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
-  const preferences = session?.user?.id
-    ? await db.userPreference.findUnique({
-        where: { userId: session.user.id },
-        select: { theme: true, reducedMotion: true, reducedData: true },
-      })
-    : null;
+  const [preferences, unread] = session?.user?.id
+    ? await Promise.all([
+        db.userPreference.findUnique({
+          where: { userId: session.user.id },
+          select: { theme: true, reducedMotion: true, reducedData: true },
+        }),
+        db.notification.count({
+          where: { recipientId: session.user.id, readAt: null },
+        }),
+      ])
+    : [null, 0];
   const theme = preferences?.theme ?? "dark";
   return (
     <html
@@ -34,7 +39,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <Navbar />
+        <Navbar authenticated={Boolean(session?.user?.id)} unread={unread} />
         <main id="main-content" className="flex flex-1 flex-col pb-16 lg:pb-0">
           {children}
         </main>
