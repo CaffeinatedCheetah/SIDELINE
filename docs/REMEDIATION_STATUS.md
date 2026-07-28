@@ -1,8 +1,8 @@
 # FanTakes remediation release status
 
-Branch: `remediation/fantakes-phase-2`
+Branch: `fix/fantakes-production-audit`
 
-Last full verification: 2026-07-27. The protected `/release-dashboard` route is
+Last full verification: 2026-07-28. The protected `/release-dashboard` route is
 the runtime view of this status. Only executable user-visible behavior is
 promoted to PASS.
 
@@ -27,15 +27,15 @@ promoted to PASS.
 ## Verification evidence
 
 - Prisma generation and schema validation: PASS.
-- Three migrations deployed to a disposable FanTakes PostgreSQL database: PASS.
+- Five migrations deployed to a disposable FanTakes PostgreSQL database: PASS.
 - Seed against the disposable database: PASS.
 - ESLint and TypeScript: PASS.
-- Unit/component/accessibility: 48 PASS.
-- PostgreSQL integration and concurrency: 12 PASS.
-- Focused remediation Playwright, desktop/mobile: 6 PASS.
-- Authentication persistence/logout/protection, desktop/mobile: 2 PASS.
-- Complete Playwright suite, desktop/mobile: 30 PASS.
+- Unit/component/accessibility: 81 PASS.
+- PostgreSQL integration and concurrency: 18 PASS.
+- Complete Playwright suite, desktop/mobile: 46 PASS.
 - Production build: PASS.
+- Production migration-before-build gate: PASS.
+- Production sports read-model failure fallback: PASS.
 
 Dependency audit: 24 findings (1 critical, 19 high, 4 moderate), all explained
 in `docs/DEPENDENCY_REMEDIATION.md`. The Critical is an unused development-only

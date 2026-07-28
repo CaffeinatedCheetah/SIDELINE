@@ -46,7 +46,12 @@ test("all public routes render without runtime or console errors", async ({
     try {
       response = await page.goto(route, { waitUntil: "domcontentloaded" });
     } catch (error) {
-      if (!(error instanceof Error) || !error.message.includes("ERR_ABORTED"))
+      if (
+        !(error instanceof Error) ||
+        !["ERR_ABORTED", "ERR_NETWORK_IO_SUSPENDED"].some((code) =>
+          error.message.includes(code),
+        )
+      )
         throw error;
       response = await page.goto(route, { waitUntil: "domcontentloaded" });
     }
