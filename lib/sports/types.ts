@@ -18,7 +18,7 @@ export interface Participant {
 
 export interface Contest {
   id: string;
-  provider: "espn";
+  provider: string;
   providerGameId: string;
   providerUpdatedAt: string;
   league: {
