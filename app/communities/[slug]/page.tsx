@@ -5,7 +5,7 @@ import { TakeComposer } from "@/components/actions/take-composer";
 import { PageHeading } from "@/components/layout/page-heading";
 import { DebateCard } from "@/components/debates/debate-card";
 import { TakeCard } from "@/components/takes/take-card";
-import { Avatar, Card, EmptyState } from "@/components/ui/foundations";
+import { Avatar, Card, EmptyState, ErrorState } from "@/components/ui/foundations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/db/client";
 export const dynamic = "force-dynamic";
@@ -15,38 +15,56 @@ export default async function CommunityDetail({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [session, community] = await Promise.all([
-    auth(),
-    db.community.findUnique({
-      where: { slug },
-      include: {
-        takes: {
-          where: { status: "ACTIVE" },
-          orderBy: { createdAt: "desc" },
-          include: {
-            author: true,
-            _count: { select: { reactions: true, replies: true } },
+  let session, community;
+  try {
+    [session, community] = await Promise.all([
+      auth(),
+      db.community.findUnique({
+        where: { slug },
+        include: {
+          takes: {
+            where: { status: "ACTIVE" },
+            orderBy: { createdAt: "desc" },
+            include: {
+              // See app/games/[gameId]/page.tsx for why this is a scoped
+              // select, not `author: true`.
+              author: { select: { handle: true, displayName: true, image: true } },
+              _count: { select: { reactions: true, replies: true } },
+            },
           },
-        },
-        debates: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            options: { include: { _count: { select: { votes: true } } } },
-            _count: { select: { comments: true } },
+          debates: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              options: { include: { _count: { select: { votes: true } } } },
+              _count: { select: { comments: true } },
+            },
           },
-        },
-        members: {
-          where: { status: "ACTIVE" },
-          orderBy: { createdAt: "asc" },
-          take: 100,
-          include: {
-            user: { select: { handle: true, displayName: true, image: true } },
+          members: {
+            where: { status: "ACTIVE" },
+            orderBy: { createdAt: "asc" },
+            take: 100,
+            include: {
+              user: { select: { handle: true, displayName: true, image: true } },
+            },
           },
+          _count: { select: { members: true } },
         },
-        _count: { select: { members: true } },
-      },
-    }),
-  ]);
+      }),
+    ]);
+  } catch (error) {
+    console.error(
+      "[CommunityDetail] query failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : error,
+    );
+    return (
+      <div className="page-container py-10">
+        <ErrorState
+          title="This community is unavailable"
+          description="We couldn't load it right now. Try again shortly."
+        />
+      </div>
+    );
+  }
   if (!community) notFound();
 
   const myMembership = session?.user?.id

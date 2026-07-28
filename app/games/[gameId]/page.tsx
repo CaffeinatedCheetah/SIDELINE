@@ -26,7 +26,12 @@ const getGame = cache(async (gameId: string) =>
         where: { status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
         include: {
-          author: true,
+          // Explicit select, not `author: true` -- the live DB is missing
+          // a column (isOfficial) that exists in the Prisma schema but was
+          // never migrated onto production. `include: true` does a
+          // SELECT * on User and crashes; this only pulls the fields
+          // TakeCard actually renders.
+          author: { select: { handle: true, displayName: true, image: true } },
           _count: { select: { reactions: true, replies: true } },
         },
       },

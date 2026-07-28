@@ -9,7 +9,8 @@ import { UnblockButton } from "@/components/actions/unblock-button";
 import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { ProfileActionsMenu } from "@/components/profile/profile-actions-menu";
-import { PROFILE_TABS, ProfileTabs } from "@/components/profile/profile-tabs";
+import { ProfileTabs } from "@/components/profile/profile-tabs";
+import { PROFILE_TABS } from "@/lib/profile/tabs";
 import { TakeCard } from "@/components/takes/take-card";
 import { Avatar, Badge, Card, EmptyState } from "@/components/ui/foundations";
 import { buttonStyles } from "@/components/ui/button";
@@ -417,7 +418,9 @@ async function TakesTab({
     orderBy: { createdAt: "desc" },
     ...paged,
     include: {
-      author: true,
+      // See app/games/[gameId]/page.tsx for why this is a scoped select,
+      // not `author: true`.
+      author: { select: { handle: true, displayName: true, image: true } },
       _count: { select: { reactions: true, replies: true } },
     },
   });

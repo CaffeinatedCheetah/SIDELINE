@@ -42,7 +42,9 @@ async function discovery(viewerId: string | undefined) {
         where: { status: "ACTIVE" },
         orderBy: { createdAt: "desc" },
         include: {
-          author: true,
+          // See app/games/[gameId]/page.tsx for why this is a scoped
+          // select, not `author: true`.
+          author: { select: { handle: true, displayName: true, image: true } },
           _count: { select: { reactions: true, replies: true } },
         },
       }),
@@ -252,7 +254,21 @@ export default async function Home() {
             />
           ))}
         </Section>
-        <Section title="Debates worth entering" href="/debates">
+        <Section
+          title="Debates worth entering"
+          href="/debates"
+          isEmpty={!data.debates.length}
+          emptyState={
+            <EmptyState
+              title={
+                data.failed ? "Debates are unavailable" : "No open debates yet"
+              }
+              description={
+                data.failed ? "Try again shortly." : "Start the first one."
+              }
+            />
+          }
+        >
           {data.debates.map((debate) => (
             <DebateCard
               key={debate.id}
