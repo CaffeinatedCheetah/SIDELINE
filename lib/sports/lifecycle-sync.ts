@@ -4,6 +4,11 @@ import { checkRateLimit } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
 import { recordSportsMetric } from "@/lib/sports/observability";
 import { getSportsSchedule } from "@/lib/sports/service";
+import {
+  archiveGameFlashThreads,
+  materializeGameMoments,
+} from "@/lib/sports/moments/materializer";
+import { sportsMomentService } from "@/lib/sports/moments/service";
 
 const MINUTE = 60_000;
 
@@ -72,6 +77,7 @@ export async function synchronizeMlbLifecycle(now = new Date()) {
     }
   }
   let synchronized = 0;
+  let momentsSynchronized = 0;
   let errors = 0;
   for (const date of dates) {
     const startedAt = Date.now();
@@ -102,12 +108,61 @@ export async function synchronizeMlbLifecycle(now = new Date()) {
       });
     }
   }
+  const eventGames = await db.game.findMany({
+    where: {
+      league: { key: "mlb" },
+      providerRef: { not: null },
+      status: { in: ["LIVE", "HALFTIME", "FINAL"] },
+      scheduledAt: {
+        gte: new Date(now.getTime() - 12 * 60 * MINUTE),
+        lte: new Date(now.getTime() + 60 * MINUTE),
+      },
+    },
+    select: {
+      id: true,
+      provider: true,
+      providerRef: true,
+      status: true,
+      league: { select: { key: true } },
+    },
+  });
+  for (const game of eventGames) {
+    try {
+      const provider =
+        game.provider ??
+        (game.providerRef?.startsWith("espn-") ? "espn" : undefined);
+      const providerGameId = game.providerRef?.includes(":")
+        ? game.providerRef.split(":").at(-1)
+        : game.providerRef?.replace(/^espn-mlb-/, "");
+      if (!provider || !game.providerRef || !providerGameId) continue;
+      const moments = await sportsMomentService.getMoments({
+        provider,
+        leagueKey: game.league.key,
+        providerGameId,
+        gameProviderRef: game.providerRef,
+      });
+      const records = await materializeGameMoments(moments);
+      momentsSynchronized += records.length;
+      if (game.status === "FINAL") await archiveGameFlashThreads(game.id, now);
+    } catch (error) {
+      errors += 1;
+      recordSportsMetric("moment_materialization_failure", {
+        league: "mlb",
+        metadata: {
+          operation: "lifecycle_moment_refresh",
+          gameId: game.id,
+          error: error instanceof Error ? error.name : "unknown",
+        },
+      });
+    }
+  }
   return {
     checkedAt: now.toISOString(),
     candidates: candidates.length,
     due: due.length,
     dates,
     synchronized,
+    momentsSynchronized,
     errors,
   };
 }

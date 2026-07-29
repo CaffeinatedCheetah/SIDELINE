@@ -24,7 +24,11 @@
       "name": "Chicago Cubs",
       "abbreviation": "CHC"
     },
-    "state": "scheduled",
+    "state": "in_progress",
+    "homeScore": 2,
+    "awayScore": 1,
+    "period": "Bottom 5th",
+    "clock": "",
     "broadcast": "Fixture Sports",
     "versions": {
       "payload": "ci-fixture-v1",

@@ -47,6 +47,7 @@ const systems: SystemStatus[] = [
   pass("Homepage games"),
   pass("Games page"),
   pass("Game Rooms"),
+  pass("Game Moments"),
   pass("Timezones"),
   pass("Takes and voting", "PARTIAL"),
   pass("Communities", "PARTIAL"),
@@ -69,21 +70,30 @@ export default async function ReleaseDashboard() {
   });
   if (operator?.role !== "ADMIN") redirect("/arena");
 
-  const [lastJobs, notificationCount, fanScoreTypes, badgeAwards, games] =
-    await Promise.all([
-      db.operationalJobRun.findMany({
-        orderBy: { startedAt: "desc" },
-        distinct: ["jobKey", "period"],
-        take: 12,
-      }),
-      db.notification.count(),
-      db.fanScoreEvent.groupBy({
-        by: ["eventType"],
-        _count: { _all: true },
-      }),
-      db.userBadge.count(),
-      db.game.count({ where: { providerRef: { not: null } } }),
-    ]);
+  const [
+    lastJobs,
+    notificationCount,
+    fanScoreTypes,
+    badgeAwards,
+    games,
+    gameMoments,
+    flashThreads,
+  ] = await Promise.all([
+    db.operationalJobRun.findMany({
+      orderBy: { startedAt: "desc" },
+      distinct: ["jobKey", "period"],
+      take: 12,
+    }),
+    db.notification.count(),
+    db.fanScoreEvent.groupBy({
+      by: ["eventType"],
+      _count: { _all: true },
+    }),
+    db.userBadge.count(),
+    db.game.count({ where: { providerRef: { not: null } } }),
+    db.gameMoment.count(),
+    db.flashThread.count(),
+  ]);
   const critical = systems.filter(({ status }) => status === "FAIL").length;
   const incomplete = systems.filter(({ status }) =>
     ["PARTIAL", "BLOCKED", "NOT IMPLEMENTED"].includes(status),
@@ -100,11 +110,13 @@ export default async function ReleaseDashboard() {
         title="FanTakes release dashboard"
         description="Runtime evidence, operational jobs, and remediation readiness in one protected view."
       />
-      <div className="mb-8 grid gap-4 sm:grid-cols-4">
+      <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Metric label="Critical failures" value={critical} />
         <Metric label="Incomplete systems" value={incomplete} />
         <Metric label="Provider games" value={games} />
         <Metric label="Badge awards" value={badgeAwards} />
+        <Metric label="Game moments" value={gameMoments} />
+        <Metric label="Flash Threads" value={flashThreads} />
       </div>
 
       <Card className="border-success/40 mb-6">

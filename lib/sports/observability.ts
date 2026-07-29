@@ -9,6 +9,7 @@ type MetricName =
   | "lifecycle_refresh"
   | "moment_synchronized"
   | "moment_materialization_failure"
+  | "moment_provider_request"
   | "stale_contest";
 
 interface Metric {

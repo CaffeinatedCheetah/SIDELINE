@@ -9,7 +9,6 @@ import {
   rateLimitPolicy,
 } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
-import { awardBadge } from "@/lib/badges/service";
 import { createNotification } from "@/lib/notifications/service";
 import {
   recordFanScoreEvent,
@@ -20,6 +19,7 @@ import { runHallOfFlameJob } from "@/lib/services/hall-of-flame-job";
 import { getCanonicalGame } from "@/lib/sports/game-domain";
 import { materializeContests } from "@/lib/sports/materializer";
 import { getSportsSchedule } from "@/lib/sports/service";
+import { createTake, TakeCreationError } from "@/lib/takes/create-take";
 
 type Context = { params: Promise<{ segments: string[] }> };
 
@@ -469,6 +469,7 @@ async function handlePost(request: Request, context: Context) {
         debateId: z.string().uuid().optional(),
         communityId: z.string().uuid().optional(),
         parentId: z.string().uuid().optional(),
+        flashThreadId: z.string().uuid().optional(),
       }),
     );
     if (!parsed.success)
@@ -478,43 +479,24 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    if (parsed.data.communityId) {
-      const membership = await db.communityMember.findFirst({
-        where: {
-          communityId: parsed.data.communityId,
-          userId,
-          status: "ACTIVE",
-        },
-        select: { id: true },
-      });
-      if (!membership)
+    try {
+      return apiSuccess(
+        await createTake({ authorId: userId, ...parsed.data }),
+        201,
+      );
+    } catch (error) {
+      if (error instanceof TakeCreationError)
         return apiError(
-          "FORBIDDEN",
-          "Join this community before posting.",
-          403,
+          error.code,
+          error.message,
+          error.code === "FORBIDDEN"
+            ? 403
+            : error.code === "NOT_FOUND"
+              ? 404
+              : 409,
         );
+      throw error;
     }
-    const take = await db.take.create({
-      data: { ...parsed.data, authorId: userId },
-    });
-    await recordFanScoreEvent(db, {
-      userId,
-      type: parsed.data.parentId ? "CONSTRUCTIVE_REPLY" : "QUALITY_TAKE",
-      sourceType: "TAKE",
-      sourceId: take.id,
-      idempotencyKey: `take:${take.id}`,
-      reason: parsed.data.parentId
-        ? "Posted a constructive reply"
-        : "Posted a substantive take",
-    });
-    if (!parsed.data.parentId) {
-      await awardBadge(db, {
-        userId,
-        badgeKey: "first-take",
-        reason: "Posted their first take",
-      });
-    }
-    return apiSuccess(take, 201);
   }
   if (resource === "comments") {
     const parsed = await parseJson(

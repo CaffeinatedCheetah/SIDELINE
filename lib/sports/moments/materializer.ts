@@ -114,3 +114,13 @@ export async function materializeGameMoments(
   }
   throw new Error("Game Moment materialization exhausted retries.");
 }
+
+export async function archiveGameFlashThreads(
+  gameId: string,
+  archivedAt = new Date(),
+) {
+  return db.flashThread.updateMany({
+    where: { gameId, status: "ACTIVE" },
+    data: { status: "ARCHIVED", archivedAt },
+  });
+}

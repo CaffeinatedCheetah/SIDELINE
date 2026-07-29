@@ -1,8 +1,15 @@
 import fixture from "@/tests/fixtures/sports/espn-mlb-plays.json";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { normalizeEspnMlbPlays } from "@/lib/sports/moments/providers/espn-mlb";
+import {
+  fetchEspnMlbMoments,
+  normalizeEspnMlbPlays,
+} from "@/lib/sports/moments/providers/espn-mlb";
 import { shouldCreateFlashThread } from "@/lib/sports/moments/types";
+import {
+  SportsMomentService,
+  type GameMomentProviderAdapter,
+} from "@/lib/sports/moments/service";
 
 describe("MLB Game Moment normalization", () => {
   it("normalizes only high-confidence provider plays", () => {
@@ -60,5 +67,43 @@ describe("MLB Game Moment normalization", () => {
     );
     expect(periodEnd).toBeDefined();
     expect(periodEnd && shouldCreateFlashThread(periodEnd)).toBe(false);
+  });
+
+  it("fetches real provider play-by-play through the MLB adapter boundary", async () => {
+    const fetcher = vi.fn(
+      async () =>
+        new Response(JSON.stringify(fixture), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    );
+    const moments = await fetchEspnMlbMoments("mlb-moments-fixture-1", {
+      fetcher,
+    });
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: "/apis/site/v2/sports/baseball/mlb/summary",
+        search: "?event=mlb-moments-fixture-1",
+      }),
+      expect.objectContaining({ headers: { Accept: "application/json" } }),
+    );
+    expect(moments.some((moment) => moment.type === "LEAD_CHANGE")).toBe(true);
+  });
+
+  it("keeps provider selection behind the provider-neutral moment service", async () => {
+    const adapter: GameMomentProviderAdapter = {
+      provider: "fixture-provider",
+      fetchMoments: vi.fn(async () => []),
+    };
+    const service = new SportsMomentService([adapter]);
+    await expect(
+      service.getMoments({
+        provider: "fixture-provider",
+        leagueKey: "mlb",
+        providerGameId: "game-1",
+        gameProviderRef: "fixture-provider:mlb:game-1",
+      }),
+    ).resolves.toEqual([]);
+    expect(adapter.fetchMoments).toHaveBeenCalledOnce();
   });
 });

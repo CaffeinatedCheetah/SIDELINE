@@ -22,5 +22,16 @@ The checkpoint fixture is deterministic and does not invent events. It models
 provider plays for a game start, routine out, scoring play, go-ahead home run,
 inning end, and final result.
 
-Game Room UI, public APIs, provider fetching, realtime delivery, and archive
-presentation intentionally remain outside checkpoint 1.
+## Release 2 runtime
+
+The MLB lifecycle synchronization job fetches ESPN play-by-play through
+`SportsMomentService`, normalizes it, and sends it to the transactional
+materializer. Production does not set `SPORTS_MOMENTS_FIXTURE_PATH`; tests may
+point that variable at the deterministic play-by-play fixture.
+
+Public read endpoints expose moments and threads. Authenticated creation uses
+the existing Take model and server-derived moment context. The Game Room polls
+the provider-neutral endpoints every ten seconds while active, so newly
+materialized Flash Threads appear without a page refresh even when realtime
+delivery is unavailable. Final games archive their threads and render moments
+chronologically.

@@ -17,8 +17,8 @@ const SPORT_NAMES: Record<string, string> = {
  * espn.ts, never written to the DB), and a row only gets materialized the
  * moment someone actually clicks into a specific game.
  *
- * Idempotent: keyed by providerRef = `espn-<leagueKey>-<eventId>`, same
- * scheme as the card ids already rendered on /games, so a second click (or
+ * Idempotent: keyed by providerRef = `espn:<leagueKey>:<eventId>`, while
+ * safely adopting rows created under the legacy hyphenated scheme. A second click (or
  * a second visitor) resolves to the same row rather than duplicating it.
  * Team rows are keyed by ESPN's own numeric team id (`espn-team-<id>`),
  * namespaced separately from lib/sports/sync.ts's BallDontLie-keyed teams
@@ -36,12 +36,25 @@ export async function materializeEspnGame(
   leagueKey: string,
   eventId: string,
 ): Promise<string | null> {
-  const providerRef = `espn-${leagueKey}-${eventId}`;
+  const providerRef = `espn:${leagueKey}:${eventId}`;
+  const legacyProviderRef = `espn-${leagueKey}-${eventId}`;
   const existing = await db.game.findUnique({
     where: { providerRef },
     select: { id: true },
   });
   if (existing) return existing.id;
+  const legacy = await db.game.findUnique({
+    where: { providerRef: legacyProviderRef },
+    select: { id: true },
+  });
+  if (legacy)
+    return (
+      await db.game.update({
+        where: { id: legacy.id },
+        data: { providerRef, provider: "espn" },
+        select: { id: true },
+      })
+    ).id;
 
   const leagueConfig = LEAGUES.find(
     (l) => l.key === leagueKey && l.kind === "team",
@@ -99,6 +112,7 @@ export async function materializeEspnGame(
     update: {},
     create: {
       providerRef,
+      provider: "espn",
       leagueId: league.id,
       homeTeamId: homeTeam.id,
       awayTeamId: awayTeam.id,

@@ -159,3 +159,28 @@ export function normalizeEspnMlbPlays(
   }
   return moments;
 }
+
+export async function fetchEspnMlbMoments(
+  providerGameId: string,
+  {
+    gameProviderRef = `espn:mlb:${providerGameId}`,
+    fetcher = fetch,
+  }: {
+    gameProviderRef?: string;
+    fetcher?: typeof fetch;
+  } = {},
+) {
+  const url = new URL(
+    "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary",
+  );
+  url.searchParams.set("event", providerGameId);
+  const response = await fetcher(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok)
+    throw new Error(`ESPN MLB play-by-play request failed: ${response.status}`);
+  return normalizeEspnMlbPlays((await response.json()) as EspnMlbPlayByPlay, {
+    gameProviderRef,
+  });
+}

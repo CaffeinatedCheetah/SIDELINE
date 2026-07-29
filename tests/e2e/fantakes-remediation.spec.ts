@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { db } from "@/lib/db/client";
+import { materializeGameMoments } from "@/lib/sports/moments/materializer";
+import { normalizeEspnMlbPlays } from "@/lib/sports/moments/providers/espn-mlb";
+import fixture from "@/tests/fixtures/sports/espn-mlb-plays.json";
 
 test.describe.configure({ timeout: 90_000 });
 
@@ -13,19 +17,31 @@ test("guest sees synchronized sports data and reaches a persistent Game Room", a
   await page.goto("/");
   await expect(page.getByText("Detroit Tigers").first()).toBeVisible();
   await expect(page.getByText("Chicago Cubs").first()).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/\/games\/[0-9a-f-]+/, { timeout: 15_000 }),
-    page
-      .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
-      .first()
-      .click(),
-  ]);
+  await page
+    .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
+    .first()
+    .click({ noWaitAfter: true });
+  await expect(page).toHaveURL(/\/games\/[0-9a-f-]+/, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", {
       level: 1,
       name: /chicago cubs at detroit tigers/i,
     }),
   ).toBeVisible();
+  const gameId = page.url().split("/").at(-1)!;
+  const game = await db.game.findUniqueOrThrow({
+    where: { id: gameId },
+    select: { providerRef: true },
+  });
+  const scoringMoment = normalizeEspnMlbPlays(fixture, {
+    gameProviderRef: game.providerRef!,
+  }).find((moment) => moment.providerRef.endsWith(":play-home-run"));
+  expect(scoringMoment).toBeDefined();
+  await materializeGameMoments([scoringMoment!]);
+  await expect(
+    page.getByRole("heading", { name: /go-ahead two-run home run/i }),
+  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel("Add your take").first()).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("heading", {
@@ -39,20 +55,22 @@ test("guest participation preserves the callback destination", async ({
   page,
 }) => {
   await page.goto("/games");
-  await Promise.all([
-    page.waitForURL(/\/games\/[0-9a-f-]+/, { timeout: 15_000 }),
-    page
-      .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
-      .first()
-      .click(),
-  ]);
+  await page
+    .getByRole("link", { name: /open chicago cubs at detroit tigers/i })
+    .first()
+    .click({ noWaitAfter: true });
+  await expect(page).toHaveURL(/\/games\/[0-9a-f-]+/, { timeout: 30_000 });
   await page
     .getByRole("textbox", { name: /add your take/i })
+    .first()
     .fill("A guest take should require sign in.");
-  await Promise.all([
-    page.waitForURL(/\/auth\/sign-in\?callbackUrl=/, { timeout: 15_000 }),
-    page.getByRole("button", { name: /post take/i }).click(),
-  ]);
+  await page
+    .getByRole("button", { name: /post take/i })
+    .first()
+    .click({ noWaitAfter: true });
+  await expect(page).toHaveURL(/\/auth\/sign-in\?callbackUrl=/, {
+    timeout: 30_000,
+  });
   expect(decodeURIComponent(page.url())).toContain("/games/");
 });
 
