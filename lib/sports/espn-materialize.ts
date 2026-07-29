@@ -37,6 +37,7 @@ const SPORT_NAMES: Record<string, string> = {
 export async function materializeEspnGame(
   leagueKey: string,
   eventId: string,
+  competitionDate?: string,
 ): Promise<string | null> {
   const providerRef = `espn:${leagueKey}:${eventId}`;
   const legacyProviderRef = `espn-${leagueKey}-${eventId}`;
@@ -50,7 +51,10 @@ export async function materializeEspnGame(
   // service. Resolve and materialize that same normalized contest first so
   // Games, Homepage, and Game Rooms cannot disagree because a second ESPN
   // endpoint returned a transiently different result.
-  const schedule = await getSportsSchedule({ leagueKeys: [leagueKey] });
+  const schedule = await getSportsSchedule({
+    date: competitionDate,
+    leagueKeys: [leagueKey],
+  });
   const canonicalContest = schedule.contests.find(
     (contest) =>
       contest.provider === "espn" &&
