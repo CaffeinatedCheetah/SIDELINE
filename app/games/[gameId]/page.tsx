@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { PredictionForm } from "@/components/actions/prediction-form";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { LiveGameRoom } from "@/components/games/live-game-room";
+import { GameRoomPhase } from "@/components/games/game-room-phase";
 import { PageHeading } from "@/components/layout/page-heading";
 import { PollVoteCard } from "@/components/games/poll-vote-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -45,6 +46,7 @@ const getGame = cache(async (gameId: string) =>
           },
         },
       },
+      _count: { select: { follows: true, takes: true } },
     },
   }),
 );
@@ -66,7 +68,11 @@ export async function generateMetadata({
 async function refreshFromProviderIfMaterialized(
   game: NonNullable<Awaited<ReturnType<typeof getGame>>>,
 ) {
-  if (!game.providerRef || game.status === "FINAL") return game;
+  if (
+    !game.providerRef ||
+    ["FINAL", "POSTPONED", "CANCELLED"].includes(game.status)
+  )
+    return game;
   try {
     const schedule = await getSportsSchedule({
       leagueKeys: [game.league.key],
@@ -93,15 +99,23 @@ export default async function GameRoom({
   if (!rawGame) notFound();
   const game = await refreshFromProviderIfMaterialized(rawGame);
 
-  const myPollVotes = session?.user?.id
-    ? await db.pollVote.findMany({
-        where: {
-          userId: session.user.id,
-          pollId: { in: game.polls.map((poll) => poll.id) },
-        },
-        select: { pollId: true, pollOptionId: true },
-      })
-    : [];
+  const [myPollVotes, myGameFollow] = session?.user?.id
+    ? await Promise.all([
+        db.pollVote.findMany({
+          where: {
+            userId: session.user.id,
+            pollId: { in: game.polls.map((poll) => poll.id) },
+          },
+          select: { pollId: true, pollOptionId: true },
+        }),
+        db.gameFollow.findUnique({
+          where: {
+            userId_gameId: { userId: session.user.id, gameId: game.id },
+          },
+          select: { userId: true },
+        }),
+      ])
+    : [[], null];
   const votedOptionByPoll = new Map(
     myPollVotes.map((vote) => [vote.pollId, vote.pollOptionId]),
   );
@@ -127,12 +141,29 @@ export default async function GameRoom({
       ) : null}
       <LiveGameRoom
         gameId={game.id}
-        initialStatus={game.status}
+        startsAt={game.scheduledAt.toISOString()}
+        homeTeam={game.homeTeam.name}
+        awayTeam={game.awayTeam.name}
+        venue={game.venue}
+        broadcast={
+          game.broadcast
+            ?.split(",")
+            .map((value) => value.trim())
+            .filter(Boolean) ?? []
+        }
+        initialPhase={game.status}
         initialHomeScore={game.homeScore}
         initialAwayScore={game.awayScore}
         initialPeriod={game.period}
         initialClock={game.clock}
+        initialDetail={game.statusDetail}
+        initialProviderUpdatedAt={game.providerUpdatedAt?.toISOString() ?? null}
+        initialVersion={game.version}
+        initialFollowerCount={game._count.follows}
+        initialFollowing={Boolean(myGameFollow)}
+        signedIn={Boolean(session?.user?.id)}
       />
+      <GameRoomPhase phase={game.status} />
       <Tabs defaultValue="takes">
         <TabsList>
           {["takes", "polls", "predictions"].map((tab) => (
@@ -200,7 +231,8 @@ export default async function GameRoom({
               homeTeam={game.homeTeam.name}
               awayTeam={game.awayTeam.name}
               locked={
-                game.status !== "SCHEDULED" || new Date() >= game.scheduledAt
+                !["SCHEDULED", "PREGAME"].includes(game.status) ||
+                new Date() >= game.scheduledAt
               }
             />
           </div>

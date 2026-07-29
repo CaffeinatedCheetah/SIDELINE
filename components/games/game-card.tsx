@@ -19,7 +19,14 @@ export interface GameCardProps {
   awayTeamLogo?: string;
   homeScore?: number | null;
   awayScore?: number | null;
-  status: "SCHEDULED" | "LIVE" | "FINAL" | "POSTPONED" | "CANCELED";
+  status:
+    | "SCHEDULED"
+    | "PREGAME"
+    | "LIVE"
+    | "HALFTIME"
+    | "FINAL"
+    | "POSTPONED"
+    | "CANCELLED";
   statusText: string;
   /** Required to show a start time when the game hasn't been played yet. */
   scheduledAt?: string;
@@ -46,7 +53,11 @@ export function GameCard(p: GameCardProps) {
         <span className="text-text-muted min-w-0 truncate text-xs font-bold tracking-wider uppercase">
           {p.league}
         </span>
-        <Badge tone={p.status === "LIVE" ? "live" : "neutral"}>
+        <Badge
+          tone={
+            p.status === "LIVE" || p.status === "HALFTIME" ? "live" : "neutral"
+          }
+        >
           {p.statusText}
         </Badge>
       </div>

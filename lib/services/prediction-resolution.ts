@@ -13,7 +13,7 @@ export async function resolveGamePredictions(
     include: { predictions: { include: { result: true } } },
   });
   if (!game) throw new Error("GAME_NOT_FOUND");
-  if (!["FINAL", "POSTPONED", "CANCELED"].includes(game.status))
+  if (!["FINAL", "POSTPONED", "CANCELLED"].includes(game.status))
     return { resolved: 0, skipped: game.predictions.length };
 
   const voided =

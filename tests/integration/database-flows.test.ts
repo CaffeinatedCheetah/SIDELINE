@@ -370,6 +370,20 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
 
   it("posts in a game room and enforces prediction locks", async () => {
     authState.userId = ids.user;
+    expect(
+      (
+        await request("POST", "game-follows", {
+          gameId: ids.liveGame,
+          follow: true,
+          notifications: true,
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      await db.gameFollow.count({
+        where: { gameId: ids.liveGame, userId: ids.user },
+      }),
+    ).toBe(1);
     const gameTake = await request("POST", "takes", {
       body: "Live game-room participation.",
       gameId: ids.liveGame,
@@ -404,6 +418,19 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         where: { gameId: ids.futureGame, userId: ids.user },
       }),
     ).toBe(1);
+    expect(
+      (
+        await request("POST", "game-follows", {
+          gameId: ids.liveGame,
+          follow: false,
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      await db.gameFollow.count({
+        where: { gameId: ids.liveGame, userId: ids.user },
+      }),
+    ).toBe(0);
   });
 
   it("creates debates and derives vote totals server-side", async () => {
@@ -478,9 +505,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     expect(debateData.debates.map((d) => d.id)).toContain(ids.debate);
     // A debates-typed search must not also run the people/games/communities
     // queries -- only the requested type comes back populated.
-    expect(
-      (debates.body.data as Record<string, unknown[]>).users,
-    ).toEqual([]);
+    expect((debates.body.data as Record<string, unknown[]>).users).toEqual([]);
     const people = await get(
       `search?q=${encodeURIComponent("Persistent Fan")}&type=people`,
     );
@@ -608,7 +633,10 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
   it("suppresses the follow notification when the recipient turned it off in Settings", async () => {
     await db.userPreference.upsert({
       where: { userId: ids.secondUser },
-      create: { userId: ids.secondUser, notificationSettings: { follows: false } },
+      create: {
+        userId: ids.secondUser,
+        notificationSettings: { follows: false },
+      },
       update: { notificationSettings: { follows: false } },
     });
     authState.userId = ids.user;
@@ -951,7 +979,10 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
 
   it("dismisses a report without a punitive action, gated to moderators", async () => {
     const target = await db.take.create({
-      data: { authorId: ids.secondUser, body: "Dismiss-flow integration target." },
+      data: {
+        authorId: ids.secondUser,
+        body: "Dismiss-flow integration target.",
+      },
     });
     authState.userId = ids.user;
     const report = await request("POST", "reports", {
@@ -985,9 +1016,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     expect(dismissed.assignedModeratorId).toBe(ids.moderator);
     // No ModerationAction row and no state change to the take -- dismissing
     // is explicitly the no-action path.
-    expect(
-      await db.moderationAction.count({ where: { reportId } }),
-    ).toBe(0);
+    expect(await db.moderationAction.count({ where: { reportId } })).toBe(0);
     expect(
       (await db.take.findUniqueOrThrow({ where: { id: target.id } })).status,
     ).toBe("ACTIVE");

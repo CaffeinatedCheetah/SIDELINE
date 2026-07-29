@@ -12,39 +12,39 @@ integrity, moderation, or legal retention requires it; otherwise delete.
 
 ## Core entities
 
-| Entity | Required fields and constraints |
-|---|---|
-| `User` | `id`, unique normalized `email`, unique normalized `handle`, `display_name`, optional `bio/avatar_url`, `role`, `status`, `onboarded_at`, timestamps |
-| `Account` / `Session` / `VerificationToken` | Auth.js-compatible provider identity, expiring sessions/tokens, unique provider account |
-| `UserPreference` | one-to-one user; timezone, reduced-data preference, notification and privacy JSON validated through typed service |
-| `Sport` | unique `key`, name, active |
-| `League` | sport FK, unique provider-neutral `key`, name, abbreviation |
-| `Team` | league FK, unique key, name, abbreviation, optional safe logo URL and colors |
-| `Game` | league FK, home/away team FKs, scheduled/start/end UTC, status, scores, period/clock snapshot, provider reference, version |
-| `GameFollow` | unique user/game, notification preference, timestamps |
-| `Take` | author FK, optional game/debate/community/parent FKs, body, relation kind for debate replies, status, edited_at, timestamps |
-| `TakeReaction` | unique user/take/reaction kind; timestamps |
-| `Prediction` | game FK, proposition, options JSON validated by service, `locks_at`, resolution status/value |
-| `PredictionEntry` | unique user/prediction, selected option, submitted/updated timestamps, resolved result |
-| `Debate` | creator FK, title, prompt, slug/opaque ID, status, optional game/community FK, opens/closes timestamps |
-| `DebatePosition` | debate FK, stable key, title, description, display order; unique debate/key |
-| `DebateMembership` | unique user/debate, current position FK, joined/changed timestamps |
-| `Community` | owner FK, unique slug, name, description, visibility, avatar/banner, rules, status |
-| `CommunityMember` | unique user/community, role, status, rules accepted timestamp |
-| `Follow` | unique follower/followed user; self-follow prohibited |
-| `Block` | unique blocker/blocked user; self-block prohibited |
-| `Mute` | unique user/target plus target type/id; validated polymorphic target |
-| `Notification` | recipient FK, actor FK optional, type, entity type/id, read_at, created_at; immutable payload snapshot limited to display-safe fields |
-| `Report` | reporter FK, target type/id, reason, detail, state, assigned moderator, resolution, timestamps |
-| `ModerationAction` | moderator FK, target, action, reason, expiry, report FK optional, created_at; append-only |
-| `ReputationEvent` | user FK, source type/id, event type, points, occurred_at; unique idempotency key; append-only |
-| `AnalyticsEvent` | pseudonymous actor/session, event name, safe dimensions, occurred_at; no authored text or sensitive data |
+| Entity                                      | Required fields and constraints                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `User`                                      | `id`, unique normalized `email`, unique normalized `handle`, `display_name`, optional `bio/avatar_url`, `role`, `status`, `onboarded_at`, timestamps |
+| `Account` / `Session` / `VerificationToken` | Auth.js-compatible provider identity, expiring sessions/tokens, unique provider account                                                              |
+| `UserPreference`                            | one-to-one user; timezone, reduced-data preference, notification and privacy JSON validated through typed service                                    |
+| `Sport`                                     | unique `key`, name, active                                                                                                                           |
+| `League`                                    | sport FK, unique provider-neutral `key`, name, abbreviation                                                                                          |
+| `Team`                                      | league FK, unique key, name, abbreviation, optional safe logo URL and colors                                                                         |
+| `Game`                                      | league FK, home/away team FKs, scheduled/start/end UTC, status, scores, period/clock snapshot, provider reference, version                           |
+| `GameFollow`                                | unique user/game, notification preference, timestamps                                                                                                |
+| `Take`                                      | author FK, optional game/debate/community/parent FKs, body, relation kind for debate replies, status, edited_at, timestamps                          |
+| `TakeReaction`                              | unique user/take/reaction kind; timestamps                                                                                                           |
+| `Prediction`                                | game FK, proposition, options JSON validated by service, `locks_at`, resolution status/value                                                         |
+| `PredictionEntry`                           | unique user/prediction, selected option, submitted/updated timestamps, resolved result                                                               |
+| `Debate`                                    | creator FK, title, prompt, slug/opaque ID, status, optional game/community FK, opens/closes timestamps                                               |
+| `DebatePosition`                            | debate FK, stable key, title, description, display order; unique debate/key                                                                          |
+| `DebateMembership`                          | unique user/debate, current position FK, joined/changed timestamps                                                                                   |
+| `Community`                                 | owner FK, unique slug, name, description, visibility, avatar/banner, rules, status                                                                   |
+| `CommunityMember`                           | unique user/community, role, status, rules accepted timestamp                                                                                        |
+| `Follow`                                    | unique follower/followed user; self-follow prohibited                                                                                                |
+| `Block`                                     | unique blocker/blocked user; self-block prohibited                                                                                                   |
+| `Mute`                                      | unique user/target plus target type/id; validated polymorphic target                                                                                 |
+| `Notification`                              | recipient FK, actor FK optional, type, entity type/id, read_at, created_at; immutable payload snapshot limited to display-safe fields                |
+| `Report`                                    | reporter FK, target type/id, reason, detail, state, assigned moderator, resolution, timestamps                                                       |
+| `ModerationAction`                          | moderator FK, target, action, reason, expiry, report FK optional, created_at; append-only                                                            |
+| `ReputationEvent`                           | user FK, source type/id, event type, points, occurred_at; unique idempotency key; append-only                                                        |
+| `AnalyticsEvent`                            | pseudonymous actor/session, event name, safe dimensions, occurred_at; no authored text or sensitive data                                             |
 
 ## Enums
 
 - User role: `USER`, `MODERATOR`, `ADMIN`.
 - User status: `ACTIVE`, `SUSPENDED`, `PENDING_DELETION`, `DELETED`.
-- Game status: `SCHEDULED`, `LIVE`, `FINAL`, `POSTPONED`, `CANCELED`.
+- Game lifecycle: `SCHEDULED`, `PREGAME`, `LIVE`, `HALFTIME`, `FINAL`, `POSTPONED`, `CANCELLED`.
 - Content status: `ACTIVE`, `AUTHOR_REMOVED`, `MODERATOR_REMOVED`.
 - Community visibility: `PUBLIC`; `PRIVATE` is reserved and deferred.
 - Membership role: `MEMBER`, `MODERATOR`, `OWNER`.

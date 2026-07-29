@@ -43,10 +43,13 @@ export async function materializeEspnGame(
   });
   if (existing) return existing.id;
 
-  const leagueConfig = LEAGUES.find((l) => l.key === leagueKey && l.kind === "team");
+  const leagueConfig = LEAGUES.find(
+    (l) => l.key === leagueKey && l.kind === "team",
+  );
   if (!leagueConfig) return null;
   const game = await fetchEspnEvent(leagueKey, eventId);
-  if (!game || !game.homeTeam.externalId || !game.awayTeam.externalId) return null;
+  if (!game || !game.homeTeam.externalId || !game.awayTeam.externalId)
+    return null;
 
   const sport = await db.sport.upsert({
     where: { key: leagueConfig.espnSport },
@@ -100,7 +103,7 @@ export async function materializeEspnGame(
       homeTeamId: homeTeam.id,
       awayTeamId: awayTeam.id,
       scheduledAt: new Date(game.scheduledAt),
-      status: game.status,
+      status: game.status === "CANCELED" ? "CANCELLED" : game.status,
       homeScore: game.homeScore,
       awayScore: game.awayScore,
     },

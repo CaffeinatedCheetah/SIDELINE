@@ -15,7 +15,9 @@ const STATUS_WEIGHT: Record<string, number> = {
   SCHEDULED: 1,
   FINAL: 2,
   POSTPONED: 3,
-  CANCELED: 4,
+  CANCELLED: 4,
+  PREGAME: 1,
+  HALFTIME: 0,
 };
 
 export async function getTodaysSchedule(
@@ -68,7 +70,9 @@ export async function getTodaysSchedule(
   } catch (error) {
     console.error(
       "[getTodaysSchedule] query failed:",
-      error instanceof Error ? `${error.name}: ${error.message}` : "unknown error",
+      error instanceof Error
+        ? `${error.name}: ${error.message}`
+        : "unknown error",
     );
     return { games: [], failed: true };
   }

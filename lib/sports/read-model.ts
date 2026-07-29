@@ -24,7 +24,13 @@ export interface SportsGameDirectory {
 }
 
 function statusFilter(status?: string): GameStatus | undefined {
-  if (status === "LIVE" || status === "SCHEDULED" || status === "FINAL")
+  if (
+    status === "LIVE" ||
+    status === "HALFTIME" ||
+    status === "PREGAME" ||
+    status === "SCHEDULED" ||
+    status === "FINAL"
+  )
     return status;
   return undefined;
 }
@@ -116,5 +122,7 @@ export function gameStatusLabel(game: SportsGame) {
   if (state === "cancelled") return "Cancelled";
   if (state === "final") return game.statusDetail || "Final";
   if (state === "pregame") return "Pregame";
-  return game.status === "LIVE" ? "Live" : game.status;
+  return game.status === "LIVE"
+    ? "Live"
+    : game.status.charAt(0) + game.status.slice(1).toLowerCase();
 }

@@ -1,18 +1,11 @@
-import { Prisma, type GameStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { db } from "@/lib/db/client";
 import { createNotification } from "@/lib/notifications/service";
 import { recordSportsMetric } from "@/lib/sports/observability";
 import { resolveGamePredictions } from "@/lib/services/prediction-resolution";
+import { gameStatusFromProviderState } from "@/lib/sports/game-lifecycle";
 import type { Contest } from "@/lib/sports/types";
-
-function databaseStatus(state: Contest["state"]): GameStatus {
-  if (["in_progress", "halftime"].includes(state)) return "LIVE";
-  if (state === "final") return "FINAL";
-  if (state === "postponed" || state === "suspended") return "POSTPONED";
-  if (state === "cancelled") return "CANCELED";
-  return "SCHEDULED";
-}
 
 export async function materializeContest(
   contest: Contest,
@@ -31,7 +24,7 @@ export async function materializeContest(
               league: true,
               homeTeam: true,
               awayTeam: true,
-              _count: { select: { takes: true } },
+              _count: { select: { takes: true, follows: true } },
             },
           });
           if (synchronized && synchronized.providerRef !== contest.id)
@@ -42,7 +35,7 @@ export async function materializeContest(
                 league: true,
                 homeTeam: true,
                 awayTeam: true,
-                _count: { select: { takes: true } },
+                _count: { select: { takes: true, follows: true } },
               },
             });
           if (
@@ -128,7 +121,16 @@ export async function materializeContest(
               broadcast: contest.broadcast,
               statusDetail: contest.detail,
               scheduledAt: new Date(contest.scheduledAtUtc),
-              status: databaseStatus(contest.state),
+              status: gameStatusFromProviderState(contest.state),
+              startedAt: ["in_progress", "halftime", "final"].includes(
+                contest.state,
+              )
+                ? new Date(contest.scheduledAtUtc)
+                : undefined,
+              endedAt:
+                contest.state === "final"
+                  ? new Date(contest.providerUpdatedAt)
+                  : undefined,
               homeScore: contest.homeScore,
               awayScore: contest.awayScore,
               period: contest.period,
@@ -149,7 +151,16 @@ export async function materializeContest(
               broadcast: contest.broadcast,
               statusDetail: contest.detail,
               scheduledAt: new Date(contest.scheduledAtUtc),
-              status: databaseStatus(contest.state),
+              status: gameStatusFromProviderState(contest.state),
+              startedAt:
+                ["in_progress", "halftime", "final"].includes(contest.state) &&
+                !existing?.startedAt
+                  ? new Date(contest.scheduledAtUtc)
+                  : undefined,
+              endedAt:
+                contest.state === "final"
+                  ? (existing?.endedAt ?? new Date(contest.providerUpdatedAt))
+                  : null,
               homeScore: contest.homeScore ?? null,
               awayScore: contest.awayScore ?? null,
               period: contest.period,
@@ -160,7 +171,7 @@ export async function materializeContest(
               league: true,
               homeTeam: true,
               awayTeam: true,
-              _count: { select: { takes: true } },
+              _count: { select: { takes: true, follows: true } },
             },
           });
           return {
@@ -213,7 +224,7 @@ export async function materializeContest(
         );
       }
       if (
-        ["FINAL", "POSTPONED", "CANCELED"].includes(materialized.game.status)
+        ["FINAL", "POSTPONED", "CANCELLED"].includes(materialized.game.status)
       ) {
         try {
           await resolveGamePredictions(db, materialized.game.id);
