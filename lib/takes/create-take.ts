@@ -63,6 +63,7 @@ export async function createTake({
         select: {
           id: true,
           gameId: true,
+          status: true,
           moment: {
             select: {
               period: true,
@@ -76,6 +77,11 @@ export async function createTake({
     : null;
   if (resolvedFlashThreadId && !thread)
     throw new TakeCreationError("NOT_FOUND", "Flash Thread not found.");
+  if (thread?.status === "ARCHIVED")
+    throw new TakeCreationError(
+      "FORBIDDEN",
+      "This Flash Thread is archived and is now read-only.",
+    );
   const resolvedGameId =
     thread?.gameId ?? gameId ?? parent?.gameId ?? undefined;
   if (thread && gameId && thread.gameId !== gameId)

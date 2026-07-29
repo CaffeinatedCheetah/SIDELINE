@@ -84,18 +84,18 @@ export function GameMomentsPanel({
     return () => window.clearInterval(timer);
   }, [phase, refresh]);
 
-  const activeThread = useMemo(
+  const archive = phase === "FINAL";
+  const featuredThread = useMemo(
     () =>
       [...threads]
-        .filter((thread) => thread.status === "ACTIVE")
+        .filter((thread) => archive || thread.status === "ACTIVE")
         .sort(
           (left, right) =>
             new Date(right.moment.occurredAt).getTime() -
             new Date(left.moment.occurredAt).getTime(),
         )[0],
-    [threads],
+    [archive, threads],
   );
-  const archive = phase === "FINAL";
   const timeline = useMemo(
     () =>
       [...moments].sort((left, right) => {
@@ -132,43 +132,49 @@ export function GameMomentsPanel({
         </p>
       </div>
 
-      {activeThread ? (
+      {featuredThread ? (
         <Card className="border-brand/50 overflow-hidden p-0">
           <div className="bg-brand/10 border-brand/20 flex items-center justify-between gap-3 border-b px-5 py-3">
             <Badge tone="live">Flash Thread</Badge>
             <span className="text-text-muted flex items-center gap-1.5 text-xs">
               <Radio aria-hidden className="size-3.5" />
-              {activeThread.status}
+              {featuredThread.status}
             </span>
           </div>
           <div className="p-5">
             <h3 className="font-display text-2xl font-black">
-              {activeThread.title}
+              {featuredThread.title}
             </h3>
             <p className="text-text-secondary mt-2">
-              {[activeThread.moment.period, activeThread.moment.clock]
+              {[featuredThread.moment.period, featuredThread.moment.clock]
                 .filter(Boolean)
                 .join(" · ")}
-              {activeThread.moment.homeScore !== null &&
-              activeThread.moment.awayScore !== null
-                ? ` · ${activeThread.moment.awayScore}–${activeThread.moment.homeScore}`
+              {featuredThread.moment.homeScore !== null &&
+              featuredThread.moment.awayScore !== null
+                ? ` · ${featuredThread.moment.awayScore}–${featuredThread.moment.homeScore}`
                 : ""}
             </p>
             <div className="text-text-muted mt-3 flex flex-wrap gap-4 text-sm">
-              <span>{activeThread.takeCount} Takes</span>
-              <span>{activeThread.reactionCount} reactions</span>
-              <span>{activeThread.replyCount} replies</span>
+              <span>{featuredThread.takeCount} Takes</span>
+              <span>{featuredThread.reactionCount} reactions</span>
+              <span>{featuredThread.replyCount} replies</span>
             </div>
-            <div className="mt-5">
-              <TakeComposer
-                gameId={gameId}
-                flashThreadId={activeThread.id}
-                onPosted={refresh}
-              />
-            </div>
-            {activeThread.takes.length ? (
+            {featuredThread.status === "ACTIVE" && !archive ? (
+              <div className="mt-5">
+                <TakeComposer
+                  gameId={gameId}
+                  flashThreadId={featuredThread.id}
+                  onPosted={refresh}
+                />
+              </div>
+            ) : (
+              <p className="text-text-muted mt-5 text-sm">
+                This Flash Thread is preserved as a read-only game archive.
+              </p>
+            )}
+            {featuredThread.takes.length ? (
               <div className="mt-5 grid gap-4">
-                {activeThread.takes.slice(0, 3).map((take) => (
+                {featuredThread.takes.slice(0, 3).map((take) => (
                   <TakeCard
                     key={take.id}
                     id={take.id}
@@ -178,7 +184,7 @@ export function GameMomentsPanel({
                       avatarUrl: take.author.image,
                     }}
                     body={take.body}
-                    context={[activeThread.moment.period, activeThread.title]
+                    context={[featuredThread.moment.period, featuredThread.title]
                       .filter(Boolean)
                       .join(" · ")}
                     createdAt=""

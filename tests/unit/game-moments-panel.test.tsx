@@ -65,4 +65,35 @@ describe("GameMomentsPanel", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("preserves an archived Flash Thread without allowing new Takes", () => {
+    render(
+      <GameMomentsPanel
+        gameId="game-1"
+        phase="FINAL"
+        initialMoments={[moment]}
+        initialThreads={[
+          {
+            id: "thread-1",
+            title: moment.title,
+            status: "ARCHIVED",
+            moment,
+            takes: [],
+            takeCount: 0,
+            reactionCount: 0,
+            replyCount: 0,
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: moment.title }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This Flash Thread is preserved as a read-only game archive.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Add your take")).not.toBeInTheDocument();
+  });
 });

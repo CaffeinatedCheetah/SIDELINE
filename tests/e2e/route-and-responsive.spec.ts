@@ -42,9 +42,10 @@ test("all public routes render without runtime or console errors", async ({
     "/privacy",
   ];
   for (const route of routes) {
-    let response;
+    const probe = await page.request.get(route, { maxRedirects: 0 });
+    expect(probe.status(), route).toBeLessThan(400);
     try {
-      response = await page.goto(route, { waitUntil: "domcontentloaded" });
+      await page.goto(route, { waitUntil: "domcontentloaded" });
     } catch (error) {
       if (
         !(error instanceof Error) ||
@@ -53,9 +54,8 @@ test("all public routes render without runtime or console errors", async ({
         )
       )
         throw error;
-      response = await page.goto(route, { waitUntil: "domcontentloaded" });
+      await page.goto(route, { waitUntil: "domcontentloaded" });
     }
-    expect(response?.status(), route).toBeLessThan(400);
     await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
   }
   expect(consoleErrors).toEqual([]);

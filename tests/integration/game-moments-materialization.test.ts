@@ -134,5 +134,14 @@ run("Game Moment materialization", () => {
     expect(await db.take.count({ where: { id: take.id, flashThreadId } })).toBe(
       1,
     );
+    await expect(
+      createTake({
+        authorId: author.id,
+        body: "Archived rooms must reject new Takes.",
+        flashThreadId,
+      }),
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });
