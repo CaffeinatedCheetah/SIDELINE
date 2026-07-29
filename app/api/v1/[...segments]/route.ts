@@ -17,6 +17,7 @@ import {
 } from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
 import { runHallOfFlameJob } from "@/lib/services/hall-of-flame-job";
+import { getCanonicalGame } from "@/lib/sports/game-domain";
 import { materializeContests } from "@/lib/sports/materializer";
 import { getSportsSchedule } from "@/lib/sports/service";
 
@@ -119,12 +120,19 @@ async function handleGet(request: Request, context: Context) {
         // The persisted Game Room remains available during provider failures.
       }
     }
-    const game = await db.game.findUnique({
-      where: { id: segments[1] },
-      include: { league: true, homeTeam: true, awayTeam: true },
-    });
+    const game = await getCanonicalGame(segments[1]);
+    const userId = game ? await identity() : undefined;
+    const following =
+      game && userId
+        ? Boolean(
+            await db.gameFollow.findUnique({
+              where: { userId_gameId: { userId, gameId: game.id } },
+              select: { userId: true },
+            }),
+          )
+        : false;
     return game
-      ? apiSuccess(game)
+      ? apiSuccess({ ...game, following })
       : apiError("NOT_FOUND", "Game not found.", 404);
   }
 
@@ -252,8 +260,16 @@ async function handleGet(request: Request, context: Context) {
         ? db.game.findMany({
             where: {
               OR: [
-                { homeTeam: { OR: [{ name: contains }, { abbreviation: contains }] } },
-                { awayTeam: { OR: [{ name: contains }, { abbreviation: contains }] } },
+                {
+                  homeTeam: {
+                    OR: [{ name: contains }, { abbreviation: contains }],
+                  },
+                },
+                {
+                  awayTeam: {
+                    OR: [{ name: contains }, { abbreviation: contains }],
+                  },
+                },
               ],
             },
             include: { homeTeam: true, awayTeam: true, league: true },
@@ -408,6 +424,41 @@ async function handlePost(request: Request, context: Context) {
       payload: { action: "joined" },
     });
     return apiSuccess({ joined: true }, 201);
+  }
+  if (resource === "game-follows") {
+    const parsed = await parseJson(
+      request,
+      z.object({
+        gameId: z.string().uuid(),
+        follow: z.boolean(),
+        notifications: z.boolean().default(true),
+      }),
+    );
+    if (!parsed.success)
+      return apiError("INVALID_REQUEST", "Invalid game follow request.", 400);
+    const game = await db.game.findUnique({
+      where: { id: parsed.data.gameId },
+      select: { id: true },
+    });
+    if (!game) return apiError("NOT_FOUND", "Game not found.", 404);
+    if (!parsed.data.follow) {
+      await db.gameFollow.deleteMany({
+        where: { userId, gameId: parsed.data.gameId },
+      });
+      return apiSuccess({ following: false });
+    }
+    await db.gameFollow.upsert({
+      where: {
+        userId_gameId: { userId, gameId: parsed.data.gameId },
+      },
+      update: { notifications: parsed.data.notifications },
+      create: {
+        userId,
+        gameId: parsed.data.gameId,
+        notifications: parsed.data.notifications,
+      },
+    });
+    return apiSuccess({ following: true }, 201);
   }
   if (resource === "takes") {
     const parsed = await parseJson(
@@ -809,10 +860,10 @@ async function handlePost(request: Request, context: Context) {
     try {
       vote = await db.vote.create({
         data: {
-        userId,
-        debateId: parsed.data.debateId,
-        debateOptionId: option.id,
-        kind: VoteKind.DEBATE_OPTION,
+          userId,
+          debateId: parsed.data.debateId,
+          debateOptionId: option.id,
+          kind: VoteKind.DEBATE_OPTION,
         },
       });
     } catch (error) {

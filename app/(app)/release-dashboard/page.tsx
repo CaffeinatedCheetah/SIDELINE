@@ -61,7 +61,8 @@ const systems: SystemStatus[] = [
 
 export default async function ReleaseDashboard() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/auth/sign-in?callbackUrl=/release-dashboard");
+  if (!session?.user?.id)
+    redirect("/auth/sign-in?callbackUrl=/release-dashboard");
   const operator = await db.user.findUnique({
     where: { id: session.user.id },
     select: { role: true },
@@ -87,6 +88,10 @@ export default async function ReleaseDashboard() {
   const incomplete = systems.filter(({ status }) =>
     ["PARTIAL", "BLOCKED", "NOT IMPLEMENTED"].includes(status),
   ).length;
+  const cronReady = Boolean(process.env.CRON_SECRET);
+  const presenceReady = Boolean(
+    process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN,
+  );
 
   return (
     <div className="page-container py-10">
@@ -102,10 +107,12 @@ export default async function ReleaseDashboard() {
         <Metric label="Badge awards" value={badgeAwards} />
       </div>
 
-      <Card className="mb-6 border-success/40">
+      <Card className="border-success/40 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-text-secondary text-sm">Current recommendation</p>
+            <p className="text-text-secondary text-sm">
+              Current recommendation
+            </p>
             <strong className="font-display text-success text-2xl font-black">
               READY FOR CLOSED ALPHA
             </strong>
@@ -113,19 +120,56 @@ export default async function ReleaseDashboard() {
           <Badge tone="warning">NOT READY FOR PUBLIC BETA</Badge>
         </div>
         <p className="text-text-secondary mt-3 text-sm">
-          81 unit/component/accessibility tests, 18 PostgreSQL integration
+          92 unit/component/accessibility tests, 19 PostgreSQL integration
           tests, and 46 desktop/mobile Playwright journeys pass. The production
           build also passes.
         </p>
       </Card>
 
       <Card className="mb-6">
+        <h2 className="font-display text-2xl font-black">
+          MLB Live Game Room foundation
+        </h2>
+        <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <ReadinessRow label="Canonical lifecycle and API" ready />
+          <ReadinessRow label="Transactional materialization" ready />
+          <ReadinessRow
+            label="Server synchronization authorization"
+            ready={cronReady}
+          />
+          <ReadinessRow
+            label="Cache-backed room presence"
+            ready={presenceReady}
+          />
+        </div>
+        {!cronReady || !presenceReady ? (
+          <p className="text-text-secondary mt-4 text-sm">
+            Missing runtime configuration falls back safely, but live
+            synchronization and presence are not fully operational until the
+            marked services are configured.
+          </p>
+        ) : null}
+      </Card>
+
+      <Card className="mb-6">
         <h2 className="font-display text-2xl font-black">Release identity</h2>
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-          <Row label="Branch" value={process.env.VERCEL_GIT_COMMIT_REF ?? "local"} />
-          <Row label="Commit" value={process.env.VERCEL_GIT_COMMIT_SHA ?? "uncommitted"} />
-          <Row label="Environment" value={process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local"} />
-          <Row label="Preview URL" value={process.env.VERCEL_URL ?? "Not deployed"} />
+          <Row
+            label="Branch"
+            value={process.env.VERCEL_GIT_COMMIT_REF ?? "local"}
+          />
+          <Row
+            label="Commit"
+            value={process.env.VERCEL_GIT_COMMIT_SHA ?? "uncommitted"}
+          />
+          <Row
+            label="Environment"
+            value={process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local"}
+          />
+          <Row
+            label="Preview URL"
+            value={process.env.VERCEL_URL ?? "Not deployed"}
+          />
         </dl>
       </Card>
 
@@ -178,16 +222,32 @@ export default async function ReleaseDashboard() {
           <div className="mt-4 grid gap-3">
             {lastJobs.length ? (
               lastJobs.map((job) => (
-                <div key={job.id} className="border-border-subtle rounded-md border p-3">
+                <div
+                  key={job.id}
+                  className="border-border-subtle rounded-md border p-3"
+                >
                   <div className="flex justify-between gap-3">
-                    <strong>{job.jobKey} {job.period ?? ""}</strong>
-                    <Badge tone={job.status === "SUCCEEDED" ? "success" : job.status === "FAILED" ? "danger" : "warning"}>
+                    <strong>
+                      {job.jobKey} {job.period ?? ""}
+                    </strong>
+                    <Badge
+                      tone={
+                        job.status === "SUCCEEDED"
+                          ? "success"
+                          : job.status === "FAILED"
+                            ? "danger"
+                            : "warning"
+                      }
+                    >
                       {job.status}
                     </Badge>
                   </div>
                   <p className="text-text-secondary mt-2 text-sm">
                     {job.processedCount} processed · {job.errorCount} errors ·{" "}
-                    <LocalDateTime value={job.startedAt.toISOString()} calendar />
+                    <LocalDateTime
+                      value={job.startedAt.toISOString()}
+                      calendar
+                    />
                   </p>
                 </div>
               ))
@@ -228,11 +288,7 @@ function StatusBadge({ status }: { status: ReleaseStatus }) {
   return (
     <Badge
       tone={
-        status === "PASS"
-          ? "success"
-          : status === "FAIL"
-            ? "danger"
-            : "warning"
+        status === "PASS" ? "success" : status === "FAIL" ? "danger" : "warning"
       }
     >
       {status}
@@ -254,6 +310,17 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between gap-4">
       <dt className="text-text-secondary">{label}</dt>
       <dd className="max-w-[65%] truncate font-semibold">{value}</dd>
+    </div>
+  );
+}
+
+function ReadinessRow({ label, ready }: { label: string; ready: boolean }) {
+  return (
+    <div className="border-border-subtle flex items-center justify-between gap-3 rounded-md border p-3">
+      <span>{label}</span>
+      <Badge tone={ready ? "success" : "warning"}>
+        {ready ? "PASS" : "PARTIAL"}
+      </Badge>
     </div>
   );
 }

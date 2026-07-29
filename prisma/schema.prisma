@@ -23,10 +23,12 @@ enum UserStatus {
 
 enum GameStatus {
   SCHEDULED
+  PREGAME
   LIVE
+  HALFTIME
   FINAL
   POSTPONED
-  CANCELED
+  CANCELLED
 }
 
 enum ContentStatus {
@@ -335,6 +337,7 @@ model Game {
   follows      GameFollow[]
 
   @@index([status, scheduledAt])
+  @@index([status, lastSyncedAt])
   @@index([leagueId, scheduledAt])
   @@index([provider, lastSyncedAt])
   @@index([homeTeamId, scheduledAt])
