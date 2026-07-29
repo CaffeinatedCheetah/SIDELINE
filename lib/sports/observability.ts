@@ -7,6 +7,9 @@ type MetricName =
   | "duplicate_prevented"
   | "contest_synchronized"
   | "lifecycle_refresh"
+  | "moment_synchronized"
+  | "moment_materialization_failure"
+  | "moment_provider_request"
   | "stale_contest";
 
 interface Metric {

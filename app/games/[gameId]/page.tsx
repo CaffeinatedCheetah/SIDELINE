@@ -6,6 +6,7 @@ import { PredictionForm } from "@/components/actions/prediction-form";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { LiveGameRoom } from "@/components/games/live-game-room";
 import { GameRoomPhase } from "@/components/games/game-room-phase";
+import { GameMomentsPanel } from "@/components/games/game-moments-panel";
 import { PageHeading } from "@/components/layout/page-heading";
 import { PollVoteCard } from "@/components/games/poll-vote-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -15,6 +16,10 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
 import { materializeContest } from "@/lib/sports/materializer";
 import { getSportsSchedule } from "@/lib/sports/service";
+import {
+  getGameFlashThreads,
+  getGameMoments,
+} from "@/lib/sports/moments/read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +124,49 @@ export default async function GameRoom({
   const votedOptionByPoll = new Map(
     myPollVotes.map((vote) => [vote.pollId, vote.pollOptionId]),
   );
+  const [moments, flashThreads] = await Promise.all([
+    getGameMoments(game.id),
+    getGameFlashThreads(game.id),
+  ]);
+  const serializedMoments = (moments ?? []).map((moment) => ({
+    id: moment.id,
+    type: moment.type,
+    title: moment.title,
+    description: moment.description,
+    period: moment.period,
+    clock: moment.clock,
+    homeScore: moment.homeScore,
+    awayScore: moment.awayScore,
+    importance: moment.importance,
+    occurredAt: moment.occurredAt.toISOString(),
+  }));
+  const serializedThreads = (flashThreads ?? []).map((thread) => ({
+    id: thread.id,
+    title: thread.title,
+    status: thread.status,
+    moment: {
+      id: thread.moment.id,
+      type: thread.moment.type,
+      title: thread.moment.title,
+      description: thread.moment.description,
+      period: thread.moment.period,
+      clock: thread.moment.clock,
+      homeScore: thread.moment.homeScore,
+      awayScore: thread.moment.awayScore,
+      importance: thread.moment.importance,
+      occurredAt: thread.moment.occurredAt.toISOString(),
+    },
+    takes: thread.takes.map((take) => ({
+      id: take.id,
+      body: take.body,
+      createdAt: take.createdAt.toISOString(),
+      author: take.author,
+      _count: take._count,
+    })),
+    takeCount: thread.takeCount,
+    reactionCount: thread.reactionCount,
+    replyCount: thread.replyCount,
+  }));
 
   return (
     <div className="page-container py-10">
@@ -164,6 +212,12 @@ export default async function GameRoom({
         signedIn={Boolean(session?.user?.id)}
       />
       <GameRoomPhase phase={game.status} />
+      <GameMomentsPanel
+        gameId={game.id}
+        phase={game.status}
+        initialMoments={serializedMoments}
+        initialThreads={serializedThreads}
+      />
       <Tabs defaultValue="takes">
         <TabsList>
           {["takes", "polls", "predictions"].map((tab) => (

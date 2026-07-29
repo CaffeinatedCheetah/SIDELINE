@@ -40,6 +40,7 @@ for (const command of [
     "run",
     "tests/integration/database-flows.test.ts",
     "tests/integration/sports-materialization.test.ts",
+    "tests/integration/game-moments-materialization.test.ts",
   ],
 ]) {
   const result = spawnSync(node, command, {

@@ -9,12 +9,14 @@ export function TakeComposer({
   debateId,
   communityId,
   parentId,
+  flashThreadId,
   onPosted,
 }: {
   gameId?: string;
   debateId?: string;
   communityId?: string;
   parentId?: string;
+  flashThreadId?: string;
   onPosted?: () => void;
 }) {
   const router = useRouter();
@@ -32,6 +34,7 @@ export function TakeComposer({
         debateId,
         communityId,
         parentId,
+        flashThreadId,
       });
       setBody("");
       setMessage("Posted.");

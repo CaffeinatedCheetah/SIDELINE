@@ -1,0 +1,66 @@
+{
+  "header": {
+    "id": "mlb-moments-fixture-1"
+  },
+  "plays": [
+    {
+      "id": "play-start",
+      "type": { "text": "Game Start" },
+      "shortText": "First pitch",
+      "text": "First pitch at 7:10 PM.",
+      "wallclock": "2026-07-29T23:10:00.000Z",
+      "homeScore": 0,
+      "awayScore": 0,
+      "period": { "number": 1, "displayValue": "Top 1st" }
+    },
+    {
+      "id": "play-routine-out",
+      "type": { "text": "Groundout" },
+      "text": "Batter grounds out to shortstop.",
+      "wallclock": "2026-07-29T23:14:00.000Z",
+      "homeScore": 0,
+      "awayScore": 0,
+      "period": { "number": 1, "displayValue": "Top 1st" }
+    },
+    {
+      "id": "play-away-score",
+      "type": { "text": "Scoring Play" },
+      "shortText": "Cubs score on an RBI double",
+      "text": "An RBI double scores one run.",
+      "wallclock": "2026-07-29T23:35:00.000Z",
+      "scoringPlay": true,
+      "homeScore": 0,
+      "awayScore": 1,
+      "period": { "number": 2, "displayValue": "Top 2nd" }
+    },
+    {
+      "id": "play-home-run",
+      "type": { "text": "Home Run" },
+      "shortText": "Tigers hit a go-ahead two-run home run",
+      "text": "A two-run home run gives Detroit the lead.",
+      "wallclock": "2026-07-30T00:22:00.000Z",
+      "scoringPlay": true,
+      "homeScore": 2,
+      "awayScore": 1,
+      "period": { "number": 5, "displayValue": "Bottom 5th" }
+    },
+    {
+      "id": "play-end-inning",
+      "type": { "text": "End Inning" },
+      "shortText": "End of the fifth inning",
+      "wallclock": "2026-07-30T00:29:00.000Z",
+      "homeScore": 2,
+      "awayScore": 1,
+      "period": { "number": 5, "displayValue": "Bottom 5th" }
+    },
+    {
+      "id": "play-final",
+      "type": { "text": "Game Final" },
+      "shortText": "Tigers win 4–3",
+      "wallclock": "2026-07-30T02:18:00.000Z",
+      "homeScore": 4,
+      "awayScore": 3,
+      "period": { "number": 9, "displayValue": "Final" }
+    }
+  ]
+}

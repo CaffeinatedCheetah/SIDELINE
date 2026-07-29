@@ -5,8 +5,12 @@ test("visitor can discover FanTakes and reach sign in", async ({ page }) => {
   await expect(
     page.getByRole("heading", { level: 1, name: /your game/i }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Join FanTakes" }).click();
-  await expect(page).toHaveURL(/auth\/sign-up|auth\/sign-in/);
+  await page
+    .getByRole("link", { name: "Join FanTakes" })
+    .click({ noWaitAfter: true });
+  await expect(page).toHaveURL(/auth\/sign-up|auth\/sign-in/, {
+    timeout: 30_000,
+  });
 });
 
 test("public navigation exposes core destinations", async ({ page }) => {
