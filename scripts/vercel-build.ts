@@ -44,6 +44,8 @@ if (process.env.VERCEL_ENV === "production") {
     console.error("No configured FanTakes migration connection succeeded.");
     process.exit(1);
   }
+  console.info("Verifying the pooled FanTakes runtime schema.");
+  runRequired(node, ["scripts/verify-runtime-schema.mjs"]);
 } else {
   console.info(
     `Skipping database migrations for ${process.env.VERCEL_ENV ?? "local"} build.`,
