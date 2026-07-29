@@ -31,6 +31,24 @@ enum GameStatus {
   CANCELLED
 }
 
+enum GameMomentType {
+  SCORE
+  LEAD_CHANGE
+  TIE
+  TURNOVER
+  PENALTY
+  EJECTION
+  PERIOD_END
+  GAME_START
+  GAME_END
+  OTHER
+}
+
+enum FlashThreadStatus {
+  ACTIVE
+  ARCHIVED
+}
+
 enum ContentStatus {
   ACTIVE
   AUTHOR_REMOVED
@@ -335,6 +353,8 @@ model Game {
   predictions  Prediction[]
   debates      Debate[]
   follows      GameFollow[]
+  moments      GameMoment[]
+  flashThreads FlashThread[]
 
   @@index([status, scheduledAt])
   @@index([status, lastSyncedAt])
@@ -342,6 +362,47 @@ model Game {
   @@index([provider, lastSyncedAt])
   @@index([homeTeamId, scheduledAt])
   @@index([awayTeamId, scheduledAt])
+}
+
+model GameMoment {
+  id          String         @id @default(uuid()) @db.Uuid
+  gameId      String         @db.Uuid
+  provider    String
+  providerRef String
+  type        GameMomentType
+  title       String         @db.VarChar(240)
+  description String?        @db.VarChar(2000)
+  period      String?
+  clock       String?
+  homeScore   Int?
+  awayScore   Int?
+  importance  Int            @default(0)
+  occurredAt  DateTime
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  game        Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  flashThread FlashThread?
+
+  @@unique([provider, providerRef])
+  @@index([gameId, occurredAt])
+  @@index([gameId, importance])
+}
+
+model FlashThread {
+  id         String            @id @default(uuid()) @db.Uuid
+  gameId     String            @db.Uuid
+  momentId   String            @unique @db.Uuid
+  title      String            @db.VarChar(240)
+  status     FlashThreadStatus @default(ACTIVE)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  archivedAt DateTime?
+  game       Game              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  moment     GameMoment        @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  takes      Take[]
+
+  @@index([gameId, createdAt])
 }
 
 model GameParticipant {
@@ -432,8 +493,13 @@ model Take {
   debateId     String?            @db.Uuid
   communityId  String?            @db.Uuid
   parentId     String?            @db.Uuid
+  flashThreadId String?           @db.Uuid
   body         String             @db.VarChar(1000)
   relationKind String?
+  gamePeriod   String?
+  gameClock    String?
+  homeScoreContext Int?
+  awayScoreContext Int?
   status       ContentStatus      @default(ACTIVE)
   editedAt     DateTime?
   createdAt    DateTime           @default(now())
@@ -444,6 +510,7 @@ model Take {
   debate       Debate?            @relation(fields: [debateId], references: [id], onDelete: Cascade)
   community    Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
   parent       Take?              @relation("TakeReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  flashThread  FlashThread?       @relation(fields: [flashThreadId], references: [id], onDelete: SetNull)
   replies      Take[]             @relation("TakeReplies")
   votes        Vote[]
   comments     Comment[]
@@ -456,6 +523,7 @@ model Take {
   @@index([communityId, createdAt(sort: Desc)])
   @@index([authorId, createdAt(sort: Desc)])
   @@index([parentId, createdAt])
+  @@index([flashThreadId, createdAt(sort: Desc)])
 }
 
 model Debate {
