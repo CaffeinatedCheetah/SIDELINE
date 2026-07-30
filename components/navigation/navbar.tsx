@@ -2,6 +2,7 @@
 
 import {
   Bell,
+  Compass,
   Flame,
   Home,
   LayoutGrid,
@@ -22,6 +23,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
 const links = [
+  { href: "/discover", label: "Discover", icon: Compass },
   { href: "/leagues", label: "Leagues", icon: LayoutGrid },
   { href: "/games", label: "Games", icon: Trophy },
   { href: "/debates", label: "Debates", icon: MessageSquare },

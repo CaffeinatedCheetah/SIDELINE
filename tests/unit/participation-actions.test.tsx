@@ -52,9 +52,7 @@ describe("participation actions", () => {
   });
   it("supports adding a third and fourth debate position, capped at 4", async () => {
     render(<DebateComposer />);
-    expect(
-      screen.queryByLabelText("Option 3"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Option 3")).not.toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Add another position" }),
     );
@@ -184,7 +182,7 @@ describe("participation actions", () => {
       />,
     );
     const flameButton = screen.getByRole("button", {
-      name: "Give flame, 5 total",
+      name: "Add Fire reaction",
     });
     await userEvent.click(flameButton);
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
@@ -196,8 +194,9 @@ describe("participation actions", () => {
       }),
     );
     expect(
-      screen.getByRole("button", { name: "Remove flame, 6 total" }),
+      screen.getByRole("button", { name: "Remove Fire reaction, 1 Fire" }),
     ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("6 reactions")).toBeInTheDocument();
   });
   it("casts a real poll vote and updates the local tally", async () => {
     const fetch = vi.fn(() => response({ id: "pollvote-1" }));

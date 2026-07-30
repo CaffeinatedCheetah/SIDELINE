@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Compass,
   Flame,
   Home,
   LayoutGrid,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 
 const destinations = [
   ["My Arena", "/arena", Home],
+  ["Discover", "/discover", Compass],
   ["Leagues", "/leagues", LayoutGrid],
   ["Games", "/games", Trophy],
   ["Communities", "/communities", Users],

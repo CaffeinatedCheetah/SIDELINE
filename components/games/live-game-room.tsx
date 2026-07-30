@@ -382,10 +382,18 @@ export function LiveGameRoom({
                 : phaseLabel(game, league?.sportKey)}
             </Badge>
             <span className="text-text-secondary flex items-center gap-1.5 text-xs font-semibold">
-              <Users aria-hidden className="size-3.5" />
+              <span className="relative grid size-4 place-items-center">
+                {live && activeUsers !== null ? (
+                  <span
+                    aria-hidden
+                    className="bg-success/35 absolute size-4 rounded-full motion-safe:animate-ping"
+                  />
+                ) : null}
+                <Users aria-hidden className="relative size-3.5" />
+              </span>
               {activeUsers === null
                 ? `${followerCount} ${followerCount === 1 ? "fan" : "fans"} following`
-                : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} active`}
+                : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} active in the last minute`}
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
@@ -446,6 +454,7 @@ export function LiveGameRoom({
               }
               className="font-display text-4xl leading-none font-black tracking-tight tabular-nums sm:text-6xl lg:text-7xl"
               data-game-score
+              data-score-version={game.version}
             >
               {hasScore ? `${game.awayScore}–${game.homeScore}` : "vs"}
             </p>
