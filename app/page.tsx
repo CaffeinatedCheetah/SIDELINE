@@ -6,6 +6,7 @@ import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
 import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-preview-section";
+import { ExploreLeaguesSection } from "@/components/home/explore-leagues-section";
 import { LiveRightNowSection } from "@/components/home/live-right-now-section";
 import { MySidelineSection } from "@/components/home/my-sideline-section";
 import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
@@ -14,6 +15,7 @@ import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import { getLeagueHub } from "@/lib/db/league-hub";
 import { getMySideline } from "@/lib/db/my-sideline";
 import {
   gameStatusLabel,
@@ -131,9 +133,10 @@ async function discovery(viewerId: string | undefined) {
 
 export default async function Home() {
   const session = await auth();
-  const [data, mySideline] = await Promise.all([
+  const [data, mySideline, leagueHub] = await Promise.all([
     discovery(session?.user?.id),
     getMySideline(session?.user?.id),
+    getLeagueHub(session?.user?.id),
   ]);
   const hasPersonalizedActivity =
     mySideline.liveGames.length > 0 ||
@@ -189,6 +192,7 @@ export default async function Home() {
               featured
               id={data.games[0].id}
               league={data.games[0].league.abbreviation}
+              leagueKey={data.games[0].league.key}
               homeTeam={data.games[0].homeTeam.name}
               awayTeam={data.games[0].awayTeam.name}
               homeTeamLogo={data.games[0].homeTeam.logoUrl ?? undefined}
@@ -200,6 +204,7 @@ export default async function Home() {
               scheduledAt={data.games[0].scheduledAt.toISOString()}
               broadcast={data.games[0].broadcast ?? undefined}
               conversationCount={data.games[0]._count.takes}
+              followerCount={data.games[0]._count.follows}
             />
           ) : (
             <EmptyState
@@ -240,6 +245,7 @@ export default async function Home() {
             <TodaysScheduleSection />
           </>
         ) : null}
+        <ExploreLeaguesSection leagues={leagueHub.leagues} />
         <Section
           title="Trending takes"
           href="/games"

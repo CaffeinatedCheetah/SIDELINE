@@ -3,6 +3,7 @@
 import {
   Flame,
   Home,
+  LayoutGrid,
   MessageSquare,
   Search,
   Settings,
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 
 const destinations = [
   ["My Arena", "/arena", Home],
+  ["Leagues", "/leagues", LayoutGrid],
   ["Games", "/games", Trophy],
   ["Communities", "/communities", Users],
   ["Debates", "/debates", MessageSquare],
@@ -50,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   "flex min-h-11 items-center gap-3 rounded-sm border px-3 font-bold transition",
                   active
                     ? "bg-brand-surface border-brand-border text-brand-light"
-                    : "border-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                    : "text-text-secondary hover:bg-surface-3 hover:text-text-primary border-transparent",
                 )}
               >
                 <Icon aria-hidden className="size-5" />

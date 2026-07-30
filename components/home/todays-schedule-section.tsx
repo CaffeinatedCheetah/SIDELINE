@@ -33,6 +33,7 @@ export async function TodaysScheduleSection() {
               <GameCard
                 id={game.id}
                 league={game.league.abbreviation}
+                leagueKey={game.league.key}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}
                 homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
@@ -44,6 +45,7 @@ export async function TodaysScheduleSection() {
                 broadcast={game.broadcast ?? undefined}
                 statusText={gameStatusLabel(game)}
                 conversationCount={game._count.takes}
+                followerCount={game._count.follows}
               />
             </div>
           ))}

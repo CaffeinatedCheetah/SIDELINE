@@ -223,6 +223,7 @@ function PersonalizedGames({
             key={game.id}
             id={game.id}
             league={game.league.abbreviation}
+            leagueKey={game.league.key}
             homeTeam={game.homeTeam.name}
             awayTeam={game.awayTeam.name}
             homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
@@ -234,6 +235,7 @@ function PersonalizedGames({
             scheduledAt={game.scheduledAt.toISOString()}
             broadcast={game.broadcast ?? undefined}
             conversationCount={game._count.takes}
+            followerCount={game._count.follows}
           />
         ))}
       </div>

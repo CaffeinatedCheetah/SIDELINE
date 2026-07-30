@@ -3,8 +3,27 @@ import Link from "next/link";
 import { TeamFollowButton } from "@/components/teams/team-follow-button";
 import { Card } from "@/components/ui/foundations";
 
-function safeTeamColor(value: string | null | undefined) {
-  return value && /^#[0-9a-f]{6}$/i.test(value) ? value : "#ff5a36";
+const TEAM_FALLBACKS = [
+  "#2563eb",
+  "#7c3aed",
+  "#0891b2",
+  "#c2410c",
+  "#be123c",
+  "#047857",
+  "#a21caf",
+  "#4338ca",
+];
+
+function safeTeamColor(value: string | null | undefined, fallbackKey: string) {
+  if (value) {
+    const normalized = value.startsWith("#") ? value : `#${value}`;
+    if (/^#[0-9a-f]{6}$/i.test(normalized)) return normalized;
+  }
+  const hash = [...fallbackKey].reduce(
+    (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
+    0,
+  );
+  return TEAM_FALLBACKS[hash % TEAM_FALLBACKS.length];
 }
 
 export function TeamCard({
@@ -18,6 +37,7 @@ export function TeamCard({
     id: string;
     name: string;
     abbreviation: string;
+    city?: string | null;
     logoUrl: string | null;
     primaryColor: string | null;
     league: { key: string; abbreviation: string };
@@ -32,12 +52,22 @@ export function TeamCard({
     <Card
       data-team-card={team.id}
       className="relative min-w-0 overflow-hidden"
-      style={{ borderTopColor: safeTeamColor(team.primaryColor) }}
+      style={{
+        borderTopColor: safeTeamColor(
+          team.primaryColor,
+          team.abbreviation || team.name,
+        ),
+      }}
     >
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 h-1"
-        style={{ backgroundColor: safeTeamColor(team.primaryColor) }}
+        style={{
+          backgroundColor: safeTeamColor(
+            team.primaryColor,
+            team.abbreviation || team.name,
+          ),
+        }}
       />
       <div
         className={
@@ -64,6 +94,11 @@ export function TeamCard({
               href={gamesHref}
               className="focus-visible:outline-brand block rounded-sm font-bold hover:underline focus-visible:outline-2"
             >
+              {team.city ? (
+                <span className="text-text-muted block truncate text-xs font-semibold">
+                  {team.city}
+                </span>
+              ) : null}
               <span className="block truncate">{team.name}</span>
             </Link>
             <span className="text-text-muted text-xs font-bold tracking-wide uppercase">

@@ -6,6 +6,7 @@ const teamSelect = {
   id: true,
   name: true,
   abbreviation: true,
+  city: true,
   logoUrl: true,
   primaryColor: true,
   secondaryColor: true,
@@ -16,7 +17,7 @@ const gameInclude = {
   league: true,
   homeTeam: true,
   awayTeam: true,
-  _count: { select: { takes: true } },
+  _count: { select: { takes: true, follows: true } },
 } satisfies Prisma.GameInclude;
 
 export type MySidelineGame = Prisma.GameGetPayload<{
