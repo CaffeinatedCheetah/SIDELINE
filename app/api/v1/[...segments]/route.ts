@@ -460,6 +460,53 @@ async function handlePost(request: Request, context: Context) {
     });
     return apiSuccess({ following: true }, 201);
   }
+  if (resource === "team-follows") {
+    const parsed = await parseJson(
+      request,
+      z.object({
+        teamId: z.string().uuid(),
+        follow: z.boolean(),
+      }),
+    );
+    if (!parsed.success)
+      return apiError(
+        "INVALID_REQUEST",
+        "Invalid team follow request.",
+        400,
+        parsed.error.flatten(),
+      );
+    const team = await db.team.findUnique({
+      where: { id: parsed.data.teamId },
+      select: { id: true },
+    });
+    if (!team) return apiError("NOT_FOUND", "Team not found.", 404);
+
+    if (parsed.data.follow) {
+      await db.teamFollow.upsert({
+        where: {
+          userId_teamId: { userId, teamId: parsed.data.teamId },
+        },
+        update: {},
+        create: { userId, teamId: parsed.data.teamId },
+      });
+    } else {
+      await db.teamFollow.deleteMany({
+        where: { userId, teamId: parsed.data.teamId },
+      });
+    }
+
+    const followerCount = await db.teamFollow.count({
+      where: { teamId: parsed.data.teamId },
+    });
+    return apiSuccess(
+      {
+        teamId: parsed.data.teamId,
+        following: parsed.data.follow,
+        followerCount,
+      },
+      parsed.data.follow ? 201 : 200,
+    );
+  }
   if (resource === "takes") {
     const parsed = await parseJson(
       request,

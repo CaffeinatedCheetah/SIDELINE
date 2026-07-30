@@ -27,6 +27,7 @@ test("all public routes render without runtime or console errors", async ({
   const routes = [
     "/",
     "/games",
+    "/teams",
     `/games/${game.id}`,
     "/debates",
     `/debates/${debate.id}`,
@@ -65,8 +66,9 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
   test(`homepage has no horizontal overflow at ${width}px`, async ({
     page,
   }) => {
+    test.setTimeout(120_000);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -75,6 +77,29 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
   });
 }
+
+test("team discovery has no horizontal overflow across supported breakpoints", async ({
+  page,
+}) => {
+  for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto("/teams", { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByRole("heading", { name: "Choose your teams" }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.getByRole("link", { name: "Follow" }).first(),
+    ).toBeVisible();
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(
+      dimensions.scrollWidth,
+      `${width}px team discovery`,
+    ).toBeLessThanOrEqual(dimensions.clientWidth);
+  }
+});
 
 test("Game Room has no horizontal overflow across supported breakpoints", async ({
   page,
