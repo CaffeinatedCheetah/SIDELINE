@@ -43,7 +43,9 @@ export default async function Arena({
       profile: true,
       communityMemberships: {
         where: { status: "ACTIVE" },
-        include: { community: { include: { _count: { select: { members: true } } } } },
+        include: {
+          community: { include: { _count: { select: { members: true } } } },
+        },
       },
     },
   });
@@ -53,8 +55,14 @@ export default async function Arena({
   // removed/private content." Applied both directions so neither party's
   // content surfaces in the other's feed.
   const [blockedByMe, blockingMe, mutedByMe] = await Promise.all([
-    db.block.findMany({ where: { blockerId: user.id }, select: { blockedId: true } }),
-    db.block.findMany({ where: { blockedId: user.id }, select: { blockerId: true } }),
+    db.block.findMany({
+      where: { blockerId: user.id },
+      select: { blockedId: true },
+    }),
+    db.block.findMany({
+      where: { blockedId: user.id },
+      select: { blockerId: true },
+    }),
     db.mute.findMany({
       where: { userId: user.id, targetType: "USER" },
       select: { targetId: true },
@@ -67,7 +75,10 @@ export default async function Arena({
   ];
 
   const [scoreAgg, resolvedPredictions, followingIds] = await Promise.all([
-    db.fanScoreEvent.aggregate({ where: { userId: user.id }, _sum: { points: true } }),
+    db.fanScoreEvent.aggregate({
+      where: { userId: user.id },
+      _sum: { points: true },
+    }),
     db.prediction.findMany({
       where: { userId: user.id, result: { isNot: null } },
       select: { result: { select: { outcome: true } } },
@@ -79,8 +90,12 @@ export default async function Arena({
   ]);
   const fanScore = scoreAgg._sum.points ?? 0;
   const resolvedCount = resolvedPredictions.length;
-  const correctCount = resolvedPredictions.filter((p) => p.result?.outcome === "CORRECT").length;
-  const accuracy = resolvedCount ? Math.round((correctCount / resolvedCount) * 100) : null;
+  const correctCount = resolvedPredictions.filter(
+    (p) => p.result?.outcome === "CORRECT",
+  ).length;
+  const accuracy = resolvedCount
+    ? Math.round((correctCount / resolvedCount) * 100)
+    : null;
   const followedIds = followingIds
     .map((f) => f.followedId)
     .filter((id) => !excludedAuthors.includes(id));
@@ -89,58 +104,59 @@ export default async function Arena({
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [happeningNow, predictions, myTakeIds, communityActivity] = await Promise.all([
-    db.game.findMany({
-      where: {
-        status: "LIVE",
-        OR: [
-          ...(favoriteTeamIds.length
-            ? [
-                { homeTeamId: { in: favoriteTeamIds } },
-                { awayTeamId: { in: favoriteTeamIds } },
-              ]
-            : []),
-          { follows: { some: { userId: user.id } } },
-        ],
-      },
-      orderBy: { scheduledAt: "asc" },
-      take: 6,
-      include: {
-        league: true,
-        homeTeam: true,
-        awayTeam: true,
-        _count: { select: { takes: true } },
-      },
-    }),
-    db.prediction.findMany({
-      where: { userId: user.id },
-      orderBy: { submittedAt: "desc" },
-      take: 6,
-      include: {
-        game: { include: { homeTeam: true, awayTeam: true, league: true } },
-        result: true,
-      },
-    }),
-    db.take.findMany({
-      where: { authorId: user.id, status: "ACTIVE" },
-      select: { id: true },
-    }),
-    db.communityMember.findMany({
-      where: { userId: user.id, status: "ACTIVE" },
-      select: {
-        communityId: true,
-        community: {
-          select: {
-            _count: {
-              select: {
-                takes: { where: { createdAt: { gte: sevenDaysAgo } } },
+  const [happeningNow, predictions, myTakeIds, communityActivity] =
+    await Promise.all([
+      db.game.findMany({
+        where: {
+          status: "LIVE",
+          OR: [
+            ...(favoriteTeamIds.length
+              ? [
+                  { homeTeamId: { in: favoriteTeamIds } },
+                  { awayTeamId: { in: favoriteTeamIds } },
+                ]
+              : []),
+            { follows: { some: { userId: user.id } } },
+          ],
+        },
+        orderBy: { scheduledAt: "asc" },
+        take: 6,
+        include: {
+          league: true,
+          homeTeam: true,
+          awayTeam: true,
+          _count: { select: { takes: true } },
+        },
+      }),
+      db.prediction.findMany({
+        where: { userId: user.id },
+        orderBy: { submittedAt: "desc" },
+        take: 6,
+        include: {
+          game: { include: { homeTeam: true, awayTeam: true, league: true } },
+          result: true,
+        },
+      }),
+      db.take.findMany({
+        where: { authorId: user.id, status: "ACTIVE" },
+        select: { id: true },
+      }),
+      db.communityMember.findMany({
+        where: { userId: user.id, status: "ACTIVE" },
+        select: {
+          communityId: true,
+          community: {
+            select: {
+              _count: {
+                select: {
+                  takes: { where: { createdAt: { gte: sevenDaysAgo } } },
+                },
               },
             },
           },
         },
-      },
-    }),
-  ]);
+      }),
+    ]);
 
   const [replies, followingTakes] = await Promise.all([
     myTakeIds.length
@@ -166,7 +182,9 @@ export default async function Arena({
           orderBy: { createdAt: "desc" },
           take: 6,
           include: {
-            author: { select: { handle: true, displayName: true, image: true } },
+            author: {
+              select: { handle: true, displayName: true, image: true },
+            },
             _count: { select: { reactions: true, replies: true } },
           },
         })
@@ -189,7 +207,10 @@ export default async function Arena({
         title={`Welcome back, ${user.displayName}`}
         description={`${fanScore} Fan Score${accuracy === null ? "" : ` · ${accuracy}% prediction accuracy`}`}
       />
-      <nav aria-label="Arena sections" className="mb-6 flex gap-1 overflow-x-auto lg:hidden">
+      <nav
+        aria-label="Arena sections"
+        className="mb-6 flex gap-1 overflow-x-auto lg:hidden"
+      >
         {VIEWS.map((key) => (
           <Link
             key={key}
@@ -214,6 +235,7 @@ export default async function Arena({
                 key={game.id}
                 id={game.id}
                 league={game.league.abbreviation}
+                leagueKey={game.league.key}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}
                 homeScore={game.homeScore ?? undefined}
@@ -238,17 +260,28 @@ export default async function Arena({
             predictions.map((prediction) => {
               const locked = prediction.locksAt <= new Date();
               return (
-                <Card key={prediction.id} className="flex items-center justify-between gap-3">
+                <Card
+                  key={prediction.id}
+                  className="flex items-center justify-between gap-3"
+                >
                   <div>
                     <p className="font-bold">
                       {prediction.game.league.abbreviation} ·{" "}
                       {prediction.game.awayTeam.abbreviation} @{" "}
                       {prediction.game.homeTeam.abbreviation}
                     </p>
-                    <p className="text-text-secondary text-sm">Picked {prediction.selection}</p>
+                    <p className="text-text-secondary text-sm">
+                      Picked {prediction.selection}
+                    </p>
                   </div>
                   {prediction.result ? (
-                    <Badge tone={prediction.result.outcome === "CORRECT" ? "success" : "danger"}>
+                    <Badge
+                      tone={
+                        prediction.result.outcome === "CORRECT"
+                          ? "success"
+                          : "danger"
+                      }
+                    >
                       {prediction.result.outcome}
                     </Badge>
                   ) : (
@@ -311,7 +344,10 @@ export default async function Arena({
               title="Find your crowd"
               description="Join public communities to personalize this space."
               action={
-                <Link href="/communities" className="text-brand font-bold hover:underline">
+                <Link
+                  href="/communities"
+                  className="text-brand font-bold hover:underline"
+                >
                   Browse communities
                 </Link>
               }
@@ -343,7 +379,10 @@ export default async function Arena({
               title="Follow fans to fill this feed"
               description="New takes from people you follow appear here."
               action={
-                <Link href="/search" className="text-brand font-bold hover:underline">
+                <Link
+                  href="/search"
+                  className="text-brand font-bold hover:underline"
+                >
                   Find people to follow
                 </Link>
               }
@@ -385,17 +424,34 @@ export default async function Arena({
   );
 }
 
-function ImproveItem({ label, href, cta }: { label: string; href: string; cta: string }) {
+function ImproveItem({
+  label,
+  href,
+  cta,
+}: {
+  label: string;
+  href: string;
+  cta: string;
+}) {
   return (
     <li className="flex items-center justify-between gap-3">
       <span className="text-text-secondary">{label}</span>
-      <Link href={href} className="text-brand shrink-0 font-bold hover:underline">
+      <Link
+        href={href}
+        className="text-brand shrink-0 font-bold hover:underline"
+      >
         {cta}
       </Link>
     </li>
   );
 }
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="mt-10">
       <h2 className="font-display mb-4 text-2xl font-black">{title}</h2>

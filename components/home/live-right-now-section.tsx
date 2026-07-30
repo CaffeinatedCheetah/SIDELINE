@@ -35,6 +35,7 @@ export async function LiveRightNowSection() {
               <GameCard
                 id={game.id}
                 league={game.league.abbreviation}
+                leagueKey={game.league.key}
                 homeTeam={game.homeTeam.name}
                 awayTeam={game.awayTeam.name}
                 homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
@@ -46,6 +47,7 @@ export async function LiveRightNowSection() {
                 broadcast={game.broadcast ?? undefined}
                 statusText={gameStatusLabel(game)}
                 conversationCount={game._count.takes}
+                followerCount={game._count.follows}
               />
             </div>
           ))}
@@ -63,7 +65,10 @@ export async function LiveRightNowSection() {
               : "See what starts next."
           }
           action={
-            <Link href="/games" className="text-brand font-bold hover:underline">
+            <Link
+              href="/games"
+              className="text-brand font-bold hover:underline"
+            >
               View games
             </Link>
           }

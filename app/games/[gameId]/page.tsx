@@ -16,6 +16,7 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
 import { materializeContest } from "@/lib/sports/materializer";
 import { getSportsSchedule } from "@/lib/sports/service";
+import { getSupportedLeague } from "@/lib/sports/leagues";
 import {
   getGameFlashThreads,
   getGameMoments,
@@ -103,6 +104,7 @@ export default async function GameRoom({
   const [session, rawGame] = await Promise.all([auth(), getGame(gameId)]);
   if (!rawGame) notFound();
   const game = await refreshFromProviderIfMaterialized(rawGame);
+  const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";
 
   const [myPollVotes, myGameFollow] = session?.user?.id
     ? await Promise.all([
@@ -189,6 +191,11 @@ export default async function GameRoom({
       ) : null}
       <LiveGameRoom
         gameId={game.id}
+        league={{
+          key: game.league.key,
+          abbreviation: game.league.abbreviation,
+          sportKey,
+        }}
         startsAt={game.scheduledAt.toISOString()}
         homeTeam={{
           name: game.homeTeam.name,
@@ -225,6 +232,7 @@ export default async function GameRoom({
       <GameMomentsPanel
         gameId={game.id}
         phase={game.status}
+        sportKey={sportKey}
         initialMoments={serializedMoments}
         initialThreads={serializedThreads}
       />

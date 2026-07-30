@@ -78,7 +78,7 @@ const game = {
     createdAt: new Date(),
     updatedAt: new Date(),
   },
-  _count: { takes: 4 },
+  _count: { takes: 4, follows: 0 },
 };
 
 const empty = {

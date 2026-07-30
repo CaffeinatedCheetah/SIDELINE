@@ -4,6 +4,7 @@ import {
   Bell,
   Flame,
   Home,
+  LayoutGrid,
   Menu,
   MessageSquare,
   Plus,
@@ -21,6 +22,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 
 const links = [
+  { href: "/leagues", label: "Leagues", icon: LayoutGrid },
   { href: "/games", label: "Games", icon: Trophy },
   { href: "/debates", label: "Debates", icon: MessageSquare },
   { href: "/communities", label: "Communities", icon: Users },
@@ -160,7 +162,7 @@ export function Navbar({
                         "flex min-h-11 items-center gap-3 rounded-sm border px-3 font-bold transition",
                         active
                           ? "bg-brand-surface border-brand-border text-brand-light"
-                          : "border-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                          : "text-text-secondary hover:bg-surface-3 hover:text-text-primary border-transparent",
                       )}
                     >
                       <Icon aria-hidden className="size-5" />
@@ -178,7 +180,7 @@ export function Navbar({
                       "flex min-h-11 items-center gap-3 rounded-sm border px-3 font-bold transition",
                       isActive(pathname, "/settings")
                         ? "bg-brand-surface border-brand-border text-brand-light"
-                        : "border-transparent text-text-secondary hover:bg-surface-3 hover:text-text-primary",
+                        : "text-text-secondary hover:bg-surface-3 hover:text-text-primary border-transparent",
                     )}
                   >
                     <Settings aria-hidden className="size-5" />

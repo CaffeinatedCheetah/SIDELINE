@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { db } from "@/lib/db/client";
 import { getMySideline } from "@/lib/db/my-sideline";
+import { getLeagueHub, getLeagueOverview } from "@/lib/db/league-hub";
 import { recordFanScoreEvent } from "@/lib/scoring/fan-score";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -300,6 +301,30 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     expect(
       await db.teamFollow.count({ where: { userId: cascadeUser.id } }),
     ).toBe(0);
+  });
+
+  it("builds bounded league hub and overview reads from real relationships", async () => {
+    const hub = await getLeagueHub(ids.user);
+    expect(hub.leagues.length).toBeGreaterThanOrEqual(5);
+    expect(hub.liveGames.length).toBeLessThanOrEqual(6);
+    expect(
+      hub.liveGames.every((game) => ["LIVE", "HALFTIME"].includes(game.status)),
+    ).toBe(true);
+
+    const league = await db.league.findFirstOrThrow({
+      where: {
+        OR: [{ teams: { some: {} } }, { games: { some: {} } }],
+      },
+      select: { key: true, id: true },
+    });
+    const overview = await getLeagueOverview(league.key, ids.user);
+    expect(overview).not.toBeNull();
+    expect(overview?.teams.every((team) => team.leagueId === league.id)).toBe(
+      true,
+    );
+    expect(overview?.liveGames.length).toBeLessThanOrEqual(6);
+    expect(overview?.upcomingGames.length).toBeLessThanOrEqual(6);
+    expect(overview?.finalGames.length).toBeLessThanOrEqual(6);
   });
 
   it("persists onboarding, profile fields, interests, and privacy", async () => {

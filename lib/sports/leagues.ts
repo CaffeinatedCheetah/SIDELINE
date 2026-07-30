@@ -17,20 +17,28 @@ export const SUPPORTED_LEAGUES: SupportedLeague[] = [
   league("mlb", "MLB", "Baseball", "baseball", "mlb"),
   league("nhl", "NHL", "Hockey", "hockey", "nhl"),
   league("wnba", "WNBA", "Basketball", "basketball", "wnba"),
-  league("epl", "Premier League", "Soccer", "soccer", "eng.1"),
+  league("epl", "Premier League", "Soccer", "soccer", "eng.1", "EPL"),
   league("mls", "MLS", "Soccer", "soccer", "usa.1"),
-  league("la-liga", "La Liga", "Soccer", "soccer", "esp.1"),
-  league("bundesliga", "Bundesliga", "Soccer", "soccer", "ger.1"),
-  league("serie-a", "Serie A", "Soccer", "soccer", "ita.1"),
-  league("ligue-1", "Ligue 1", "Soccer", "soccer", "fra.1"),
+  league("la-liga", "La Liga", "Soccer", "soccer", "esp.1", "LALIGA"),
+  league("bundesliga", "Bundesliga", "Soccer", "soccer", "ger.1", "BUND"),
+  league("serie-a", "Serie A", "Soccer", "soccer", "ita.1", "SERIE A"),
+  league("ligue-1", "Ligue 1", "Soccer", "soccer", "fra.1", "LIGUE 1"),
   league(
     "champions-league",
     "UEFA Champions League",
     "Soccer",
     "soccer",
     "uefa.champions",
+    "UCL",
   ),
-  league("world-cup", "FIFA World Cup", "Soccer", "soccer", "fifa.world"),
+  league(
+    "world-cup",
+    "FIFA World Cup",
+    "Soccer",
+    "soccer",
+    "fifa.world",
+    "WORLD CUP",
+  ),
 ];
 
 function league(
@@ -39,11 +47,12 @@ function league(
   sportName: string,
   providerSport: string,
   providerLeague: string,
+  abbreviation = name,
 ): SupportedLeague {
   return {
     key,
     name,
-    abbreviation: name === "Premier League" ? "EPL" : name,
+    abbreviation,
     sportKey: providerSport,
     sportName,
     providerSport,

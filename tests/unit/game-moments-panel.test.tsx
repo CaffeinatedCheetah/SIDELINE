@@ -124,4 +124,17 @@ describe("GameMomentsPanel", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("uses a sport-aware shared label for normalized moments", () => {
+    render(
+      <GameMomentsPanel
+        gameId="game-1"
+        phase="LIVE"
+        sportKey="soccer"
+        initialMoments={[{ ...moment, id: "goal-1", type: "SCORE" }]}
+        initialThreads={[]}
+      />,
+    );
+    expect(screen.getByText("goal")).toBeInTheDocument();
+  });
 });

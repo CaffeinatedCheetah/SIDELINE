@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Radio, SlidersHorizontal } from "lucide-react";
+import { auth } from "@/auth";
 import { GameCard } from "@/components/games/game-card";
 import { LiveAutoRefresh } from "@/components/games/live-auto-refresh";
 import { PageHeading } from "@/components/layout/page-heading";
@@ -52,9 +54,15 @@ function buildQuery(params: Record<string, string | undefined>) {
 export default async function GamesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; date?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    date?: string;
+    state?: string;
+    scope?: string;
+  }>;
 }) {
   const filters = await searchParams;
+  const session = await auth();
   const tab = SPORT_TABS.includes(filters.tab ?? "")
     ? (filters.tab ?? "ALL")
     : "ALL";
@@ -71,11 +79,54 @@ export default async function GamesPage({
   const isTomorrow = toDateParam(day) === tomorrowParam;
   const dateParam = toDateParam(day);
 
-  const directory = await getSportsGameDirectory({
-    date: dateParam,
-    leagueKey,
+  const [directory, followedTeams] = await Promise.all([
+    getSportsGameDirectory({
+      date: dateParam,
+      leagueKey,
+    }),
+    session?.user?.id
+      ? import("@/lib/db/client").then(({ db }) =>
+          db.teamFollow.findMany({
+            where: { userId: session.user.id },
+            select: {
+              team: { select: { name: true, abbreviation: true } },
+            },
+            take: 100,
+          }),
+        )
+      : Promise.resolve([]),
+  ]);
+  const followedKeys = new Set(
+    followedTeams.flatMap(({ team }) => [
+      team.name.toLowerCase(),
+      team.abbreviation.toLowerCase(),
+    ]),
+  );
+  const state =
+    filters.state === "LIVE" ||
+    filters.state === "UPCOMING" ||
+    filters.state === "FINAL"
+      ? filters.state
+      : "ALL";
+  const myTeams = filters.scope === "mine" && Boolean(session?.user?.id);
+  const games = directory.games.filter((game) => {
+    if (
+      myTeams &&
+      ![
+        game.homeTeam.name,
+        game.homeTeam.abbreviation,
+        game.awayTeam.name,
+        game.awayTeam.abbreviation,
+      ].some((value) => followedKeys.has(value.toLowerCase()))
+    )
+      return false;
+    if (state === "LIVE")
+      return game.status === "LIVE" || game.status === "HALFTIME";
+    if (state === "UPCOMING")
+      return game.status === "SCHEDULED" || game.status === "PREGAME";
+    if (state === "FINAL") return game.status === "FINAL";
+    return true;
   });
-  const games = directory.games;
   const hasLive = games.some((game) => game.status === "LIVE");
 
   const dateLabel = day.toLocaleDateString(undefined, {
@@ -85,7 +136,11 @@ export default async function GamesPage({
     day: "numeric",
   });
 
-  const dateTabs: { label: string; param: string | undefined; active: boolean }[] = [
+  const dateTabs: {
+    label: string;
+    param: string | undefined;
+    active: boolean;
+  }[] = [
     { label: "Yesterday", param: yesterdayParam, active: isYesterday },
     { label: "Today", param: undefined, active: isToday },
     { label: "Tomorrow", param: tomorrowParam, active: isTomorrow },
@@ -99,37 +154,121 @@ export default async function GamesPage({
         title="Games"
         description="Find what is live, what starts next, and where fans are talking."
       />
-      <nav aria-label="Sport" className="mb-5 flex flex-wrap gap-1">
-        {SPORT_TABS.map((sport) => (
+      <div className="border-border-subtle bg-surface-2 mb-6 rounded-2xl border p-3 shadow-lg md:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <span className="text-text-secondary flex items-center gap-2 text-sm font-bold">
+            <SlidersHorizontal aria-hidden className="size-4" />
+            League
+          </span>
           <Link
-            key={sport}
-            href={buildQuery({ tab: sport === "ALL" ? undefined : sport, date: filters.date })}
-            aria-current={tab === sport ? "page" : undefined}
-            className={`min-h-9 rounded-sm px-3 py-1.5 text-sm font-bold ${
-              tab === sport
-                ? "bg-brand-surface text-brand-light"
-                : "text-text-secondary hover:bg-surface-3"
+            href="/leagues"
+            className="text-brand text-sm font-bold hover:underline"
+          >
+            Explore leagues
+          </Link>
+        </div>
+        <nav aria-label="Sport" className="flex flex-wrap gap-1">
+          {SPORT_TABS.map((sport) => (
+            <Link
+              key={sport}
+              href={buildQuery({
+                tab: sport === "ALL" ? undefined : sport,
+                date: filters.date,
+                state: filters.state,
+                scope: filters.scope,
+              })}
+              aria-current={tab === sport ? "page" : undefined}
+              className={`min-h-9 rounded-sm px-3 py-1.5 text-sm font-bold ${
+                tab === sport
+                  ? "bg-brand-surface text-brand-light"
+                  : "text-text-secondary hover:bg-surface-3"
+              }`}
+            >
+              {sport}
+            </Link>
+          ))}
+        </nav>
+        {session?.user?.id ? (
+          <div className="border-border-subtle mt-3 border-t pt-3">
+            <Link
+              href={buildQuery({
+                tab: filters.tab,
+                date: filters.date,
+                state: filters.state,
+                scope: myTeams ? undefined : "mine",
+              })}
+              aria-pressed={myTeams}
+              className={`inline-flex min-h-9 items-center rounded-full border px-3 py-1.5 text-xs font-bold ${
+                myTeams
+                  ? "border-brand bg-brand-surface text-brand-light"
+                  : "border-border-subtle text-text-secondary hover:bg-surface-3"
+              }`}
+            >
+              {myTeams ? "✓ " : ""}My Teams
+            </Link>
+          </div>
+        ) : null}
+      </div>
+      <nav aria-label="Game state" className="mb-5 flex flex-wrap gap-2">
+        {[
+          ["ALL", "All games"],
+          ["LIVE", "Live"],
+          ["UPCOMING", "Upcoming"],
+          ["FINAL", "Final"],
+        ].map(([value, label]) => (
+          <Link
+            key={value}
+            href={buildQuery({
+              tab: filters.tab,
+              date: filters.date,
+              state: value === "ALL" ? undefined : value,
+              scope: filters.scope,
+            })}
+            aria-current={state === value ? "page" : undefined}
+            className={`flex min-h-10 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-bold ${
+              state === value
+                ? "border-brand bg-brand-surface text-brand-light"
+                : "border-border-subtle bg-surface-2 text-text-secondary hover:bg-surface-3"
             }`}
           >
-            {sport}
+            {value === "LIVE" ? (
+              <Radio
+                aria-hidden
+                className="text-success size-3.5 motion-safe:animate-pulse"
+              />
+            ) : null}
+            {label}
           </Link>
         ))}
       </nav>
-      <div className="mb-8 flex flex-wrap items-center gap-3">
+      <div className="mb-8 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:flex-wrap sm:gap-3">
         <Link
-          href={buildQuery({ tab: filters.tab, date: toDateParam(addDays(day, -1)) })}
+          href={buildQuery({
+            tab: filters.tab,
+            date: toDateParam(addDays(day, -1)),
+            state: filters.state,
+            scope: filters.scope,
+          })}
           aria-label="Previous day"
           className="border-border-strong bg-surface-2 hover:bg-surface-3 grid min-h-11 min-w-11 place-items-center rounded-sm border font-bold"
         >
           ←
         </Link>
-        <nav aria-label="Date" className="flex gap-1">
+        <nav
+          aria-label="Date"
+          className="grid min-w-0 grid-cols-3 gap-1 sm:flex"
+        >
           {dateTabs.map(({ label, param, active }) => (
             <Link
               key={label}
-              href={buildQuery({ tab: filters.tab, date: param })}
+              href={buildQuery({
+                tab: filters.tab,
+                date: param,
+                state: filters.state,
+                scope: filters.scope,
+              })}
               aria-current={active ? "page" : undefined}
-              className={`min-h-11 rounded-sm px-3 py-2 text-sm font-bold ${
+              className={`min-h-11 min-w-0 rounded-sm px-2 py-2 text-center text-sm font-bold sm:px-3 ${
                 active
                   ? "bg-brand-surface text-brand-light"
                   : "text-text-secondary hover:bg-surface-3"
@@ -139,16 +278,23 @@ export default async function GamesPage({
             </Link>
           ))}
         </nav>
-        {!isToday && !isYesterday && !isTomorrow && (
-          <span className="font-display text-lg font-black">{dateLabel}</span>
-        )}
         <Link
-          href={buildQuery({ tab: filters.tab, date: toDateParam(addDays(day, 1)) })}
+          href={buildQuery({
+            tab: filters.tab,
+            date: toDateParam(addDays(day, 1)),
+            state: filters.state,
+            scope: filters.scope,
+          })}
           aria-label="Next day"
           className="border-border-strong bg-surface-2 hover:bg-surface-3 grid min-h-11 min-w-11 place-items-center rounded-sm border font-bold"
         >
           →
         </Link>
+        {!isToday && !isYesterday && !isTomorrow && (
+          <span className="font-display col-span-3 text-center text-lg font-black">
+            {dateLabel}
+          </span>
+        )}
       </div>
       {games.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -157,6 +303,7 @@ export default async function GamesPage({
               key={game.id}
               id={game.id}
               league={game.league.abbreviation}
+              leagueKey={game.league.key}
               homeTeam={game.homeTeam.name}
               awayTeam={game.awayTeam.name}
               homeTeamLogo={game.homeTeam.logoUrl ?? undefined}
@@ -168,6 +315,7 @@ export default async function GamesPage({
               broadcast={game.broadcast ?? undefined}
               statusText={gameStatusLabel(game)}
               conversationCount={game._count.takes}
+              followerCount={game._count.follows}
             />
           ))}
         </div>
@@ -176,14 +324,18 @@ export default async function GamesPage({
           title={
             directory.providerError
               ? "Schedules could not refresh"
-              : isToday
-                ? "No games today"
-                : `No games on ${dateLabel}`
+              : myTeams
+                ? "No favorites here yet"
+                : isToday
+                  ? "No games in this window"
+                  : `No games on ${dateLabel}`
           }
           description={
             directory.providerError
               ? "No synchronized schedule is available yet. Try again shortly."
-              : "Try another day or sport."
+              : myTeams
+                ? "Follow a team to add this league to My SIDELINE."
+                : "Try another date or explore teams from this league."
           }
         />
       )}

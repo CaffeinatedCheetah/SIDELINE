@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { db } from "@/lib/db/client";
+import { SUPPORTED_LEAGUES } from "@/lib/sports/leagues";
 
 test.skip(
   process.env.RUN_DATABASE_E2E !== "true",
@@ -27,7 +28,9 @@ test("all public routes render without runtime or console errors", async ({
   const routes = [
     "/",
     "/games",
+    "/leagues",
     "/teams",
+    ...SUPPORTED_LEAGUES.map((league) => `/leagues/${league.key}`),
     `/games/${game.id}`,
     "/debates",
     `/debates/${debate.id}`,
@@ -100,6 +103,26 @@ test("team discovery has no horizontal overflow across supported breakpoints", a
     ).toBeLessThanOrEqual(dimensions.clientWidth);
   }
 });
+
+for (const route of ["/games", "/teams", "/leagues", "/leagues/mlb"]) {
+  test(`${route} premium sports hub has no horizontal overflow`, async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto(route, { waitUntil: "domcontentloaded" });
+      const dimensions = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(
+        dimensions.scrollWidth,
+        `${route} at ${width}px`,
+      ).toBeLessThanOrEqual(dimensions.clientWidth);
+    }
+  });
+}
 
 test("Game Room has no horizontal overflow across supported breakpoints", async ({
   page,

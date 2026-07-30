@@ -61,9 +61,30 @@ type MomentPresentation = {
   node: string;
 };
 
-function momentPresentation(moment: Moment): MomentPresentation {
+function sportMomentLabel(type: string, sportKey?: string) {
+  if (type === "SCORE") {
+    if (sportKey === "soccer" || sportKey === "hockey") return "goal";
+    if (sportKey === "basketball") return "score";
+    if (sportKey === "football") return "scoring play";
+    if (sportKey === "baseball") return "run scored";
+  }
+  if (type === "PENALTY" && sportKey === "soccer") return "card or foul";
+  if (type === "PERIOD_END") {
+    if (sportKey === "baseball") return "inning ended";
+    if (sportKey === "football" || sportKey === "basketball")
+      return "quarter ended";
+    if (sportKey === "hockey") return "period ended";
+    if (sportKey === "soccer") return "half ended";
+  }
+  return type.replaceAll("_", " ").toLowerCase();
+}
+
+function momentPresentation(
+  moment: Moment,
+  sportKey?: string,
+): MomentPresentation {
   const type = moment.type.toUpperCase();
-  const label = type.replaceAll("_", " ").toLowerCase();
+  const label = sportMomentLabel(type, sportKey);
   if (type === "GAME_END" || type === "FINAL" || type === "GAME_WINNING_PLAY")
     return {
       Icon: Trophy,
@@ -150,11 +171,13 @@ export function GameMomentsPanel({
   phase,
   initialMoments,
   initialThreads,
+  sportKey,
 }: {
   gameId: string;
   phase: GamePhase;
   initialMoments: Moment[];
   initialThreads: FlashThread[];
+  sportKey?: string;
 }) {
   const [moments, setMoments] = useState(initialMoments);
   const [threads, setThreads] = useState(initialThreads);
@@ -397,7 +420,7 @@ export function GameMomentsPanel({
         {timeline.length ? (
           <ol className="mt-6 grid" data-moments-timeline>
             {timeline.map((moment, index) => {
-              const presentation = momentPresentation(moment);
+              const presentation = momentPresentation(moment, sportKey);
               const Icon = presentation.Icon;
               const major = moment.importance >= 70;
               return (

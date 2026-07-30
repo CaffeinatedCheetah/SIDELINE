@@ -33,7 +33,7 @@ export interface SportsGame {
     abbreviation: string;
     logoUrl: string | null;
   };
-  _count: { takes: number };
+  _count: { takes: number; follows?: number };
 }
 
 export interface SportsGameDirectory {
@@ -107,7 +107,7 @@ export async function getSportsGameDirectory({
         league: true,
         homeTeam: true,
         awayTeam: true,
-        _count: { select: { takes: true } },
+        _count: { select: { takes: true, follows: true } },
       },
     });
     if (games.length || !providerFallback.length)
@@ -169,7 +169,7 @@ function contestToSportsGame(contest: Contest): SportsGame {
       abbreviation: contest.awayParticipant.abbreviation,
       logoUrl: contest.awayParticipant.logoUrl ?? null,
     },
-    _count: { takes: 0 },
+    _count: { takes: 0, follows: 0 },
   };
 }
 

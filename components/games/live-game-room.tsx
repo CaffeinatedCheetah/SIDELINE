@@ -21,6 +21,7 @@ import {
   type GamePhase,
 } from "@/lib/sports/game-lifecycle";
 import type { CanonicalGame } from "@/lib/sports/game-domain";
+import { leagueTheme, sportPhaseLabel } from "@/lib/sports/presentation";
 import { cn } from "@/lib/utils";
 
 type LiveGameState = Pick<
@@ -53,10 +54,17 @@ const FALLBACK_TEAM_COLORS = [
   "#4338ca",
 ];
 
-function phaseLabel(game: LiveGameState) {
+function phaseLabel(game: LiveGameState, sportKey?: string) {
   if (game.phase === "HALFTIME") return "Halftime";
   if (game.phase === "LIVE")
-    return [game.period, game.clock].filter(Boolean).join(" · ") || "Live";
+    return (
+      sportPhaseLabel({
+        sportKey,
+        period: game.period,
+        clock: game.clock,
+        detail: game.detail,
+      }) || "Live"
+    );
   if (game.phase === "PREGAME") return game.detail || "Pregame";
   if (game.phase === "CANCELLED") return "Cancelled";
   return game.phase.charAt(0) + game.phase.slice(1).toLowerCase();
@@ -166,6 +174,7 @@ function TeamBlock({
 
 export function LiveGameRoom({
   gameId,
+  league,
   startsAt,
   homeTeam,
   awayTeam,
@@ -184,6 +193,7 @@ export function LiveGameRoom({
   signedIn,
 }: {
   gameId: string;
+  league?: { key: string; abbreviation: string; sportKey: string };
   startsAt: string;
   homeTeam: TeamPresentation;
   awayTeam: TeamPresentation;
@@ -342,13 +352,21 @@ export function LiveGameRoom({
       className="game-room-shell border-border-strong relative z-20 mb-7 overflow-hidden rounded-2xl p-0 shadow-2xl md:sticky md:top-16 md:p-0"
       data-game-room-shell
       data-game-phase={game.phase}
-      style={gameTheme(homeTeam, awayTeam)}
+      style={{
+        ...(league ? leagueTheme(league.key) : {}),
+        ...gameTheme(homeTeam, awayTeam),
+      }}
     >
       <div aria-hidden className="game-room-glow game-room-glow-away" />
       <div aria-hidden className="game-room-glow game-room-glow-home" />
       <div className="relative">
         <div className="border-border-subtle flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
+            {league ? (
+              <span className="border-border-subtle bg-surface-1/70 rounded-full border px-2.5 py-1 text-xs font-black uppercase">
+                {league.abbreviation}
+              </span>
+            ) : null}
             <Badge
               tone={phaseTone(game.phase)}
               className="gap-2 px-3 py-1.5 uppercase"
@@ -360,8 +378,8 @@ export function LiveGameRoom({
                 />
               ) : null}
               {game.phase === "LIVE"
-                ? `Live · ${phaseLabel(game)}`
-                : phaseLabel(game)}
+                ? `Live · ${phaseLabel(game, league?.sportKey)}`
+                : phaseLabel(game, league?.sportKey)}
             </Badge>
             <span className="text-text-secondary flex items-center gap-1.5 text-xs font-semibold">
               <Users aria-hidden className="size-3.5" />
