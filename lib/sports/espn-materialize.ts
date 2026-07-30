@@ -1,5 +1,7 @@
 import { db } from "@/lib/db/client";
 import { LEAGUES, fetchEspnEvent } from "@/lib/sports/espn";
+import { materializeContest } from "@/lib/sports/materializer";
+import { getSportsSchedule } from "@/lib/sports/service";
 
 const SPORT_NAMES: Record<string, string> = {
   basketball: "Basketball",
@@ -35,6 +37,7 @@ const SPORT_NAMES: Record<string, string> = {
 export async function materializeEspnGame(
   leagueKey: string,
   eventId: string,
+  competitionDate?: string,
 ): Promise<string | null> {
   const providerRef = `espn:${leagueKey}:${eventId}`;
   const legacyProviderRef = `espn-${leagueKey}-${eventId}`;
@@ -43,6 +46,23 @@ export async function materializeEspnGame(
     select: { id: true },
   });
   if (existing) return existing.id;
+
+  // Visible provider cards already came through the canonical Sports Data
+  // service. Resolve and materialize that same normalized contest first so
+  // Games, Homepage, and Game Rooms cannot disagree because a second ESPN
+  // endpoint returned a transiently different result.
+  const schedule = await getSportsSchedule({
+    date: competitionDate,
+    leagueKeys: [leagueKey],
+  });
+  const canonicalContest = schedule.contests.find(
+    (contest) =>
+      contest.provider === "espn" &&
+      contest.league.key === leagueKey &&
+      contest.providerGameId === eventId,
+  );
+  if (canonicalContest) return (await materializeContest(canonicalContest)).id;
+
   const legacy = await db.game.findUnique({
     where: { providerRef: legacyProviderRef },
     select: { id: true },

@@ -36,6 +36,21 @@ export function serverRefreshIntervalMs({
 }
 
 export async function synchronizeMlbLifecycle(now = new Date()) {
+  const runGate = await checkRateLimit("sports-lifecycle-run:mlb", {
+    limit: 1,
+    windowMs: 50_000,
+  });
+  if (!runGate.allowed)
+    return {
+      checkedAt: now.toISOString(),
+      candidates: 0,
+      due: 0,
+      dates: [],
+      synchronized: 0,
+      momentsSynchronized: 0,
+      errors: 0,
+      skipped: "overlap_prevented" as const,
+    };
   const candidates = await db.game.findMany({
     where: {
       league: { key: "mlb" },

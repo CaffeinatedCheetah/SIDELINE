@@ -71,11 +71,12 @@ describe("GameCard", () => {
         awayTeam="Kings"
         status="SCHEDULED"
         statusText="SCHEDULED"
+        scheduledAt="2026-07-28T23:00:00.000Z"
       />,
     );
     expect(screen.getByRole("link")).toHaveAttribute(
       "href",
-      "/games/from-espn/nba/401898716",
+      "/games/from-espn/nba/401898716?date=2026-07-28",
     );
   });
 

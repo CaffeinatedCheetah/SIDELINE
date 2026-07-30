@@ -10,11 +10,14 @@ export const dynamic = "force-dynamic";
 // BallDontLie-synced or seeded one.
 export default async function FromEspnGame({
   params,
+  searchParams,
 }: {
   params: Promise<{ leagueKey: string; eventId: string }>;
+  searchParams: Promise<{ date?: string }>;
 }) {
   const { leagueKey, eventId } = await params;
-  const gameId = await materializeEspnGame(leagueKey, eventId);
+  const { date } = await searchParams;
+  const gameId = await materializeEspnGame(leagueKey, eventId, date);
   if (!gameId) notFound();
   redirect(`/games/${gameId}`);
 }

@@ -21,6 +21,7 @@ vi.mock("@/lib/sports/observability", () => ({
 }));
 
 import { getSportsGameDirectory } from "@/lib/sports/read-model";
+import contests from "@/tests/fixtures/sports/contests.json";
 
 describe("sports read-model resilience", () => {
   beforeEach(() => {
@@ -51,5 +52,33 @@ describe("sports read-model resilience", () => {
         }),
       }),
     );
+  });
+
+  it("keeps normalized provider games visible when database materialization is unavailable", async () => {
+    mocks.getSportsSchedule.mockResolvedValue({
+      contests,
+      fetchedAt: "2026-07-28T22:00:00.000Z",
+      stale: false,
+      source: "provider",
+    });
+    mocks.materializeContests.mockRejectedValue(
+      new Error("database unavailable"),
+    );
+    mocks.findMany.mockRejectedValue(new Error("database unavailable"));
+
+    const directory = await getSportsGameDirectory();
+
+    expect(directory).toMatchObject({
+      providerError: true,
+      source: "provider",
+      games: [
+        {
+          id: "espn-mlb-ci-fixture-1",
+          status: "LIVE",
+          homeTeam: { name: "Detroit Tigers" },
+          awayTeam: { name: "Chicago Cubs" },
+        },
+      ],
+    });
   });
 });

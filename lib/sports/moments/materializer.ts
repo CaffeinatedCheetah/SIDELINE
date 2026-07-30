@@ -34,6 +34,19 @@ export async function materializeGameMoments(
 
           const materialized = [];
           for (const moment of moments) {
+            const existingMoment = await tx.gameMoment.findUnique({
+              where: {
+                provider_providerRef: {
+                  provider: moment.provider,
+                  providerRef: moment.providerRef,
+                },
+              },
+              select: { gameId: true },
+            });
+            if (existingMoment && existingMoment.gameId !== game.id)
+              throw new Error(
+                `Provider moment ${moment.provider}:${moment.providerRef} is already attached to another game.`,
+              );
             const gameMoment = await tx.gameMoment.upsert({
               where: {
                 provider_providerRef: {

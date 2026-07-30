@@ -40,8 +40,11 @@ export function GameCard(p: GameCardProps) {
     typeof p.homeScore === "number" && typeof p.awayScore === "number";
   const isEspnId = p.id?.startsWith("espn-") ?? false;
   const espnRef = isEspnId && p.id ? parseEspnGameId(p.id) : null;
+  const providerDate = p.scheduledAt?.slice(0, 10);
   const href = espnRef
-    ? `/games/from-espn/${espnRef.leagueKey}/${espnRef.eventId}`
+    ? `/games/from-espn/${espnRef.leagueKey}/${espnRef.eventId}${
+        providerDate ? `?date=${encodeURIComponent(providerDate)}` : ""
+      }`
     : !isEspnId && p.id
       ? `/games/${p.id}`
       : undefined;
