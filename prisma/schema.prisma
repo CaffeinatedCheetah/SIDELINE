@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
@@ -194,6 +194,7 @@ model User {
   blocksReceived       Block[]            @relation("Blocked")
   mutes                Mute[]
   gameFollows          GameFollow[]
+  teamFollows          TeamFollow[]
 
   @@index([status, createdAt])
 }
@@ -312,49 +313,50 @@ model Team {
   homeGames      Game[]            @relation("HomeTeam")
   awayGames      Game[]            @relation("AwayTeam")
   participants   GameParticipant[]
+  followers      TeamFollow[]
 
   @@index([leagueId, name])
 }
 
 model Game {
-  id           String            @id @default(uuid()) @db.Uuid
-  leagueId     String            @db.Uuid
-  homeTeamId   String            @db.Uuid
-  awayTeamId   String            @db.Uuid
-  providerRef  String?           @unique
-  provider     String?
-  providerState String?
+  id                     String            @id @default(uuid()) @db.Uuid
+  leagueId               String            @db.Uuid
+  homeTeamId             String            @db.Uuid
+  awayTeamId             String            @db.Uuid
+  providerRef            String?           @unique
+  provider               String?
+  providerState          String?
   providerPayloadVersion String?
   providerSchemaVersion  String?
   providerAdapterVersion String?
-  season       String?
-  venue        String?
-  broadcast    String?
-  statusDetail String?
-  providerUpdatedAt DateTime?
-  lastSyncedAt DateTime?
-  scheduledAt  DateTime
-  startedAt    DateTime?
-  endedAt      DateTime?
-  status       GameStatus        @default(SCHEDULED)
-  homeScore    Int?
-  awayScore    Int?
-  period       String?
-  clock        String?
-  version      Int               @default(1)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-  league       League            @relation(fields: [leagueId], references: [id], onDelete: Restrict)
-  homeTeam     Team              @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
-  awayTeam     Team              @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
-  participants GameParticipant[]
-  takes        Take[]
-  polls        Poll[]
-  predictions  Prediction[]
-  debates      Debate[]
-  follows      GameFollow[]
-  moments      GameMoment[]
-  flashThreads FlashThread[]
+  season                 String?
+  venue                  String?
+  broadcast              String?
+  statusDetail           String?
+  providerUpdatedAt      DateTime?
+  lastSyncedAt           DateTime?
+  scheduledAt            DateTime
+  startedAt              DateTime?
+  endedAt                DateTime?
+  status                 GameStatus        @default(SCHEDULED)
+  homeScore              Int?
+  awayScore              Int?
+  period                 String?
+  clock                  String?
+  version                Int               @default(1)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  league                 League            @relation(fields: [leagueId], references: [id], onDelete: Restrict)
+  homeTeam               Team              @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Restrict)
+  awayTeam               Team              @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Restrict)
+  participants           GameParticipant[]
+  takes                  Take[]
+  polls                  Poll[]
+  predictions            Prediction[]
+  debates                Debate[]
+  follows                GameFollow[]
+  moments                GameMoment[]
+  flashThreads           FlashThread[]
 
   @@index([status, scheduledAt])
   @@index([status, lastSyncedAt])
@@ -432,6 +434,17 @@ model GameFollow {
   @@id([userId, gameId])
 }
 
+model TeamFollow {
+  userId    String   @db.Uuid
+  teamId    String   @db.Uuid
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@index([teamId])
+}
+
 model Community {
   id          String             @id @default(uuid()) @db.Uuid
   ownerId     String             @db.Uuid
@@ -487,36 +500,36 @@ model CommunityRole {
 }
 
 model Take {
-  id           String             @id @default(uuid()) @db.Uuid
-  authorId     String             @db.Uuid
-  gameId       String?            @db.Uuid
-  debateId     String?            @db.Uuid
-  communityId  String?            @db.Uuid
-  parentId     String?            @db.Uuid
-  flashThreadId String?           @db.Uuid
-  body         String             @db.VarChar(1000)
-  relationKind String?
-  gamePeriod   String?
-  gameClock    String?
+  id               String             @id @default(uuid()) @db.Uuid
+  authorId         String             @db.Uuid
+  gameId           String?            @db.Uuid
+  debateId         String?            @db.Uuid
+  communityId      String?            @db.Uuid
+  parentId         String?            @db.Uuid
+  flashThreadId    String?            @db.Uuid
+  body             String             @db.VarChar(1000)
+  relationKind     String?
+  gamePeriod       String?
+  gameClock        String?
   homeScoreContext Int?
   awayScoreContext Int?
-  status       ContentStatus      @default(ACTIVE)
-  editedAt     DateTime?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  deletedAt    DateTime?
-  author       User               @relation(fields: [authorId], references: [id], onDelete: Restrict)
-  game         Game?              @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  debate       Debate?            @relation(fields: [debateId], references: [id], onDelete: Cascade)
-  community    Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  parent       Take?              @relation("TakeReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  flashThread  FlashThread?       @relation(fields: [flashThreadId], references: [id], onDelete: SetNull)
-  replies      Take[]             @relation("TakeReplies")
-  votes        Vote[]
-  comments     Comment[]
-  reactions    Reaction[]
-  savedItems   SavedItem[]
-  hallEntries  HallOfFlameEntry[]
+  status           ContentStatus      @default(ACTIVE)
+  editedAt         DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+  author           User               @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  game             Game?              @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  debate           Debate?            @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  community        Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  parent           Take?              @relation("TakeReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  flashThread      FlashThread?       @relation(fields: [flashThreadId], references: [id], onDelete: SetNull)
+  replies          Take[]             @relation("TakeReplies")
+  votes            Vote[]
+  comments         Comment[]
+  reactions        Reaction[]
+  savedItems       SavedItem[]
+  hallEntries      HallOfFlameEntry[]
 
   @@index([gameId, createdAt(sort: Desc)])
   @@index([debateId, createdAt(sort: Desc)])
@@ -728,19 +741,19 @@ model Mute {
 }
 
 model Notification {
-  id          String           @id @default(uuid()) @db.Uuid
-  recipientId String           @db.Uuid
-  actorId     String?          @db.Uuid
-  type        NotificationType
-  entityType  String
-  entityId    String
-  href        String
-  payload     Json             @default("{}")
-  deduplicationKey String?     @unique
-  readAt      DateTime?
-  createdAt   DateTime         @default(now())
-  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  actor       User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id               String           @id @default(uuid()) @db.Uuid
+  recipientId      String           @db.Uuid
+  actorId          String?          @db.Uuid
+  type             NotificationType
+  entityType       String
+  entityId         String
+  href             String
+  payload          Json             @default("{}")
+  deduplicationKey String?          @unique
+  readAt           DateTime?
+  createdAt        DateTime         @default(now())
+  recipient        User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor            User?            @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([recipientId, readAt, createdAt(sort: Desc)])
 }
@@ -769,17 +782,17 @@ model UserBadge {
 }
 
 model FanScoreEvent {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @db.Uuid
-  eventType      String
-  sourceType     String
-  sourceId       String
-  points         Int
-  reason         String
-  idempotencyKey String   @unique
-  reversalOfEventId String? @unique
-  occurredAt     DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @db.Uuid
+  eventType         String
+  sourceType        String
+  sourceId          String
+  points            Int
+  reason            String
+  idempotencyKey    String   @unique
+  reversalOfEventId String?  @unique
+  occurredAt        DateTime @default(now())
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, occurredAt(sort: Desc)])
 }
@@ -804,21 +817,21 @@ model HallOfFlameEntry {
 }
 
 model OperationalJobRun {
-  id            String   @id @default(uuid()) @db.Uuid
-  jobKey        String
-  period        String?
-  status        String
-  lockKey       String?  @unique
-  startedAt     DateTime @default(now())
-  finishedAt    DateTime?
-  eligibleCount Int      @default(0)
-  processedCount Int     @default(0)
-  skippedCount  Int      @default(0)
-  errorCount    Int      @default(0)
-  errorMessage  String?
-  metadata      Json     @default("{}")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String    @id @default(uuid()) @db.Uuid
+  jobKey         String
+  period         String?
+  status         String
+  lockKey        String?   @unique
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  eligibleCount  Int       @default(0)
+  processedCount Int       @default(0)
+  skippedCount   Int       @default(0)
+  errorCount     Int       @default(0)
+  errorMessage   String?
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([jobKey, period, startedAt(sort: Desc)])
   @@index([status, startedAt])
@@ -879,7 +892,7 @@ model ModerationAction {
 model RateLimitBucket {
   key       String   @id
   count     Int
-  resetsAt DateTime
+  resetsAt  DateTime
   updatedAt DateTime @updatedAt
 
   @@index([resetsAt])

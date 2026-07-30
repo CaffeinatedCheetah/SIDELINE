@@ -7,12 +7,14 @@ import { DebateCard } from "@/components/debates/debate-card";
 import { GameCard } from "@/components/games/game-card";
 import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-preview-section";
 import { LiveRightNowSection } from "@/components/home/live-right-now-section";
+import { MySidelineSection } from "@/components/home/my-sideline-section";
 import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
 import { ProfileCard } from "@/components/profile/profile-card";
 import { TakeCard } from "@/components/takes/take-card";
 import { buttonStyles } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
+import { getMySideline } from "@/lib/db/my-sideline";
 import {
   gameStatusLabel,
   getSportsGameDirectory,
@@ -129,7 +131,15 @@ async function discovery(viewerId: string | undefined) {
 
 export default async function Home() {
   const session = await auth();
-  const data = await discovery(session?.user?.id);
+  const [data, mySideline] = await Promise.all([
+    discovery(session?.user?.id),
+    getMySideline(session?.user?.id),
+  ]);
+  const hasPersonalizedActivity =
+    mySideline.liveGames.length > 0 ||
+    mySideline.upcomingGames.length > 0 ||
+    mySideline.recentGames.length > 0 ||
+    mySideline.flashThreads.length > 0;
   return (
     <>
       <section className="hero-grid">
@@ -216,8 +226,20 @@ export default async function Home() {
         </div>
       </section>
       <div className="page-container grid gap-16 py-14">
-        <LiveRightNowSection />
-        <TodaysScheduleSection />
+        <MySidelineSection
+          signedIn={Boolean(session?.user?.id)}
+          teams={mySideline.teams}
+          liveGames={mySideline.liveGames}
+          upcomingGames={mySideline.upcomingGames}
+          recentGames={mySideline.recentGames}
+          flashThreads={mySideline.flashThreads}
+        />
+        {!hasPersonalizedActivity ? (
+          <>
+            <LiveRightNowSection />
+            <TodaysScheduleSection />
+          </>
+        ) : null}
         <Section
           title="Trending takes"
           href="/games"

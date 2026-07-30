@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { db } from "@/lib/db/client";
 import { materializeContest } from "@/lib/sports/materializer";
 import { materializeGameMoments } from "@/lib/sports/moments/materializer";
 import { normalizeEspnMlbPlays } from "@/lib/sports/moments/providers/espn-mlb";
@@ -39,6 +40,43 @@ test("development login persists and logout protects the authenticated shell", a
   await page.goto("/arena");
   await expect(page).toHaveURL(/\/auth\/sign-in/);
   await expect(page).toHaveURL(/callbackUrl=%2Farena/);
+});
+
+test("signed-in fan follows a team, sees My Teams after refresh, and unfollows", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const team = await db.team.findFirstOrThrow({
+    orderBy: { name: "asc" },
+    select: { name: true },
+  });
+
+  await page.goto("/auth/sign-in?callbackUrl=/teams");
+  await page.getByLabel("Email").fill("demo@fantakes.local");
+  await page.getByRole("button", { name: "Continue with email" }).click();
+  await expect(page).toHaveURL(/\/teams$/);
+
+  const teamCard = page.locator("[data-team-card]", {
+    has: page.getByRole("link", { name: team.name }),
+  });
+  await teamCard.getByRole("button", { name: "Follow" }).click();
+  await expect(
+    teamCard.getByRole("button", { name: "Following" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    teamCard.getByRole("button", { name: "Following" }),
+  ).toBeVisible();
+
+  await page.goto("/");
+  const myTeams = page.locator("section", {
+    has: page.getByRole("heading", { name: "My Teams" }),
+  });
+  await expect(myTeams.getByText(team.name).first()).toBeVisible();
+  await myTeams.getByRole("button", { name: "Following" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Build your SIDELINE" }),
+  ).toBeVisible();
 });
 
 test("authenticated fan posts an existing Take inside a fixture-backed Flash Thread", async ({

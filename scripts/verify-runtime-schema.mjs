@@ -28,12 +28,19 @@ try {
   `;
   await prisma.$queryRaw`SELECT "id" FROM "GameMoment" LIMIT 0`;
   await prisma.$queryRaw`SELECT "id" FROM "FlashThread" LIMIT 0`;
+  await prisma.$queryRaw`
+    SELECT "userId", "teamId", "createdAt"
+    FROM "TeamFollow"
+    LIMIT 0
+  `;
   console.info("Verified the FanTakes runtime database schema.");
 } catch (error) {
   console.error(
     "FanTakes runtime database schema verification failed. Confirm that DATABASE_URL is the pooled connection for the same Supabase project used by DIRECT_URL/POSTGRES_URL_NON_POOLING.",
   );
-  console.error(error instanceof Error ? error.message : "Unknown database error");
+  console.error(
+    error instanceof Error ? error.message : "Unknown database error",
+  );
   process.exitCode = 1;
 } finally {
   await prisma.$disconnect();

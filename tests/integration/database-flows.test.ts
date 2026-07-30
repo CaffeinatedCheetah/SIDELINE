@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { db } from "@/lib/db/client";
+import { getMySideline } from "@/lib/db/my-sideline";
 import { recordFanScoreEvent } from "@/lib/scoring/fan-score";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -84,6 +85,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     poll: "",
     report: "",
     reportTarget: "",
+    team: "",
   };
 
   beforeAll(async () => {
@@ -118,6 +120,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     });
     ids.community = community.id;
     const games = await db.game.findMany({ orderBy: { scheduledAt: "asc" } });
+    ids.team = games[0]?.homeTeamId ?? "";
     ids.liveGame = games.find((game) => game.status === "LIVE")?.id ?? "";
     ids.futureGame =
       games.find((game) => game.status === "SCHEDULED")?.id ?? "";
@@ -180,6 +183,7 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         ],
       },
     });
+    await db.teamFollow.deleteMany({ where: { userId: { in: testUsers } } });
     if (testTakes.length)
       await db.take.deleteMany({ where: { id: { in: testTakes } } });
     if (ids.debate) await db.debate.deleteMany({ where: { id: ids.debate } });
@@ -200,6 +204,102 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
         })
       ).status,
     ).toBe(401);
+    expect(
+      (
+        await request("POST", "team-follows", {
+          teamId: ids.team,
+          follow: true,
+        })
+      ).status,
+    ).toBe(401);
+  });
+
+  it("follows and unfollows teams idempotently without affecting another user", async () => {
+    authState.userId = ids.user;
+    expect(
+      (
+        await request("POST", "team-follows", {
+          teamId: "not-a-uuid",
+          follow: true,
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await request("POST", "team-follows", {
+          teamId: randomUUID(),
+          follow: true,
+        })
+      ).status,
+    ).toBe(404);
+
+    for (const follow of [true, true]) {
+      const result = await request("POST", "team-follows", {
+        teamId: ids.team,
+        follow,
+      });
+      expect(result.status).toBe(201);
+      expect(result.body.data).toMatchObject({
+        teamId: ids.team,
+        following: true,
+      });
+    }
+    expect(
+      await db.teamFollow.count({
+        where: { userId: ids.user, teamId: ids.team },
+      }),
+    ).toBe(1);
+    expect(
+      await db.teamFollow.count({
+        where: { userId: ids.secondUser, teamId: ids.team },
+      }),
+    ).toBe(0);
+    const personalized = await getMySideline(ids.user);
+    expect(personalized.teams.map((team) => team.id)).toEqual([ids.team]);
+    expect(
+      [
+        ...personalized.liveGames,
+        ...personalized.upcomingGames,
+        ...personalized.recentGames,
+      ].every(
+        (game) => game.homeTeamId === ids.team || game.awayTeamId === ids.team,
+      ),
+    ).toBe(true);
+    expect(personalized.liveGames.length).toBeLessThanOrEqual(6);
+    expect(personalized.upcomingGames.length).toBeLessThanOrEqual(6);
+    expect(personalized.recentGames.length).toBeLessThanOrEqual(6);
+
+    for (const follow of [false, false]) {
+      expect(
+        (
+          await request("POST", "team-follows", {
+            teamId: ids.team,
+            follow,
+          })
+        ).status,
+      ).toBe(200);
+    }
+    expect(
+      await db.teamFollow.count({
+        where: { userId: ids.user, teamId: ids.team },
+      }),
+    ).toBe(0);
+
+    const cascadeUser = await db.user.create({
+      data: {
+        email: `team-follow-cascade-${suffix}@fantakes.local`,
+        handle: `cascade-${suffix}`,
+        normalizedHandle: `cascade-${suffix}`,
+        displayName: "Cascade Fan",
+      },
+    });
+    await db.teamFollow.create({
+      data: { userId: cascadeUser.id, teamId: ids.team },
+    });
+    await db.user.delete({ where: { id: cascadeUser.id } });
+    expect(
+      await db.teamFollow.count({ where: { userId: cascadeUser.id } }),
+    ).toBe(0);
   });
 
   it("persists onboarding, profile fields, interests, and privacy", async () => {
