@@ -3,15 +3,10 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 try {
-  const pending = await prisma.$queryRaw`
-    SELECT COUNT(*)::int AS count
-    FROM "_prisma_migrations"
-    WHERE "finished_at" IS NULL
-      AND "rolled_back_at" IS NULL
-  `;
-  if (pending[0]?.count)
-    throw new Error("The runtime database has unfinished Prisma migrations.");
-
+  // `prisma migrate deploy` runs immediately before this verifier and is the
+  // canonical migration-state check. Historical failed migration attempts can
+  // remain in `_prisma_migrations` after a later successful deploy, so inspect
+  // the exact runtime contract here instead of reinterpreting Prisma history.
   await prisma.$queryRaw`
     SELECT
       "providerRef",
