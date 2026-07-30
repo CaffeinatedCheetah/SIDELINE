@@ -208,6 +208,35 @@ select {
 html[data-reduced-data="true"] .provider-logo {
   display: none;
 }
+
+.game-room-shell {
+  isolation: isolate;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--game-away) 14%, var(--surface-2)),
+    var(--surface-2) 44%,
+    color-mix(in srgb, var(--game-home) 14%, var(--surface-2))
+  );
+}
+.game-room-glow {
+  position: absolute;
+  top: 10%;
+  width: 16rem;
+  height: 16rem;
+  border-radius: 999px;
+  filter: blur(64px);
+  opacity: 0.2;
+  pointer-events: none;
+}
+.game-room-glow-away {
+  left: -7rem;
+  background: var(--game-away);
+}
+.game-room-glow-home {
+  right: -7rem;
+  background: var(--game-home);
+}
+
 @media (forced-colors: active) {
   * {
     border-color: CanvasText;

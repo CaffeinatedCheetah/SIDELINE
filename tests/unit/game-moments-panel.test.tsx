@@ -11,7 +11,7 @@ const moment = {
   id: "moment-1",
   type: "LEAD_CHANGE",
   title: "Tigers hit a go-ahead two-run home run",
-  description: null,
+  description: "A verified scoring play changed the lead.",
   period: "Bottom 5th",
   clock: null,
   homeScore: 2,
@@ -41,12 +41,24 @@ describe("GameMomentsPanel", () => {
         ]}
       />,
     );
-    expect(
-      screen.getByRole("heading", { name: moment.title }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Bottom 5th · 1–2")).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: moment.title })).toHaveLength(
+      2,
+    );
+    expect(screen.getAllByText("Bottom 5th")).toHaveLength(2);
     expect(screen.getByLabelText("Add your take")).toBeInTheDocument();
-    expect(screen.getByText("0 Takes")).toBeInTheDocument();
+    expect(screen.getByText("Takes")).toBeInTheDocument();
+    expect(screen.getAllByText("1–2")).toHaveLength(2);
+    expect(
+      screen.getByText("A verified scoring play changed the lead."),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(
+        '[data-moment-type="LEAD_CHANGE"][data-moment-importance="major"]',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector("[data-featured-flash-thread]"),
+    ).toBeInTheDocument();
   });
 
   it("shows a truthful empty state without fabricated activity", () => {
@@ -86,14 +98,30 @@ describe("GameMomentsPanel", () => {
         ]}
       />,
     );
-    expect(
-      screen.getByRole("heading", { name: moment.title }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { name: moment.title })).toHaveLength(
+      2,
+    );
     expect(
       screen.getByText(
         "This Flash Thread is preserved as a read-only game archive.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Add your take")).not.toBeInTheDocument();
+  });
+
+  it("uses archive-specific empty-state copy for a final game", () => {
+    render(
+      <GameMomentsPanel
+        gameId="game-1"
+        phase="FINAL"
+        initialMoments={[]}
+        initialThreads={[]}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "This game’s verified moments will remain here as a permanent archive.",
+      ),
+    ).toBeInTheDocument();
   });
 });
