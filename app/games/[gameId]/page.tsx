@@ -190,8 +190,18 @@ export default async function GameRoom({
       <LiveGameRoom
         gameId={game.id}
         startsAt={game.scheduledAt.toISOString()}
-        homeTeam={game.homeTeam.name}
-        awayTeam={game.awayTeam.name}
+        homeTeam={{
+          name: game.homeTeam.name,
+          abbreviation: game.homeTeam.abbreviation,
+          logoUrl: game.homeTeam.logoUrl,
+          primaryColor: game.homeTeam.primaryColor,
+        }}
+        awayTeam={{
+          name: game.awayTeam.name,
+          abbreviation: game.awayTeam.abbreviation,
+          logoUrl: game.awayTeam.logoUrl,
+          primaryColor: game.awayTeam.primaryColor,
+        }}
         venue={game.venue}
         broadcast={
           game.broadcast

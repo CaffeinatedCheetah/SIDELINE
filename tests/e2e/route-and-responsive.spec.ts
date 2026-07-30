@@ -75,3 +75,23 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
   });
 }
+
+test("Game Room has no horizontal overflow across supported breakpoints", async ({
+  page,
+}) => {
+  const game = await db.game.findFirstOrThrow({ select: { id: true } });
+  for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(`/games/${game.id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("[data-game-room-shell]")).toBeVisible({
+      timeout: 30_000,
+    });
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth, `${width}px Game Room`).toBeLessThanOrEqual(
+      dimensions.clientWidth,
+    );
+  }
+});

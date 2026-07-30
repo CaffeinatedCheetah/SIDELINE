@@ -1,6 +1,15 @@
 "use client";
 
-import { Bell, BellOff, MapPin, Radio, Users } from "lucide-react";
+import type { CSSProperties } from "react";
+import {
+  Bell,
+  BellOff,
+  CalendarDays,
+  MapPin,
+  Radio,
+  RefreshCw,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,6 +21,7 @@ import {
   type GamePhase,
 } from "@/lib/sports/game-lifecycle";
 import type { CanonicalGame } from "@/lib/sports/game-domain";
+import { cn } from "@/lib/utils";
 
 type LiveGameState = Pick<
   CanonicalGame,
@@ -25,12 +35,133 @@ type LiveGameState = Pick<
   | "version"
 >;
 
+type TeamPresentation = {
+  name: string;
+  abbreviation: string;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+};
+
+const FALLBACK_TEAM_COLORS = [
+  "#2563eb",
+  "#7c3aed",
+  "#0891b2",
+  "#c2410c",
+  "#be123c",
+  "#047857",
+  "#a21caf",
+  "#4338ca",
+];
+
 function phaseLabel(game: LiveGameState) {
   if (game.phase === "HALFTIME") return "Halftime";
   if (game.phase === "LIVE")
     return [game.period, game.clock].filter(Boolean).join(" · ") || "Live";
   if (game.phase === "PREGAME") return game.detail || "Pregame";
+  if (game.phase === "CANCELLED") return "Cancelled";
   return game.phase.charAt(0) + game.phase.slice(1).toLowerCase();
+}
+
+function phaseTone(phase: GamePhase) {
+  if (phase === "LIVE" || phase === "HALFTIME") return "live" as const;
+  if (phase === "FINAL") return "success" as const;
+  if (phase === "POSTPONED") return "warning" as const;
+  if (phase === "CANCELLED") return "danger" as const;
+  return "neutral" as const;
+}
+
+function fallbackColor(value: string) {
+  const hash = [...value].reduce(
+    (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
+    0,
+  );
+  return FALLBACK_TEAM_COLORS[hash % FALLBACK_TEAM_COLORS.length];
+}
+
+function safeTeamColor(value: string | null | undefined, fallbackKey: string) {
+  if (!value) return fallbackColor(fallbackKey);
+  const normalized = value.startsWith("#") ? value : `#${value}`;
+  return /^#[\da-f]{6}$/i.test(normalized)
+    ? normalized
+    : fallbackColor(fallbackKey);
+}
+
+function gameTheme(
+  homeTeam: TeamPresentation,
+  awayTeam: TeamPresentation,
+): CSSProperties {
+  const home = safeTeamColor(
+    homeTeam.primaryColor,
+    homeTeam.abbreviation || homeTeam.name,
+  );
+  const away = safeTeamColor(
+    awayTeam.primaryColor,
+    awayTeam.abbreviation || awayTeam.name,
+  );
+  return {
+    "--game-home": home,
+    "--game-away": away,
+    "--game-home-soft": `color-mix(in srgb, ${home} 18%, var(--surface-2))`,
+    "--game-away-soft": `color-mix(in srgb, ${away} 18%, var(--surface-2))`,
+  } as CSSProperties;
+}
+
+function TeamBlock({
+  team,
+  side,
+}: {
+  team: TeamPresentation;
+  side: "away" | "home";
+}) {
+  const initials =
+    team.abbreviation ||
+    team.name
+      .split(/\s+/)
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 3);
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-col items-center gap-2 text-center sm:gap-3",
+        side === "away"
+          ? "sm:items-end sm:text-right"
+          : "sm:items-start sm:text-left",
+      )}
+      data-team-side={side}
+    >
+      <span
+        className={cn(
+          "bg-surface-1/75 grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl border shadow-lg sm:size-16",
+          side === "away"
+            ? "border-[color:var(--game-away)]"
+            : "border-[color:var(--game-home)]",
+        )}
+      >
+        {team.logoUrl ? (
+          // Provider logos have multiple trusted HTTPS hosts.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={team.logoUrl}
+            alt={`${team.name} logo`}
+            className="size-10 object-contain sm:size-14"
+          />
+        ) : (
+          <span className="font-display text-base font-black tracking-wide sm:text-xl">
+            {initials}
+          </span>
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="text-text-muted text-[0.65rem] font-bold tracking-[0.2em] uppercase">
+          {side}
+        </p>
+        <p className="font-display max-w-36 text-base leading-tight font-black text-balance sm:max-w-52 sm:text-2xl">
+          {team.name}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function LiveGameRoom({
@@ -54,8 +185,8 @@ export function LiveGameRoom({
 }: {
   gameId: string;
   startsAt: string;
-  homeTeam: string;
-  awayTeam: string;
+  homeTeam: TeamPresentation;
+  awayTeam: TeamPresentation;
   venue: string | null;
   broadcast: string[];
   initialPhase: GamePhase;
@@ -199,75 +330,136 @@ export function LiveGameRoom({
     game.phase !== "SCHEDULED" &&
     game.phase !== "PREGAME";
   const live = game.phase === "LIVE" || game.phase === "HALFTIME";
+  const connectionLabel =
+    connection === "stale"
+      ? "Updates delayed"
+      : connection === "refreshing"
+        ? "Checking score"
+        : "Score current";
 
   return (
-    <Card className="border-border-strong bg-surface-2 sticky top-16 z-20 mb-6 overflow-hidden p-0 shadow-lg">
-      <div className="border-border-subtle flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-        <Badge tone={live ? "live" : "neutral"}>{phaseLabel(game)}</Badge>
-        <div className="text-text-muted flex flex-wrap items-center gap-3 text-xs">
-          <span className="flex items-center gap-1.5">
-            <Users aria-hidden className="size-3.5" />
-            {activeUsers === null
-              ? `${followerCount} ${followerCount === 1 ? "fan" : "fans"} following`
-              : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} active`}
-          </span>
-          <span aria-live="polite">
-            {connection === "stale"
-              ? "Updates delayed"
-              : connection === "refreshing"
-                ? "Checking score"
-                : "Score current"}
-          </span>
-        </div>
-      </div>
-      <div className="grid gap-5 px-5 py-5 md:grid-cols-[1fr_auto] md:items-center">
-        <div>
-          <div className="font-display flex flex-wrap items-baseline gap-x-3 gap-y-1 text-2xl font-black sm:text-3xl">
-            <span>{awayTeam}</span>
-            <span className="tabular-nums">
-              {hasScore ? `${game.awayScore}–${game.homeScore}` : "vs"}
+    <Card
+      className="game-room-shell border-border-strong relative z-20 mb-7 overflow-hidden rounded-2xl p-0 shadow-2xl md:sticky md:top-16 md:p-0"
+      data-game-room-shell
+      data-game-phase={game.phase}
+      style={gameTheme(homeTeam, awayTeam)}
+    >
+      <div aria-hidden className="game-room-glow game-room-glow-away" />
+      <div aria-hidden className="game-room-glow game-room-glow-home" />
+      <div className="relative">
+        <div className="border-border-subtle flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge
+              tone={phaseTone(game.phase)}
+              className="gap-2 px-3 py-1.5 uppercase"
+            >
+              {live ? (
+                <span
+                  aria-hidden
+                  className="size-2 rounded-full bg-white motion-safe:animate-pulse"
+                />
+              ) : null}
+              {game.phase === "LIVE"
+                ? `Live · ${phaseLabel(game)}`
+                : phaseLabel(game)}
+            </Badge>
+            <span className="text-text-secondary flex items-center gap-1.5 text-xs font-semibold">
+              <Users aria-hidden className="size-3.5" />
+              {activeUsers === null
+                ? `${followerCount} ${followerCount === 1 ? "fan" : "fans"} following`
+                : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} active`}
             </span>
-            <span>{homeTeam}</span>
           </div>
-          <div className="text-text-secondary mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-            {!live && game.phase !== "FINAL" ? (
-              <span>
-                <LocalDateTime value={startsAt} calendar />
-              </span>
-            ) : null}
-            {venue ? (
-              <span className="flex items-center gap-1.5">
-                <MapPin aria-hidden className="size-4" />
-                {venue}
-              </span>
-            ) : null}
-            {broadcast.length ? (
-              <span className="flex items-center gap-1.5">
-                <Radio aria-hidden className="size-4" />
-                {broadcast.join(", ")}
-              </span>
-            ) : null}
+          <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+            <span
+              aria-live="polite"
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold",
+                connection === "stale" ? "text-warning" : "text-text-muted",
+              )}
+            >
+              <RefreshCw
+                aria-hidden
+                className={cn(
+                  "size-3.5",
+                  connection === "refreshing" && "motion-safe:animate-spin",
+                )}
+              />
+              {connectionLabel}
+            </span>
+            {signedIn ? (
+              <Button
+                variant={following ? "secondary" : "primary"}
+                size="sm"
+                onClick={toggleFollow}
+                disabled={followPending}
+                aria-pressed={following}
+                className="shrink-0"
+              >
+                {following ? <BellOff aria-hidden /> : <Bell aria-hidden />}
+                {following ? "Unfollow game" : "Follow game"}
+              </Button>
+            ) : (
+              <Link
+                className={cn(
+                  buttonStyles({ variant: "primary", size: "sm" }),
+                  "shrink-0",
+                )}
+                href={`/auth/sign-in?callbackUrl=/games/${gameId}`}
+              >
+                <Bell aria-hidden />
+                Follow game
+              </Link>
+            )}
           </div>
         </div>
-        {signedIn ? (
-          <Button
-            variant={following ? "secondary" : "primary"}
-            onClick={toggleFollow}
-            disabled={followPending}
-            aria-pressed={following}
-          >
-            {following ? <BellOff aria-hidden /> : <Bell aria-hidden />}
-            {following ? "Unfollow game" : "Follow game"}
-          </Button>
-        ) : (
-          <Link
-            className={buttonStyles({ variant: "primary" })}
-            href={`/auth/sign-in?callbackUrl=/games/${gameId}`}
-          >
-            <Bell aria-hidden />
-            Follow game
-          </Link>
-        )}
+
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 py-6 sm:gap-6 sm:px-8 sm:py-8">
+          <TeamBlock team={awayTeam} side="away" />
+          <div className="min-w-20 text-center sm:min-w-36">
+            <p className="text-text-muted mb-1 text-[0.65rem] font-bold tracking-[0.2em] uppercase">
+              {hasScore ? "Score" : "Matchup"}
+            </p>
+            <p
+              aria-label={
+                hasScore
+                  ? `${awayTeam.name} ${game.awayScore}, ${homeTeam.name} ${game.homeScore}`
+                  : `${awayTeam.name} versus ${homeTeam.name}`
+              }
+              className="font-display text-4xl leading-none font-black tracking-tight tabular-nums sm:text-6xl lg:text-7xl"
+              data-game-score
+            >
+              {hasScore ? `${game.awayScore}–${game.homeScore}` : "vs"}
+            </p>
+            {game.detail && live ? (
+              <p className="text-text-secondary mt-2 max-w-40 text-xs text-balance">
+                {game.detail}
+              </p>
+            ) : null}
+          </div>
+          <TeamBlock team={homeTeam} side="home" />
+        </div>
+
+        <div className="border-border-subtle bg-surface-1/45 flex flex-col gap-2 border-t px-4 py-3 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-6 sm:px-6">
+          {!live && game.phase !== "FINAL" ? (
+            <span className="text-text-secondary flex items-center gap-2">
+              <CalendarDays aria-hidden className="text-brand size-4" />
+              <LocalDateTime value={startsAt} calendar />
+            </span>
+          ) : null}
+          {venue ? (
+            <span className="text-text-secondary flex items-center gap-2">
+              <MapPin aria-hidden className="text-brand size-4" />
+              {venue}
+            </span>
+          ) : null}
+          {broadcast.length ? (
+            <span className="text-text-secondary flex items-center gap-2">
+              <Radio aria-hidden className="text-brand size-4" />
+              {broadcast.join(", ")}
+            </span>
+          ) : null}
+        </div>
       </div>
     </Card>
   );
