@@ -17,6 +17,16 @@ try {
     LIMIT 0
   `;
   await prisma.$queryRaw`
+    SELECT "id", "type", "entityType", "status", "contextHash"
+    FROM "AiArtifact"
+    LIMIT 0
+  `;
+  await prisma.$queryRaw`
+    SELECT "artifactId", "userId", "value"
+    FROM "AiArtifactFeedback"
+    LIMIT 0
+  `;
+  await prisma.$queryRaw`
     SELECT
       "flashThreadId",
       "gamePeriod",

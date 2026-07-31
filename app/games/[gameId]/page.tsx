@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { PredictionForm } from "@/components/actions/prediction-form";
+import { GameRecapPanel } from "@/components/ai/game-recap-panel";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { LiveGameRoom } from "@/components/games/live-game-room";
 import { GameRoomPhase } from "@/components/games/game-room-phase";
@@ -14,6 +15,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/foundations";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
+import { getAiConfig } from "@/lib/ai/config";
+import { gameRecapSchema } from "@/lib/ai/schemas/game-recap";
 import { materializeContest } from "@/lib/sports/materializer";
 import { getSportsSchedule } from "@/lib/sports/service";
 import { getSupportedLeague } from "@/lib/sports/leagues";
@@ -105,6 +108,7 @@ export default async function GameRoom({
   if (!rawGame) notFound();
   const game = await refreshFromProviderIfMaterialized(rawGame);
   const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";
+  const aiConfig = getAiConfig();
 
   const [myPollVotes, myGameFollow] = session?.user?.id
     ? await Promise.all([
@@ -126,9 +130,20 @@ export default async function GameRoom({
   const votedOptionByPoll = new Map(
     myPollVotes.map((vote) => [vote.pollId, vote.pollOptionId]),
   );
-  const [moments, flashThreads] = await Promise.all([
+  const [moments, flashThreads, recapArtifact] = await Promise.all([
     getGameMoments(game.id),
     getGameFlashThreads(game.id),
+    game.status === "FINAL" && aiConfig.gameRecapsEnabled
+      ? db.aiArtifact.findFirst({
+          where: { type: "GAME_RECAP", entityType: "GAME", entityId: game.id },
+          orderBy: [{ generatedAt: "desc" }, { updatedAt: "desc" }],
+          include: {
+            feedback: session?.user?.id
+              ? { where: { userId: session.user.id }, take: 1 }
+              : false,
+          },
+        })
+      : null,
   ]);
   const serializedMoments = (moments ?? []).map((moment) => ({
     id: moment.id,
@@ -228,6 +243,38 @@ export default async function GameRoom({
         initialFollowing={Boolean(myGameFollow)}
         signedIn={Boolean(session?.user?.id)}
       />
+      {game.status === "FINAL" ? (
+        <GameRecapPanel
+          artifact={
+            recapArtifact
+              ? {
+                  id: recapArtifact.id,
+                  status: recapArtifact.status,
+                  content:
+                    recapArtifact.status === "READY"
+                      ? (gameRecapSchema.safeParse(recapArtifact.content)
+                          .data ?? null)
+                      : null,
+                  generatedAt: recapArtifact.generatedAt,
+                }
+              : aiConfig.gameRecapsEnabled
+                ? null
+                : {
+                    id: "disabled",
+                    status: "DISABLED",
+                    content: null,
+                    generatedAt: null,
+                  }
+          }
+          signedIn={Boolean(session?.user?.id)}
+          feedback={
+            recapArtifact?.feedback?.[0]?.value as
+              | "HELPFUL"
+              | "NOT_HELPFUL"
+              | undefined
+          }
+        />
+      ) : null}
       <GameRoomPhase phase={game.status} />
       <GameMomentsPanel
         gameId={game.id}

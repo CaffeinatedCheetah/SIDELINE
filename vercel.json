@@ -35,6 +35,10 @@
     { "source": "/onboarding",  "destination": "/onboarding.html"  }
   ],
   "crons": [
+    {
+      "path": "/api/jobs/ai-game-recaps",
+      "schedule": "*/10 * * * *"
+    },
     { "path": "/api/jobs/sports-sync", "schedule": "* * * * *" },
     { "path": "/api/scout",            "schedule": "0 10 * * *" },
     { "path": "/api/agent-pulse",      "schedule": "0 10 * * *" },
