@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Card } from "@/components/ui/foundations";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 
 export function NotificationRow({
   id,
@@ -32,16 +33,18 @@ export function NotificationRow({
         <div className="flex justify-between gap-4">
           <div>
             <p className="font-bold">
-              {!read && (
-                <span className="sr-only">Unread: </span>
-              )}
+              {!read && <span className="sr-only">Unread: </span>}
               {message}
             </p>
             {detail && (
               <p className="text-text-secondary mt-1 text-sm">{detail}</p>
             )}
           </div>
-          <time className="text-text-muted shrink-0 text-xs">{createdAt}</time>
+          <LocalDateTime
+            value={createdAt}
+            display="date-time"
+            className="text-text-muted shrink-0 text-xs"
+          />
         </div>
       </Card>
     </Link>

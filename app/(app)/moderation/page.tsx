@@ -157,7 +157,8 @@ export default async function ModerationPage({
                   <div>
                     <strong>{report.reason}</strong>
                     <p className="text-text-muted text-sm">
-                      {report.targetType} · Reported by @{report.reporter.handle}
+                      {report.targetType} · Reported by @
+                      {report.reporter.handle}
                     </p>
                   </div>
                   <Badge tone={report.state === "OPEN" ? "warning" : "neutral"}>
@@ -177,7 +178,7 @@ export default async function ModerationPage({
                   ) : (
                     <>
                       <Link
-                        href={`/users/${target.authorHandle}`}
+                        href={`/u/${target.authorHandle}`}
                         className="text-sm font-bold hover:underline"
                       >
                         {target.authorName}
@@ -196,7 +197,8 @@ export default async function ModerationPage({
                         <p className="text-text-muted mt-1 text-sm">
                           {target.userStatus === "SUSPENDED"
                             ? "Account currently suspended"
-                            : target.mutedUntil && target.mutedUntil > new Date()
+                            : target.mutedUntil &&
+                                target.mutedUntil > new Date()
                               ? `Account muted until ${target.mutedUntil.toLocaleString()}`
                               : "No current restrictions"}
                         </p>
@@ -214,7 +216,8 @@ export default async function ModerationPage({
                       {pastActions.map((action) => (
                         <li key={action.id}>
                           {action.action.replaceAll("_", " ")} —{" "}
-                          {action.createdAt.toLocaleDateString()}: {action.reason}
+                          {action.createdAt.toLocaleDateString()}:{" "}
+                          {action.reason}
                         </li>
                       ))}
                     </ul>
@@ -224,7 +227,9 @@ export default async function ModerationPage({
                   <div className="mt-4">
                     <ReportActions
                       reportId={report.id}
-                      targetType={report.targetType as "TAKE" | "COMMENT" | "USER"}
+                      targetType={
+                        report.targetType as "TAKE" | "COMMENT" | "USER"
+                      }
                       targetId={report.targetId}
                       contentRemoved={target.removed}
                     />

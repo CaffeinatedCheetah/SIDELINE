@@ -8,6 +8,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: Record<NotificationType, boolean> = {
   REPLY: true,
   REACTION: true,
   FOLLOW: true,
+  MENTION: true,
   DEBATE: true,
   COMMUNITY: true,
   GAME: true,
@@ -18,6 +19,7 @@ const DEFAULT_NOTIFICATION_SETTINGS: Record<NotificationType, boolean> = {
 
 const PREFERENCE_KEYS: Partial<Record<NotificationType, string>> = {
   REPLY: "replies",
+  MENTION: "replies",
   FOLLOW: "follows",
   COMMUNITY: "communities",
   GAME: "games",

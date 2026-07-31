@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/form-controls";
+import { MentionTextarea } from "@/components/social/mention-textarea";
 import { apiAction } from "./api-action";
 export function TakeComposer({
   gameId,
@@ -59,11 +59,11 @@ export function TakeComposer({
       <label htmlFor="take-body" className="font-bold">
         Add your take
       </label>
-      <Textarea
+      <MentionTextarea
         id="take-body"
         className="mt-2"
         value={body}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={setBody}
         maxLength={1000}
         required
         placeholder="Make a clear claim and explain why."

@@ -26,7 +26,9 @@ describe("profile actions", () => {
     const fetch = vi.fn(() => response({ following: true }));
     vi.stubGlobal("fetch", fetch);
     render(<FollowButton userId="user-1" />);
-    await userEvent.click(screen.getByRole("button", { name: "Follow" }));
+    const follow = screen.getByRole("button", { name: "Follow" });
+    expect(follow).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(follow);
     await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
     expect(fetch).toHaveBeenCalledWith(
       "/api/v1/follows",
@@ -34,10 +36,25 @@ describe("profile actions", () => {
         body: JSON.stringify({ userId: "user-1", follow: true }),
       }),
     );
-    expect(
-      screen.getByRole("button", { name: "Following" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Following" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(routerRefresh).toHaveBeenCalledOnce();
+  });
+
+  it("shows mutual follow context and updates the real follower count", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => response({ following: true })),
+    );
+    render(<FollowButton userId="user-1" initialFollowerCount={12} mutual />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Follow back · 12" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Following · 13" }),
+    ).toHaveAttribute("aria-pressed", "true");
   });
 
   it("rolls back optimistic follow state on a failed request", async () => {
@@ -55,9 +72,7 @@ describe("profile actions", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Gone"),
     );
-    expect(
-      screen.getByRole("button", { name: "Follow" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Follow" })).toBeInTheDocument();
   });
 
   it("requires confirmation before blocking, then calls the real API", async () => {

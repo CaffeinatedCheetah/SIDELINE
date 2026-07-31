@@ -319,7 +319,7 @@ export function SearchPanel({
                     {results.users.map((user) => (
                       <ResultLink
                         key={user.handle}
-                        href={`/users/${user.handle}`}
+                        href={`/u/${user.handle}`}
                         label={user.displayName}
                       />
                     ))}
@@ -403,7 +403,7 @@ export function SearchPanel({
                               ? `/debates/${take.debate.slug}`
                               : take.community
                                 ? `/communities/${take.community.slug}`
-                                : `/users/${take.author.handle}`
+                                : `/u/${take.author.handle}`
                         }
                         label={`${take.body.slice(0, 120)} · ${take.author.displayName}`}
                       />

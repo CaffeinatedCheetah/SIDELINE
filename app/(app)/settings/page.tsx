@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { LogoutButton } from "@/components/actions/logout-button";
 import { AccountDangerZone } from "@/components/profile/account-danger-zone";
 import { DirtyForm } from "@/components/settings/dirty-form";
+import { ProfileEditor } from "@/components/settings/profile-editor";
 import { ManagedUserList } from "@/components/settings/managed-user-list";
 import { SectionSelect } from "@/components/settings/section-select";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Card } from "@/components/ui/foundations";
-import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form-controls";
+import { Checkbox, Field, Select } from "@/components/ui/form-controls";
 import { db } from "@/lib/db/client";
 
 export const dynamic = "force-dynamic";
@@ -61,8 +63,8 @@ export default async function Settings({
   });
   const notificationSettings: NotificationSettings = {
     ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...((user.preferences?.notificationSettings as Partial<NotificationSettings>) ??
-      {}),
+    ...((user.preferences
+      ?.notificationSettings as Partial<NotificationSettings>) ?? {}),
   };
   const privacySettings = (user.preferences?.privacySettings ?? {}) as {
     profileDiscoverable?: boolean;
@@ -74,26 +76,55 @@ export default async function Settings({
     const current = await auth();
     if (!current?.user?.id) redirect("/auth/sign-in");
     const displayName = String(formData.get("displayName") ?? "").trim();
+    const handle = String(formData.get("handle") ?? "")
+      .trim()
+      .toLowerCase();
     const bio = String(formData.get("bio") ?? "").trim();
     const avatarUrl = String(formData.get("avatarUrl") ?? "").trim();
-    await db.user.update({
-      where: { id: current.user.id },
-      data: {
-        displayName,
-        profile: {
-          upsert: {
-            create: {
-              bio,
-              avatarUrl: avatarUrl || undefined,
-              favoriteSports: [],
-              favoriteTeams: [],
+    if (
+      displayName.length < 2 ||
+      displayName.length > 50 ||
+      bio.length > 300 ||
+      !/^[a-z0-9-]{3,30}$/.test(handle)
+    )
+      redirect("/settings?section=profile&error=invalid");
+    const existingHandle = await db.user.findFirst({
+      where: {
+        normalizedHandle: handle,
+        id: { not: current.user.id },
+      },
+      select: { id: true },
+    });
+    if (existingHandle) redirect("/settings?section=profile&error=handle");
+    try {
+      await db.user.update({
+        where: { id: current.user.id },
+        data: {
+          displayName,
+          handle,
+          normalizedHandle: handle,
+          profile: {
+            upsert: {
+              create: {
+                bio,
+                avatarUrl: avatarUrl || undefined,
+                favoriteSports: [],
+                favoriteTeams: [],
+              },
+              update: { bio, avatarUrl: avatarUrl || null },
             },
-            update: { bio, avatarUrl: avatarUrl || null },
           },
         },
-      },
-    });
-    redirect("/settings?section=profile");
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+        redirect("/settings?section=profile&error=handle");
+      throw error;
+    }
+    redirect(`/u/${handle}`);
   }
 
   async function saveInterests(formData: FormData) {
@@ -212,38 +243,15 @@ export default async function Settings({
           {section === "profile" && (
             <Card>
               <h2 className="font-display text-2xl font-black">Profile</h2>
-              <DirtyForm action={saveProfile}>
-                <div className="mt-4 grid gap-4">
-                  <Field label="Display name" htmlFor="displayName">
-                    <Input
-                      id="displayName"
-                      name="displayName"
-                      defaultValue={user.displayName}
-                      required
-                    />
-                  </Field>
-                  <Field label="Bio" htmlFor="bio">
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      maxLength={300}
-                      defaultValue={user.profile?.bio ?? ""}
-                    />
-                  </Field>
-                  <Field
-                    label="Avatar URL"
-                    htmlFor="avatarUrl"
-                    help="A direct link to an image. Upload hosting isn't built yet."
-                  >
-                    <Input
-                      id="avatarUrl"
-                      name="avatarUrl"
-                      type="url"
-                      defaultValue={user.profile?.avatarUrl ?? ""}
-                    />
-                  </Field>
-                </div>
-              </DirtyForm>
+              <ProfileEditor
+                action={saveProfile}
+                initial={{
+                  displayName: user.displayName,
+                  handle: user.handle,
+                  bio: user.profile?.bio ?? "",
+                  avatarUrl: user.profile?.avatarUrl ?? user.image ?? "",
+                }}
+              />
             </Card>
           )}
 
@@ -305,16 +313,16 @@ export default async function Settings({
           {section === "privacy" && (
             <div className="grid gap-5">
               <Card>
-                <h2 className="font-display text-2xl font-black">
-                  Privacy
-                </h2>
+                <h2 className="font-display text-2xl font-black">Privacy</h2>
                 <DirtyForm action={savePrivacy}>
                   <fieldset className="mt-4 grid gap-1">
                     <legend className="sr-only">Privacy</legend>
                     <Checkbox
                       name="profileDiscoverable"
                       label="Make my profile discoverable in search and indexable"
-                      defaultChecked={privacySettings.profileDiscoverable ?? true}
+                      defaultChecked={
+                        privacySettings.profileDiscoverable ?? true
+                      }
                     />
                     <Checkbox
                       name="showActivity"
@@ -456,7 +464,9 @@ async function InterestsForm({
 async function BlockedList({ userId }: { userId: string }) {
   const blocks = await db.block.findMany({
     where: { blockerId: userId },
-    include: { blocked: { select: { id: true, handle: true, displayName: true } } },
+    include: {
+      blocked: { select: { id: true, handle: true, displayName: true } },
+    },
   });
   return (
     <ManagedUserList

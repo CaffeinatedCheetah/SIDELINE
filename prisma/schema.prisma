@@ -94,6 +94,7 @@ enum NotificationType {
   REPLY
   REACTION
   FOLLOW
+  MENTION
   DEBATE
   COMMUNITY
   GAME

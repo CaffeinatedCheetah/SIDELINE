@@ -10,6 +10,7 @@ import {
 import { Avatar, Card } from "@/components/ui/foundations";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { Modal } from "@/components/ui/modal";
+import { MentionText } from "@/components/social/mention-text";
 import { formatCount } from "@/lib/utils";
 export interface TakeCardProps {
   id: string;
@@ -60,7 +61,7 @@ export function TakeCard({
           <div className="min-w-0">
             <Link
               id={`take-${id}-author`}
-              href={`/users/${author.handle}`}
+              href={`/u/${author.handle}`}
               className="font-bold hover:underline"
             >
               {author.displayName}
@@ -80,7 +81,9 @@ export function TakeCard({
             {context}
           </p>
         )}
-        <p className="mt-3 text-base leading-6 whitespace-pre-wrap">{body}</p>
+        <p className="mt-3 text-base leading-6 whitespace-pre-wrap">
+          <MentionText>{body}</MentionText>
+        </p>
         <footer className="border-border-subtle mt-4 flex items-center gap-1 border-t pt-2">
           <ReactionPicker
             takeId={id}

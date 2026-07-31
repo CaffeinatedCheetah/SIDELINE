@@ -248,7 +248,7 @@ export default async function HallPage({
                       </p>
                       <Link
                         className="mt-2 inline-block text-sm font-bold hover:underline"
-                        href={`/users/${entry.take.author.handle}`}
+                        href={`/u/${entry.take.author.handle}`}
                       >
                         {entry.take.author.displayName}
                       </Link>
@@ -294,7 +294,7 @@ function PodiumCard({ entry }: { entry: HallListItem }) {
         size="lg"
       />
       <Link
-        href={`/users/${entry.take.author.handle}`}
+        href={`/u/${entry.take.author.handle}`}
         className="mt-3 block font-bold hover:underline"
       >
         {entry.take.author.displayName}

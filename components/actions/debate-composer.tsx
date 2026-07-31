@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/form-controls";
+import { Field, Input } from "@/components/ui/form-controls";
+import { MentionTextarea } from "@/components/social/mention-textarea";
 
 import { apiAction } from "./api-action";
 
@@ -16,6 +17,7 @@ export function DebateComposer() {
   const [positions, setPositions] = useState(["", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [prompt, setPrompt] = useState("");
 
   function updatePosition(index: number, value: string) {
     setPositions((current) =>
@@ -34,7 +36,7 @@ export function DebateComposer() {
     setLoading(true);
     setError("");
     const title = String(formData.get("title") ?? "").trim();
-    const prompt = String(formData.get("prompt") ?? "").trim();
+    const nextPrompt = prompt.trim();
     const options = positions.map((position) => position.trim());
     const slug = `${title
       .toLowerCase()
@@ -44,7 +46,7 @@ export function DebateComposer() {
     try {
       const debate = await apiAction<{ id: string }>("debates", {
         title,
-        prompt,
+        prompt: nextPrompt,
         options,
         slug,
       });
@@ -70,9 +72,11 @@ export function DebateComposer() {
         />
       </Field>
       <Field label="Context" htmlFor="prompt">
-        <Textarea
+        <MentionTextarea
           id="prompt"
           name="prompt"
+          value={prompt}
+          onChange={setPrompt}
           minLength={20}
           maxLength={2000}
           required
