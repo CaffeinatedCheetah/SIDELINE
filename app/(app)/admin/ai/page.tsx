@@ -18,6 +18,27 @@ export default async function AiOperationsPage() {
   });
   if (operator?.role !== "ADMIN") redirect("/arena");
 
+  const config = getAiConfig();
+  if (!config.gameRecapsEnabled) {
+    return (
+      <div className="page-container py-10">
+        <PageHeading
+          eyebrow="Admin · AI operations"
+          title="SIDELINE AI"
+          description="AI recap display and generation are dark. No AI artifact tables are queried in this rollout state."
+        />
+        <Card>
+          <Badge tone="warning">AI disabled</Badge>
+          <p className="text-text-secondary mt-3 text-sm">
+            Enable the recap display flag only after the additive migration is
+            verified in this environment. Non-AI SIDELINE features remain
+            unaffected.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const [counts, usage, feedback, recent] = await Promise.all([
@@ -56,8 +77,6 @@ export default async function AiOperationsPage() {
       },
     }),
   ]);
-  const config = getAiConfig();
-
   return (
     <div className="page-container py-10">
       <PageHeading

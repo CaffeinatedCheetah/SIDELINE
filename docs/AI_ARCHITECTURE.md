@@ -157,8 +157,10 @@ versions, failure codes, and feedback totals to existing ADMIN users.
 - `OPENAI_API_KEY` is optional
 
 The schema can deploy while all flags remain dark. A missing key or provider
-outage never breaks non-AI pages. Existing READY artifacts remain readable;
-generation can be disabled without deleting data. Environment flags are
+outage never breaks non-AI pages. Existing READY artifacts remain readable
+when the recap display flag is enabled even if generation is unavailable;
+turning that flag off also prevents table reads during a schema-first rollout.
+Generation can be disabled without deleting data. Environment flags are
 read-only in the admin dashboard because SIDELINE has no runtime flag service.
 
 ## Future platform work

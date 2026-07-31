@@ -108,6 +108,7 @@ export default async function GameRoom({
   if (!rawGame) notFound();
   const game = await refreshFromProviderIfMaterialized(rawGame);
   const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";
+  const aiConfig = getAiConfig();
 
   const [myPollVotes, myGameFollow] = session?.user?.id
     ? await Promise.all([
@@ -132,7 +133,7 @@ export default async function GameRoom({
   const [moments, flashThreads, recapArtifact] = await Promise.all([
     getGameMoments(game.id),
     getGameFlashThreads(game.id),
-    game.status === "FINAL"
+    game.status === "FINAL" && aiConfig.gameRecapsEnabled
       ? db.aiArtifact.findFirst({
           where: { type: "GAME_RECAP", entityType: "GAME", entityId: game.id },
           orderBy: [{ generatedAt: "desc" }, { updatedAt: "desc" }],
@@ -256,7 +257,7 @@ export default async function GameRoom({
                       : null,
                   generatedAt: recapArtifact.generatedAt,
                 }
-              : getAiConfig().enabled
+              : aiConfig.gameRecapsEnabled
                 ? null
                 : {
                     id: "disabled",
