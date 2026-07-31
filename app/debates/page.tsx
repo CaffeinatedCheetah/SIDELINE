@@ -178,13 +178,18 @@ export default async function DebatesPage({
             </div>
           )}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <nav aria-label="Debate sort" className="flex gap-1">
+            <nav
+              aria-label="Debate sort"
+              className="flex max-w-full flex-wrap gap-1"
+            >
               {TABS.map(({ key, label }) => (
                 <Link
                   key={key}
                   href={`/debates?${new URLSearchParams({
                     ...(key !== "popular" ? { tab: key } : {}),
-                    ...(params.community ? { community: params.community } : {}),
+                    ...(params.community
+                      ? { community: params.community }
+                      : {}),
                   }).toString()}`}
                   aria-current={tab === key ? "page" : undefined}
                   className={`min-h-11 rounded-sm px-3 py-2 text-sm font-bold ${
@@ -199,7 +204,11 @@ export default async function DebatesPage({
             </nav>
             <div className="flex items-center gap-4">
               <form className="flex items-center gap-2">
-                <input type="hidden" name="tab" value={tab === "popular" ? "" : tab} />
+                <input
+                  type="hidden"
+                  name="tab"
+                  value={tab === "popular" ? "" : tab}
+                />
                 <label className="text-sm font-bold" htmlFor="community-filter">
                   Community
                 </label>
