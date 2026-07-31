@@ -25,7 +25,7 @@ export function ProfileCard({
         <Avatar name={displayName} size="lg" />
         <div className="min-w-0 flex-1">
           <Link
-            href={`/users/${handle}`}
+            href={`/u/${handle}`}
             className="text-lg font-bold hover:underline"
           >
             {displayName}

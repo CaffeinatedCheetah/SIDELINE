@@ -38,6 +38,7 @@ test("all public routes render without runtime or console errors", async ({
     "/communities",
     `/communities/${community.slug}`,
     "/hall-of-flame",
+    `/u/${user.handle}`,
     `/users/${user.handle}`,
     "/auth/sign-in",
     "/auth/sign-up",
@@ -151,5 +152,29 @@ test("Game Room has no horizontal overflow across supported breakpoints", async 
     expect(dimensions.scrollWidth, `${width}px Game Room`).toBeLessThanOrEqual(
       dimensions.clientWidth,
     );
+  }
+});
+
+test("public fan profile is responsive across supported breakpoints", async ({
+  page,
+}) => {
+  const user = await db.user.findFirstOrThrow({
+    where: { email: "demo@fantakes.local" },
+    select: { handle: true },
+  });
+  for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(`/u/${user.handle}`, { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByRole("heading", { name: /FanTakes Demo/i }),
+    ).toBeVisible({ timeout: 30_000 });
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(
+      dimensions.scrollWidth,
+      `${width}px public profile`,
+    ).toBeLessThanOrEqual(dimensions.clientWidth);
   }
 });

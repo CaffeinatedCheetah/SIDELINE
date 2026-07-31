@@ -42,7 +42,10 @@ export function ManagedUserList({
           key={user.id}
           className="border-border-subtle flex items-center justify-between gap-3 rounded-md border p-3"
         >
-          <Link href={`/users/${user.handle}`} className="font-bold hover:underline">
+          <Link
+            href={`/u/${user.handle}`}
+            className="font-bold hover:underline"
+          >
             {user.displayName}
           </Link>
           <Button

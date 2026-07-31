@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
 import { createNotification } from "@/lib/notifications/service";
+import { notifyMentions } from "@/lib/social/mentions";
 import {
   recordFanScoreEvent,
   reverseFanScoreEvent,
@@ -628,10 +629,33 @@ async function handlePost(request: Request, context: Context) {
         parsed.error.flatten(),
       );
     try {
-      return apiSuccess(
-        await createTake({ authorId: userId, ...parsed.data }),
-        201,
-      );
+      const take = await createTake({ authorId: userId, ...parsed.data });
+      const author = await db.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { handle: true },
+      });
+      const href = take.gameId
+        ? `/games/${take.gameId}`
+        : take.debateId
+          ? `/debates/${take.debateId}`
+          : take.communityId
+            ? `/communities/${
+                (
+                  await db.community.findUnique({
+                    where: { id: take.communityId },
+                    select: { slug: true },
+                  })
+                )?.slug ?? ""
+              }`
+            : `/u/${author.handle}`;
+      await notifyMentions(db, {
+        actorId: userId,
+        body: parsed.data.body,
+        entityType: "TAKE",
+        entityId: take.id,
+        href,
+      });
+      return apiSuccess(take, 201);
     } catch (error) {
       if (error instanceof TakeCreationError)
         return apiError(
@@ -725,7 +749,7 @@ async function handlePost(request: Request, context: Context) {
                   parsed.data.debateId
                 }`
               : recipient && "author" in recipient
-                ? `/users/${recipient.author.handle}`
+                ? `/u/${recipient.author.handle}`
                 : "/notifications";
       await createNotification(db, {
         recipientId,
@@ -820,7 +844,7 @@ async function handlePost(request: Request, context: Context) {
             ? `/communities/${target.community.slug}`
             : target.debateId
               ? `/debates/${target.debateId}`
-              : `/users/${target.author.handle}`;
+              : `/u/${target.author.handle}`;
       await createNotification(db, {
         recipientId: target.authorId,
         actorId: userId,
@@ -907,6 +931,13 @@ async function handlePost(request: Request, context: Context) {
         },
       },
       include: { options: true },
+    });
+    await notifyMentions(db, {
+      actorId: userId,
+      body: `${debate.title}\n${debate.prompt}`,
+      entityType: "DEBATE",
+      entityId: debate.id,
+      href: `/debates/${debate.slug}`,
     });
     if (debate.communityId) {
       const members = await db.communityMember.findMany({
@@ -1272,7 +1303,7 @@ async function handlePost(request: Request, context: Context) {
             type: "FOLLOW",
             entityType: "USER",
             entityId: userId,
-            href: `/users/${actor.handle}`,
+            href: `/u/${actor.handle}`,
             deduplicationKey: `follow:${userId}:${parsed.data.userId}`,
           });
       } catch (error) {

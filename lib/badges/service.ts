@@ -31,7 +31,7 @@ export async function awardBadge(
     type: "BADGE",
     entityType: "BADGE",
     entityId: badge.id,
-    href: `/users/${user.handle}#badges`,
+    href: `/u/${user.handle}#badges`,
     deduplicationKey: `badge:${input.userId}:${badge.id}`,
     payload: { badgeKey: badge.key, name: badge.name },
   });

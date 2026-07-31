@@ -21,9 +21,7 @@ export function ProfileTabs({
         // shared link lands on the same tab (also drives which tab's list
         // gets fetched server-side -- see app/users/[handle]/page.tsx).
         router.push(
-          value === "takes"
-            ? `/users/${handle}`
-            : `/users/${handle}?tab=${value}`,
+          value === "activity" ? `/u/${handle}` : `/u/${handle}?tab=${value}`,
         );
       }}
     >

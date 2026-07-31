@@ -7,6 +7,7 @@
 // logs on /users/[handle]). Components/profile/profile-tabs.tsx (the
 // actual client component) imports this same source of truth.
 export const TAB_LABELS: Record<string, string> = {
+  activity: "Activity",
   takes: "Takes",
   predictions: "Predictions",
   debates: "Debates",

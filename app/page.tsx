@@ -34,38 +34,59 @@ export const metadata: Metadata = {
 
 async function discovery(viewerId: string | undefined) {
   try {
-    const [gameDirectory, takes, debates, communities] = await Promise.all([
-      getSportsGameDirectory({ limit: 3 }),
-      db.take.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          // See app/games/[gameId]/page.tsx for why this is a scoped
-          // select, not `author: true`.
-          author: { select: { handle: true, displayName: true, image: true } },
-          _count: { select: { reactions: true, replies: true } },
-        },
-      }),
-      db.debate.findMany({
-        take: 3,
-        where: { status: "OPEN" },
-        orderBy: { createdAt: "desc" },
-        include: {
-          options: {
-            include: { _count: { select: { votes: true } } },
-            orderBy: { displayOrder: "asc" },
+    const [gameDirectory, takes, debates, communities, followingTakes] =
+      await Promise.all([
+        getSportsGameDirectory({ limit: 3 }),
+        db.take.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            // See app/games/[gameId]/page.tsx for why this is a scoped
+            // select, not `author: true`.
+            author: {
+              select: { handle: true, displayName: true, image: true },
+            },
+            _count: { select: { reactions: true, replies: true } },
           },
-          _count: { select: { comments: true } },
-        },
-      }),
-      db.community.findMany({
-        take: 3,
-        where: { status: "ACTIVE" },
-        orderBy: { name: "asc" },
-        include: { _count: { select: { members: true, takes: true } } },
-      }),
-    ]);
+        }),
+        db.debate.findMany({
+          take: 3,
+          where: { status: "OPEN" },
+          orderBy: { createdAt: "desc" },
+          include: {
+            options: {
+              include: { _count: { select: { votes: true } } },
+              orderBy: { displayOrder: "asc" },
+            },
+            _count: { select: { comments: true } },
+          },
+        }),
+        db.community.findMany({
+          take: 3,
+          where: { status: "ACTIVE" },
+          orderBy: { name: "asc" },
+          include: { _count: { select: { members: true, takes: true } } },
+        }),
+        viewerId
+          ? db.take.findMany({
+              where: {
+                status: "ACTIVE",
+                author: {
+                  followers: { some: { followerId: viewerId } },
+                },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 6,
+              include: {
+                author: {
+                  select: { handle: true, displayName: true, image: true },
+                },
+                _count: { select: { reactions: true, replies: true } },
+              },
+            })
+          : Promise.resolve([]),
+      ]);
 
     let viewer = null;
     let reactedTakeIds = new Set<string>();
@@ -109,6 +130,7 @@ async function discovery(viewerId: string | undefined) {
       takes,
       debates,
       communities,
+      followingTakes,
       viewer,
       reactedTakeIds,
       joinedCommunityIds,
@@ -122,6 +144,7 @@ async function discovery(viewerId: string | undefined) {
       takes: [],
       debates: [],
       communities: [],
+      followingTakes: [],
       viewer: null,
       reactedTakeIds: new Set<string>(),
       joinedCommunityIds: new Set<string>(),
@@ -246,6 +269,26 @@ export default async function Home() {
           </>
         ) : null}
         <ExploreLeaguesSection leagues={leagueHub.leagues} />
+        {data.followingTakes.length ? (
+          <Section title="From fans you follow" href="/discover">
+            {data.followingTakes.map((take) => (
+              <TakeCard
+                key={take.id}
+                id={take.id}
+                author={{
+                  handle: take.author.handle,
+                  displayName: take.author.displayName,
+                  avatarUrl: take.author.image,
+                }}
+                body={take.body}
+                createdAt=""
+                createdAtIso={take.createdAt.toISOString()}
+                reactions={take._count.reactions}
+                replies={take._count.replies}
+              />
+            ))}
+          </Section>
+        ) : null}
         <Section
           title="Trending takes"
           href="/games"

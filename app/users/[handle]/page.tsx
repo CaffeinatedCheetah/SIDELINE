@@ -2,7 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Users } from "lucide-react";
+import { MessageSquareText, Sparkles, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { FollowButton } from "@/components/actions/follow-button";
 import { UnblockButton } from "@/components/actions/unblock-button";
@@ -16,6 +16,7 @@ import { Avatar, Badge, Card, EmptyState } from "@/components/ui/foundations";
 import { buttonStyles } from "@/components/ui/button";
 import { db } from "@/lib/db/client";
 import { FAN_SCORE_POINTS } from "@/lib/scoring/fan-score";
+import { LocalDateTime } from "@/components/ui/local-date-time";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,14 @@ const getProfileUser = cache(async (handle: string) => {
         take: 6,
         include: { badge: true },
       },
-      _count: { select: { followers: true, following: true } },
+      _count: {
+        select: {
+          followers: true,
+          following: true,
+          takes: true,
+          debates: true,
+        },
+      },
     },
   });
 });
@@ -65,6 +73,13 @@ function isDiscoverable(user: ProfileUser) {
   return privacy.profileDiscoverable !== false;
 }
 
+function sharesActivity(user: ProfileUser) {
+  const privacy = (user.preferences?.privacySettings ?? {}) as {
+    showActivity?: boolean;
+  };
+  return privacy.showActivity !== false;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -78,7 +93,7 @@ export async function generateMetadata({
     title: `${user.displayName} (@${user.handle})`,
     description:
       user.profile?.bio?.trim() || `${user.displayName}'s FanTakes profile.`,
-    alternates: { canonical: `/users/${user.handle}` },
+    alternates: { canonical: `/u/${user.handle}` },
     robots: indexable
       ? { index: true, follow: true }
       : { index: false, follow: true },
@@ -94,7 +109,7 @@ export default async function ProfilePage({
 }) {
   const { handle } = await params;
   const { tab: rawTab, cursor } = await searchParams;
-  const tab = PROFILE_TABS.includes(rawTab ?? "") ? rawTab! : "takes";
+  const tab = PROFILE_TABS.includes(rawTab ?? "") ? rawTab! : "activity";
   const [session, user] = await Promise.all([auth(), getProfileUser(handle)]);
   if (!user) notFound();
   const viewerId = session?.user?.id;
@@ -112,35 +127,56 @@ export default async function ProfilePage({
   }
 
   let following = false;
+  let followedByProfile = false;
   let muted = false;
   let viewerBlockedThem = false;
   let theyBlockedViewer = false;
   if (viewerId && !isOwner) {
-    const [followRow, muteRow, blockA, blockB] = await Promise.all([
-      db.follow.findUnique({
-        where: { followerId_followedId: { followerId: viewerId, followedId: user.id } },
-        select: { id: true },
-      }),
-      db.mute.findUnique({
-        where: {
-          userId_targetType_targetId: {
-            userId: viewerId,
-            targetType: "USER",
-            targetId: user.id,
+    const [followRow, reverseFollowRow, muteRow, blockA, blockB] =
+      await Promise.all([
+        db.follow.findUnique({
+          where: {
+            followerId_followedId: {
+              followerId: viewerId,
+              followedId: user.id,
+            },
           },
-        },
-        select: { userId: true },
-      }),
-      db.block.findUnique({
-        where: { blockerId_blockedId: { blockerId: viewerId, blockedId: user.id } },
-        select: { blockerId: true },
-      }),
-      db.block.findUnique({
-        where: { blockerId_blockedId: { blockerId: user.id, blockedId: viewerId } },
-        select: { blockerId: true },
-      }),
-    ]);
+          select: { id: true },
+        }),
+        db.follow.findUnique({
+          where: {
+            followerId_followedId: {
+              followerId: user.id,
+              followedId: viewerId,
+            },
+          },
+          select: { id: true },
+        }),
+        db.mute.findUnique({
+          where: {
+            userId_targetType_targetId: {
+              userId: viewerId,
+              targetType: "USER",
+              targetId: user.id,
+            },
+          },
+          select: { userId: true },
+        }),
+        db.block.findUnique({
+          where: {
+            blockerId_blockedId: { blockerId: viewerId, blockedId: user.id },
+          },
+          select: { blockerId: true },
+        }),
+        db.block.findUnique({
+          where: {
+            blockerId_blockedId: { blockerId: user.id, blockedId: viewerId },
+          },
+          select: { blockerId: true },
+        }),
+      ]);
     following = Boolean(followRow);
+    followedByProfile = Boolean(reverseFollowRow);
     muted = Boolean(muteRow);
     viewerBlockedThem = Boolean(blockA);
     theyBlockedViewer = Boolean(blockB);
@@ -171,26 +207,41 @@ export default async function ProfilePage({
     );
   }
 
-  const [favoriteTeams, scoreAgg, resolvedPredictions] = await Promise.all([
-    user.profile?.favoriteTeams.length
-      ? db.team.findMany({
-          where: { id: { in: user.profile.favoriteTeams } },
-          select: { id: true, name: true, abbreviation: true, logoUrl: true },
-        })
-      : Promise.resolve([]),
-    db.fanScoreEvent.aggregate({
-      where: { userId: user.id },
-      _sum: { points: true },
-    }),
-    // Profile.predictionCorrect/Total are never updated anywhere in the
-    // codebase (confirmed via search -- no PredictionResult is ever
-    // created), so accuracy is computed live from real Prediction/
-    // PredictionResult rows instead of trusting those stale counters.
-    db.prediction.findMany({
-      where: { userId: user.id, result: { isNot: null } },
-      select: { result: { select: { outcome: true } } },
-    }),
-  ]);
+  const [favoriteTeams, scoreAgg, resolvedPredictions, reactionsReceived] =
+    await Promise.all([
+      user.profile?.favoriteTeams.length
+        ? db.team.findMany({
+            where: { id: { in: user.profile.favoriteTeams } },
+            select: {
+              id: true,
+              name: true,
+              abbreviation: true,
+              logoUrl: true,
+              league: { select: { key: true, name: true, abbreviation: true } },
+            },
+          })
+        : Promise.resolve([]),
+      db.fanScoreEvent.aggregate({
+        where: { userId: user.id },
+        _sum: { points: true },
+      }),
+      // Profile.predictionCorrect/Total are never updated anywhere in the
+      // codebase (confirmed via search -- no PredictionResult is ever
+      // created), so accuracy is computed live from real Prediction/
+      // PredictionResult rows instead of trusting those stale counters.
+      db.prediction.findMany({
+        where: { userId: user.id, result: { isNot: null } },
+        select: { result: { select: { outcome: true } } },
+      }),
+      db.reaction.count({
+        where: {
+          OR: [
+            { take: { authorId: user.id } },
+            { comment: { authorId: user.id } },
+          ],
+        },
+      }),
+    ]);
   const fanScore = scoreAgg._sum.points ?? 0;
   const resolvedCount = resolvedPredictions.length;
   const correctCount = resolvedPredictions.filter(
@@ -198,7 +249,10 @@ export default async function ProfilePage({
   ).length;
 
   const cursorArg = cursor ? { id: cursor } : undefined;
-  const paged = { take: PAGE_SIZE + 1, ...(cursorArg && { cursor: cursorArg, skip: 1 }) };
+  const paged = {
+    take: PAGE_SIZE + 1,
+    ...(cursorArg && { cursor: cursorArg, skip: 1 }),
+  };
 
   return (
     <div className="page-container py-10">
@@ -206,9 +260,16 @@ export default async function ProfilePage({
         user={user}
         favoriteTeams={favoriteTeams}
         isOwner={isOwner}
-        viewerSignedIn={Boolean(viewerId)}
         following={following}
+        followedByProfile={followedByProfile}
         muted={muted}
+      />
+      <IdentityStats
+        takes={user._count.takes}
+        debates={user._count.debates}
+        reactions={reactionsReceived}
+        followers={user._count.followers}
+        following={user._count.following}
       />
       <ReputationSummary
         fanScore={fanScore}
@@ -217,32 +278,64 @@ export default async function ProfilePage({
         badges={user.badges}
       />
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_280px]">
-        <ProfileTabs handle={user.handle} active={tab}>
-          {tab === "takes" && (await TakesTab({ userId: user.id, paged, tab, handle: user.handle }))}
-          {tab === "predictions" &&
-            (await PredictionsTab({ userId: user.id, isOwner, paged, tab, handle: user.handle }))}
-          {tab === "debates" && (await DebatesTab({ userId: user.id, paged, tab, handle: user.handle }))}
-          {tab === "communities" &&
-            (await CommunitiesTab({ userId: user.id, viewerId, paged, tab, handle: user.handle }))}
-          {tab === "about" && (
-            <AboutTab user={user} favoriteTeams={favoriteTeams} />
-          )}
-        </ProfileTabs>
+        <div className="min-w-0">
+          <ProfileTabs handle={user.handle} active={tab}>
+            {tab === "activity" &&
+              (await ActivityTab({
+                userId: user.id,
+                showActivity: isOwner || sharesActivity(user),
+              }))}
+            {tab === "takes" &&
+              (await TakesTab({
+                userId: user.id,
+                paged,
+                tab,
+                handle: user.handle,
+              }))}
+            {tab === "predictions" &&
+              (await PredictionsTab({
+                userId: user.id,
+                isOwner,
+                paged,
+                tab,
+                handle: user.handle,
+              }))}
+            {tab === "debates" &&
+              (await DebatesTab({
+                userId: user.id,
+                paged,
+                tab,
+                handle: user.handle,
+              }))}
+            {tab === "communities" &&
+              (await CommunitiesTab({
+                userId: user.id,
+                viewerId,
+                paged,
+                tab,
+                handle: user.handle,
+              }))}
+            {tab === "about" && (
+              <AboutTab user={user} favoriteTeams={favoriteTeams} />
+            )}
+          </ProfileTabs>
+        </div>
         <aside className="grid gap-4">
           <Card>
             <h2 className="font-bold">Badges</h2>
             {user.badges.length ? (
               <ul className="mt-3 grid gap-2">
                 {user.badges.map(({ badge }) => (
-                  <li key={badge.id} className="flex items-center gap-2 text-sm">
+                  <li
+                    key={badge.id}
+                    className="flex items-center gap-2 text-sm"
+                  >
                     <Badge>{badge.name}</Badge>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-text-secondary mt-2 text-sm">
-                No badges yet.
-              </p>
+              <p className="text-text-secondary mt-2 text-sm">No badges yet.</p>
             )}
           </Card>
           <Card>
@@ -271,57 +364,102 @@ function ProfileHeader({
   user,
   favoriteTeams,
   isOwner,
-  viewerSignedIn,
   following,
+  followedByProfile,
   muted,
 }: {
   user: ProfileUser;
-  favoriteTeams: { id: string; name: string; abbreviation: string }[];
+  favoriteTeams: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    league?: { key: string; name: string; abbreviation: string };
+  }[];
   isOwner: boolean;
-  viewerSignedIn: boolean;
   following: boolean;
+  followedByProfile: boolean;
   muted: boolean;
 }) {
   return (
-    <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
-      <div className="flex items-start gap-4">
-        <Avatar
-          name={user.displayName}
-          src={user.image ?? user.profile?.avatarUrl}
-          size="lg"
-        />
-        <div>
-          <h1 className="font-display text-3xl font-black tracking-tight md:text-4xl">
-            {user.displayName}
-          </h1>
-          <p className="text-text-muted">@{user.handle}</p>
-          {user.profile?.bio && (
-            <p className="text-text-secondary mt-2 max-w-xl">
-              {user.profile.bio}
-            </p>
+    <header className="border-brand/20 bg-brand-surface/20 relative mb-6 overflow-hidden rounded-3xl border p-5 shadow-lg sm:p-7">
+      <div
+        aria-hidden
+        className="bg-brand/10 absolute -top-24 -right-20 size-64 rounded-full blur-3xl"
+      />
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <Avatar
+            name={user.displayName}
+            src={user.image ?? user.profile?.avatarUrl}
+            size="lg"
+          />
+          <div>
+            <h1 className="font-display text-3xl font-black tracking-tight md:text-4xl">
+              {user.displayName}
+            </h1>
+            <p className="text-text-muted">@{user.handle}</p>
+            {user.profile?.bio && (
+              <p className="text-text-secondary mt-2 max-w-xl">
+                {user.profile.bio}
+              </p>
+            )}
+            {favoriteTeams.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {favoriteTeams.map((team) => (
+                  <Badge key={team.id}>{team.abbreviation}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isOwner ? (
+            <Link
+              href="/settings"
+              className={buttonStyles({ variant: "secondary" })}
+            >
+              Edit profile
+            </Link>
+          ) : (
+            <FollowButton
+              userId={user.id}
+              initialFollowing={following}
+              initialFollowerCount={user._count.followers}
+              mutual={followedByProfile}
+            />
           )}
-          {favoriteTeams.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {favoriteTeams.map((team) => (
-                <Badge key={team.id}>{team.abbreviation}</Badge>
-              ))}
-            </div>
+          {!isOwner && (
+            <ProfileActionsMenu userId={user.id} initialMuted={muted} />
           )}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {isOwner ? (
-          <Link href="/settings" className={buttonStyles({ variant: "secondary" })}>
-            Edit profile
-          </Link>
-        ) : (
-          viewerSignedIn && <FollowButton userId={user.id} initialFollowing={following} />
-        )}
-        {!isOwner && (
-          <ProfileActionsMenu userId={user.id} initialMuted={muted} />
-        )}
-      </div>
     </header>
+  );
+}
+
+function IdentityStats({
+  takes,
+  debates,
+  reactions,
+  followers,
+  following,
+}: {
+  takes: number;
+  debates: number;
+  reactions: number;
+  followers: number;
+  following: number;
+}) {
+  return (
+    <Card className="mb-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <Stat label="Takes" value={takes} />
+        <Stat label="Debates" value={debates} />
+        <Stat label="Reactions received" value={reactions} />
+        <Stat label="Followers" value={followers} />
+        <Stat label="Following" value={following} />
+      </div>
+    </Card>
   );
 }
 
@@ -345,8 +483,14 @@ function ReputationSummary({
         <Stat label="Fan Score" value={fanScore} />
         <Stat
           label="Prediction accuracy"
-          value={accuracy === null ? "No resolved predictions yet" : `${accuracy}%`}
-          sub={resolvedCount ? `${correctCount} of ${resolvedCount} resolved` : undefined}
+          value={
+            accuracy === null ? "No resolved predictions yet" : `${accuracy}%`
+          }
+          sub={
+            resolvedCount
+              ? `${correctCount} of ${resolvedCount} resolved`
+              : undefined
+          }
         />
         <Stat label="Badges earned" value={badges.length} />
       </div>
@@ -394,11 +538,165 @@ function LoadMore({
 }) {
   return (
     <Link
-      href={`/users/${handle}?tab=${tab}&cursor=${cursor}`}
+      href={`/u/${handle}?tab=${tab}&cursor=${cursor}`}
       className="text-brand mt-4 inline-block text-sm font-bold hover:underline"
     >
       Load more
     </Link>
+  );
+}
+
+async function ActivityTab({
+  userId,
+  showActivity,
+}: {
+  userId: string;
+  showActivity: boolean;
+}) {
+  if (!showActivity)
+    return (
+      <EmptyState
+        title="Activity is private"
+        description="This fan has chosen not to share their recent activity."
+      />
+    );
+
+  const [takes, debates, reactions, teams] = await Promise.all([
+    db.take.findMany({
+      where: { authorId: userId, status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      take: 12,
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        parentId: true,
+        flashThreadId: true,
+        gameId: true,
+        debate: { select: { slug: true } },
+      },
+    }),
+    db.debate.findMany({
+      where: { creatorId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: { id: true, slug: true, title: true, createdAt: true },
+    }),
+    db.reaction.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      select: {
+        id: true,
+        kind: true,
+        createdAt: true,
+        take: {
+          select: {
+            gameId: true,
+            debate: { select: { slug: true } },
+            author: { select: { handle: true } },
+          },
+        },
+      },
+    }),
+    db.teamFollow.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+      include: { team: { include: { league: true } } },
+    }),
+  ]);
+
+  const items = [
+    ...takes.map((take) => ({
+      id: `take-${take.id}`,
+      at: take.createdAt,
+      label: take.parentId
+        ? "Replied to a take"
+        : take.flashThreadId
+          ? "Joined a Flash Thread"
+          : "Posted a take",
+      detail: take.body,
+      href: take.gameId
+        ? `/games/${take.gameId}`
+        : take.debate
+          ? `/debates/${take.debate.slug}`
+          : null,
+    })),
+    ...debates.map((debate) => ({
+      id: `debate-${debate.id}`,
+      at: debate.createdAt,
+      label: "Started a debate",
+      detail: debate.title,
+      href: `/debates/${debate.slug}`,
+    })),
+    ...reactions.map((reaction) => ({
+      id: `reaction-${reaction.id}`,
+      at: reaction.createdAt,
+      label: `Reacted ${reaction.kind.toLowerCase()}`,
+      detail: reaction.take
+        ? `To @${reaction.take.author.handle}'s take`
+        : "To a fan reply",
+      href: reaction.take?.gameId
+        ? `/games/${reaction.take.gameId}`
+        : reaction.take?.debate
+          ? `/debates/${reaction.take.debate.slug}`
+          : null,
+    })),
+    ...teams.map((follow) => ({
+      id: `team-${follow.teamId}`,
+      at: follow.createdAt,
+      label: "Followed a team",
+      detail: `${follow.team.name} · ${follow.team.league.abbreviation}`,
+      href: `/games?league=${follow.team.league.key}&team=${follow.team.id}`,
+    })),
+  ]
+    .sort((left, right) => right.at.getTime() - left.at.getTime())
+    .slice(0, PAGE_SIZE);
+
+  return (
+    <div className="mt-5 grid gap-3">
+      {items.length ? (
+        items.map((item) => {
+          const content = (
+            <Card className="hover:border-border-strong transition">
+              <div className="flex gap-3">
+                <span className="bg-brand-surface text-brand-light grid size-10 shrink-0 place-items-center rounded-xl">
+                  {item.id.startsWith("debate") ? (
+                    <MessageSquareText aria-hidden className="size-5" />
+                  ) : (
+                    <Sparkles aria-hidden className="size-5" />
+                  )}
+                </span>
+                <div className="min-w-0">
+                  <strong>{item.label}</strong>
+                  <p className="text-text-secondary mt-1 line-clamp-2 text-sm">
+                    {item.detail}
+                  </p>
+                  <LocalDateTime
+                    value={item.at.toISOString()}
+                    display="date-time"
+                    className="text-text-muted mt-2 block text-xs"
+                  />
+                </div>
+              </div>
+            </Card>
+          );
+          return item.href ? (
+            <Link key={item.id} href={item.href}>
+              {content}
+            </Link>
+          ) : (
+            <div key={item.id}>{content}</div>
+          );
+        })
+      ) : (
+        <EmptyState
+          title="No public activity yet"
+          description="Takes, debates, reactions, and team follows will appear here."
+        />
+      )}
+    </div>
   );
 }
 
@@ -445,9 +743,18 @@ async function TakesTab({
           />
         ))
       ) : (
-        <EmptyState title="No public takes yet" description="New takes appear here." />
+        <EmptyState
+          title="No public takes yet"
+          description="New takes appear here."
+        />
       )}
-      {hasMore && <LoadMore handle={handle} tab={tab} cursor={page[page.length - 1]!.id} />}
+      {hasMore && (
+        <LoadMore
+          handle={handle}
+          tab={tab}
+          cursor={page[page.length - 1]!.id}
+        />
+      )}
     </div>
   );
 }
@@ -485,7 +792,10 @@ async function PredictionsTab({
           const locked = prediction.locksAt <= new Date();
           const revealSelection = isOwner || locked;
           return (
-            <Card key={prediction.id} className="flex items-center justify-between gap-3">
+            <Card
+              key={prediction.id}
+              className="flex items-center justify-between gap-3"
+            >
               <div>
                 <p className="font-bold">
                   {prediction.game.league.abbreviation} ·{" "}
@@ -499,7 +809,13 @@ async function PredictionsTab({
                 </p>
               </div>
               {prediction.result ? (
-                <Badge tone={prediction.result.outcome === "CORRECT" ? "success" : "danger"}>
+                <Badge
+                  tone={
+                    prediction.result.outcome === "CORRECT"
+                      ? "success"
+                      : "danger"
+                  }
+                >
                   {prediction.result.outcome}
                 </Badge>
               ) : (
@@ -516,7 +832,13 @@ async function PredictionsTab({
           description="Predictions made in game rooms appear here."
         />
       )}
-      {hasMore && <LoadMore handle={handle} tab={tab} cursor={page[page.length - 1]!.id} />}
+      {hasMore && (
+        <LoadMore
+          handle={handle}
+          tab={tab}
+          cursor={page[page.length - 1]!.id}
+        />
+      )}
     </div>
   );
 }
@@ -561,9 +883,18 @@ async function DebatesTab({
           />
         ))
       ) : (
-        <EmptyState title="No debates started yet" description="Debates this person creates appear here." />
+        <EmptyState
+          title="No debates started yet"
+          description="Debates this person creates appear here."
+        />
       )}
-      {hasMore && <LoadMore handle={handle} tab={tab} cursor={page[page.length - 1]!.id} />}
+      {hasMore && (
+        <LoadMore
+          handle={handle}
+          tab={tab}
+          cursor={page[page.length - 1]!.id}
+        />
+      )}
     </div>
   );
 }
@@ -585,7 +916,9 @@ async function CommunitiesTab({
     where: { userId, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
     ...paged,
-    include: { community: { include: { _count: { select: { members: true } } } } },
+    include: {
+      community: { include: { _count: { select: { members: true } } } },
+    },
   });
   const hasMore = memberships.length > PAGE_SIZE;
   const page = memberships.slice(0, PAGE_SIZE);
@@ -618,9 +951,18 @@ async function CommunitiesTab({
           />
         ))
       ) : (
-        <EmptyState title="No communities yet" description="Communities this person joins appear here." />
+        <EmptyState
+          title="No communities yet"
+          description="Communities this person joins appear here."
+        />
       )}
-      {hasMore && <LoadMore handle={handle} tab={tab} cursor={page[page.length - 1]!.id} />}
+      {hasMore && (
+        <LoadMore
+          handle={handle}
+          tab={tab}
+          cursor={page[page.length - 1]!.id}
+        />
+      )}
     </div>
   );
 }
@@ -630,8 +972,20 @@ function AboutTab({
   favoriteTeams,
 }: {
   user: ProfileUser;
-  favoriteTeams: { id: string; name: string; abbreviation: string }[];
+  favoriteTeams: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    league?: { key: string; name: string; abbreviation: string };
+  }[];
 }) {
+  const favoriteLeagues = [
+    ...new Map(
+      favoriteTeams
+        .filter((team) => team.league)
+        .map((team) => [team.league!.key, team.league!]),
+    ).values(),
+  ];
   return (
     <div className="mt-5 grid gap-4">
       <Card>
@@ -639,6 +993,24 @@ function AboutTab({
         <p className="text-text-secondary mt-2">
           {user.profile?.bio || "No bio yet."}
         </p>
+      </Card>
+      <Card>
+        <h2 className="font-bold">Favorite leagues</h2>
+        {favoriteLeagues.length ? (
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {favoriteLeagues.map((league) => (
+              <li key={league.key}>
+                <Link href={`/leagues/${league.key}`}>
+                  <Badge>{league.name}</Badge>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-text-secondary mt-2">
+            Follow a team to show its league here.
+          </p>
+        )}
       </Card>
       {user.profile?.location && (
         <Card>

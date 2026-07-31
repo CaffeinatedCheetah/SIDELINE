@@ -14,6 +14,7 @@ import { GameCard } from "@/components/games/game-card";
 import { LeagueMark } from "@/components/leagues/league-mark";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Badge, EmptyState } from "@/components/ui/foundations";
+import { Avatar, Card } from "@/components/ui/foundations";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { getDiscoverFeed } from "@/lib/db/discover";
 import { getSupportedLeague } from "@/lib/sports/leagues";
@@ -31,7 +32,8 @@ export default async function DiscoverPage() {
     feed.trendingGames.length ||
     feed.debates.length ||
     feed.flashThreads.length ||
-    feed.recentMoments.length;
+    feed.recentMoments.length ||
+    feed.people.length;
 
   return (
     <div className="page-container py-8 sm:py-10">
@@ -147,6 +149,46 @@ export default async function DiscoverPage() {
                     }))}
                     replyCount={debate._count.comments}
                   />
+                ))}
+              </div>
+            </DiscoverSection>
+          ) : null}
+
+          {feed.people.length ? (
+            <DiscoverSection
+              eyebrow="Real participation"
+              title="Discover people"
+              href="/search?type=people"
+            >
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {feed.people.map((person) => (
+                  <Link key={person.id} href={`/u/${person.handle}`}>
+                    <Card className="hover:border-brand/40 h-full transition hover:-translate-y-0.5 motion-reduce:transform-none">
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={person.displayName}
+                          src={person.image ?? person.profile?.avatarUrl}
+                        />
+                        <div className="min-w-0">
+                          <strong className="block truncate">
+                            {person.displayName}
+                          </strong>
+                          <span className="text-text-muted block truncate text-xs">
+                            @{person.handle}
+                          </span>
+                        </div>
+                      </div>
+                      {person.profile?.bio ? (
+                        <p className="text-text-secondary mt-3 line-clamp-2 text-sm">
+                          {person.profile.bio}
+                        </p>
+                      ) : null}
+                      <p className="text-text-muted mt-3 text-xs">
+                        {formatCount(person._count.followers)} followers ·{" "}
+                        {formatCount(person._count.takes)} takes
+                      </p>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </DiscoverSection>

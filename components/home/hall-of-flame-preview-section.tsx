@@ -5,10 +5,7 @@ import { getHallOfFlamePreview } from "@/lib/db/hall-of-flame-preview";
 
 export async function HallOfFlamePreviewSection() {
   const session = await auth();
-  const { entries, failed } = await getHallOfFlamePreview(
-    session?.user?.id,
-    5,
-  );
+  const { entries, failed } = await getHallOfFlamePreview(session?.user?.id, 5);
 
   return (
     <section aria-labelledby="hall-of-flame-heading">
@@ -31,9 +28,9 @@ export async function HallOfFlamePreviewSection() {
         className="text-text-muted mb-5 text-sm"
       >
         Rank reflects the quality of a fan&apos;s single best take, scored by
-        the Hall of Flame ranking job. Fan Score is a separate, ongoing
-        measure of that fan&apos;s overall reputation — a higher Fan Score
-        does not change their rank here.
+        the Hall of Flame ranking job. Fan Score is a separate, ongoing measure
+        of that fan&apos;s overall reputation — a higher Fan Score does not
+        change their rank here.
       </p>
       {failed ? (
         <EmptyState
@@ -75,7 +72,7 @@ export async function HallOfFlamePreviewSection() {
                   )}
                   <div className="min-w-0">
                     <Link
-                      href={`/users/${author.handle}`}
+                      href={`/u/${author.handle}`}
                       className="block truncate font-bold hover:underline"
                     >
                       {author.displayName}

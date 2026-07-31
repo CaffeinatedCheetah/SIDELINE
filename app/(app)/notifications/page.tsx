@@ -20,7 +20,7 @@ const PAGE_SIZE = 20;
 
 const TABS = [
   { key: "all", label: "All", types: null },
-  { key: "replies", label: "Replies", types: ["REPLY", "REACTION"] },
+  { key: "replies", label: "Replies", types: ["REPLY", "REACTION", "MENTION"] },
   { key: "predictions", label: "Predictions", types: ["PREDICTION"] },
   { key: "games", label: "Games", types: ["GAME"] },
   { key: "communities", label: "Communities", types: ["COMMUNITY", "DEBATE"] },
@@ -43,7 +43,10 @@ type NotificationRowData = Notification & {
   actor: { displayName: string } | null;
 };
 
-function describe(n: NotificationRowData): { message: string; detail?: string } {
+function describe(n: NotificationRowData): {
+  message: string;
+  detail?: string;
+} {
   const actorName = n.actor?.displayName ?? "Someone";
   switch (n.type) {
     case "FOLLOW":
@@ -52,6 +55,8 @@ function describe(n: NotificationRowData): { message: string; detail?: string } 
       return { message: `${actorName} replied to your take` };
     case "REACTION":
       return { message: `${actorName} reacted to your take` };
+    case "MENTION":
+      return { message: `${actorName} mentioned you` };
     case "DEBATE":
       return { message: `${actorName} started a debate` };
     case "COMMUNITY":
@@ -126,11 +131,16 @@ export default async function NotificationsPage({
         description={`${unreadCount} unread`}
         action={<MarkAllReadButton unreadCount={unreadCount} />}
       />
-      <nav aria-label="Notification categories" className="mb-6 flex flex-wrap gap-1">
+      <nav
+        aria-label="Notification categories"
+        className="mb-6 flex flex-wrap gap-1"
+      >
         {TABS.map(({ key, label }) => (
           <Link
             key={key}
-            href={key === "all" ? "/notifications" : `/notifications?tab=${key}`}
+            href={
+              key === "all" ? "/notifications" : `/notifications?tab=${key}`
+            }
             aria-current={tab.key === key ? "page" : undefined}
             className={`min-h-11 rounded-sm px-4 py-2 text-sm font-bold ${
               tab.key === key
@@ -161,7 +171,7 @@ export default async function NotificationsPage({
                         href={item.href}
                         message={message}
                         detail={detail}
-                        createdAt={item.createdAt.toLocaleDateString()}
+                        createdAt={item.createdAt.toISOString()}
                         read={Boolean(item.readAt)}
                       />
                     );

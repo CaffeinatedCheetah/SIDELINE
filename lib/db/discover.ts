@@ -3,7 +3,7 @@ import { db } from "@/lib/db/client";
 const ACTIVE_GAME_STATUSES = ["LIVE", "HALFTIME", "PREGAME"] as const;
 
 export async function getDiscoverFeed() {
-  const [games, debates, flashThreads, teams, leagues, recentMoments] =
+  const [games, debates, flashThreads, teams, leagues, recentMoments, people] =
     await Promise.all([
       db.game.findMany({
         where: { status: { in: [...ACTIVE_GAME_STATUSES] } },
@@ -76,6 +76,27 @@ export async function getDiscoverFeed() {
           flashThread: { select: { id: true } },
         },
       }),
+      db.user.findMany({
+        where: {
+          status: "ACTIVE",
+          deletedAt: null,
+        },
+        orderBy: [
+          { followers: { _count: "desc" } },
+          { takes: { _count: "desc" } },
+          { createdAt: "asc" },
+        ],
+        take: 16,
+        select: {
+          id: true,
+          handle: true,
+          displayName: true,
+          image: true,
+          profile: { select: { avatarUrl: true, bio: true } },
+          preferences: { select: { privacySettings: true } },
+          _count: { select: { followers: true, takes: true } },
+        },
+      }),
     ]);
 
   const trendingGames = games
@@ -87,6 +108,17 @@ export async function getDiscoverFeed() {
         left.scheduledAt.getTime() - right.scheduledAt.getTime(),
     )
     .slice(0, 6);
+  const discoverablePeople = people
+    .filter((person) => {
+      const privacy = person.preferences?.privacySettings;
+      return !(
+        privacy &&
+        typeof privacy === "object" &&
+        !Array.isArray(privacy) &&
+        (privacy as Record<string, unknown>).profileDiscoverable === false
+      );
+    })
+    .slice(0, 8);
 
   return {
     trendingGames,
@@ -95,5 +127,6 @@ export async function getDiscoverFeed() {
     teams,
     leagues,
     recentMoments,
+    people: discoverablePeople,
   };
 }
