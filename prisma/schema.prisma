@@ -103,6 +103,36 @@ enum NotificationType {
   BADGE
 }
 
+enum AiArtifactType {
+  GAME_RECAP
+}
+
+enum AiEntityType {
+  GAME
+}
+
+enum AiArtifactStatus {
+  PENDING
+  GENERATING
+  READY
+  INSUFFICIENT_DATA
+  FAILED
+  STALE
+}
+
+enum AiFeedbackValue {
+  HELPFUL
+  NOT_HELPFUL
+}
+
+enum AiFeedbackReason {
+  INACCURATE
+  MISSING_CONTEXT
+  HARD_TO_READ
+  TOO_LONG
+  OTHER
+}
+
 enum ReportState {
   OPEN
   IN_REVIEW
@@ -198,6 +228,7 @@ model User {
   mutes                Mute[]
   gameFollows          GameFollow[]
   teamFollows          TeamFollow[]
+  aiArtifactFeedback   AiArtifactFeedback[]
 
   @@index([status, createdAt])
 }
@@ -899,4 +930,54 @@ model RateLimitBucket {
   updatedAt DateTime @updatedAt
 
   @@index([resetsAt])
+}
+
+model AiArtifact {
+  id                String           @id @default(uuid()) @db.Uuid
+  type              AiArtifactType
+  entityType        AiEntityType
+  entityId          String           @db.Uuid
+  status            AiArtifactStatus @default(PENDING)
+  schemaVersion     String
+  promptVersion     String
+  contextVersion    String
+  model             String?
+  content           Json?
+  sourceManifest    Json?
+  contextHash       String
+  contentHash       String?
+  inputTokens       Int?
+  outputTokens      Int?
+  cachedTokens      Int?
+  estimatedCost     Decimal?         @db.Decimal(12, 6)
+  latencyMs         Int?
+  providerRequestId String?
+  errorCode         String?
+  errorMessage      String?
+  attemptCount      Int              @default(0)
+  cacheHitCount     Int              @default(0)
+  generatedAt       DateTime?
+  expiresAt         DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  feedback          AiArtifactFeedback[]
+
+  @@unique([type, entityType, entityId, contextHash])
+  @@index([entityType, entityId, status])
+  @@index([status, createdAt])
+  @@index([type, generatedAt])
+}
+
+model AiArtifactFeedback {
+  artifactId String            @db.Uuid
+  userId     String            @db.Uuid
+  value      AiFeedbackValue
+  reason     AiFeedbackReason?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  artifact   AiArtifact        @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([artifactId, userId])
+  @@index([artifactId, value])
 }
