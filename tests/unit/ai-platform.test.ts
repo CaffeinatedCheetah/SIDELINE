@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { classifyProviderError } from "@/lib/ai/errors";
 import { canonicalHash } from "@/lib/ai/hash";
+import {
+  buildPromptComparison,
+  buildPromptVersionHistory,
+} from "@/lib/ai/prompt-history";
 import { GAME_RECAP_PROMPT_VERSION } from "@/lib/ai/prompts/game-recap-v1";
 import { gameRecapSchema } from "@/lib/ai/schemas/game-recap";
 import { validateGroundedGameRecap } from "@/lib/ai/validation/game-recap";
@@ -50,6 +54,74 @@ const context = {
   sourceManifest: [],
   versions: { prompt: GAME_RECAP_PROMPT_VERSION, schema: "1", context: "1" },
 } as never;
+
+const artifacts = [
+  {
+    id: "artifact-a",
+    entityId: "game-a",
+    promptVersion: "game-recap-v1",
+    status: "READY",
+    generatedAt: new Date("2026-07-31T01:00:00Z"),
+    updatedAt: new Date("2026-07-31T01:00:00Z"),
+    model: "gpt-5.4-mini",
+    inputTokens: 100,
+    outputTokens: 80,
+    cachedTokens: 20,
+    latencyMs: 1200,
+    errorCode: null,
+    errorMessage: null,
+    content: {
+      headline: "Visitors close it out",
+      dek: "A concise verified finish.",
+      summary: "The Visitors beat the Home Team 4–3.",
+      keyMoments: [
+        {
+          momentId,
+          label: "Go-ahead score",
+          description: "A verified scoring moment changed the game.",
+          importance: "high",
+        },
+      ],
+      fanConversation: { summary: null, themes: [] },
+      caveats: ["One official stat feed lagged briefly."],
+    },
+    sourceManifest: [{ type: "GAME_MOMENT", id: momentId }],
+  },
+  {
+    id: "artifact-b",
+    entityId: "game-a",
+    promptVersion: "game-recap-v2",
+    status: "READY",
+    generatedAt: new Date("2026-07-31T02:00:00Z"),
+    updatedAt: new Date("2026-07-31T02:00:00Z"),
+    model: "gpt-5.4",
+    inputTokens: 140,
+    outputTokens: 120,
+    cachedTokens: 0,
+    latencyMs: 900,
+    errorCode: null,
+    errorMessage: null,
+    content: {
+      headline: "Visitors survive the comeback",
+      dek: "Prompt revision produced a tighter finish.",
+      summary: "The Visitors held on for a 4–3 win.",
+      keyMoments: [
+        {
+          momentId,
+          label: "Go-ahead score",
+          description: "A verified scoring moment changed the game.",
+          importance: "high",
+        },
+      ],
+      fanConversation: { summary: "Fans focused on the late defense.", themes: ["defense"] },
+      caveats: [],
+    },
+    sourceManifest: [
+      { type: "GAME_MOMENT", id: momentId },
+      { type: "TAKE", id: "take-1" },
+    ],
+  },
+] as const;
 
 describe("AI platform foundations", () => {
   it("creates a stable canonical hash independent of object key order", () => {
@@ -100,5 +172,60 @@ describe("AI platform foundations", () => {
     expect(classifyProviderError({ status: 503 }).retryable).toBe(true);
     expect(classifyProviderError({ status: 401 }).retryable).toBe(false);
     expect(classifyProviderError({ status: 400 }).retryable).toBe(false);
+  });
+
+  it("groups prompt version history from stored artifacts", () => {
+    const history = buildPromptVersionHistory([...artifacts]);
+    expect(history).toEqual([
+      expect.objectContaining({
+        promptVersion: "game-recap-v2",
+        count: 1,
+        readyCount: 1,
+        failedCount: 0,
+        totalTokens: 260,
+      }),
+      expect.objectContaining({
+        promptVersion: "game-recap-v1",
+        count: 1,
+        readyCount: 1,
+        failedCount: 0,
+        totalTokens: 200,
+      }),
+    ]);
+  });
+
+  it("builds a comparison view for prompt revisions", () => {
+    const comparison = buildPromptComparison(
+      artifacts[0] as never,
+      artifacts[1] as never,
+    );
+    expect(comparison.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Headline",
+          delta: "Changed",
+        }),
+        expect.objectContaining({
+          label: "Summary",
+          delta: "Changed",
+        }),
+        expect.objectContaining({
+          label: "Grounding",
+          delta: "Changed",
+        }),
+        expect.objectContaining({
+          label: "Token count",
+          delta: "+60",
+        }),
+        expect.objectContaining({
+          label: "Latency",
+          delta: "-300",
+        }),
+        expect.objectContaining({
+          label: "Source refs",
+          delta: "+1",
+        }),
+      ]),
+    );
   });
 });
