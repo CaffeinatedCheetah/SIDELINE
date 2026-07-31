@@ -28,6 +28,7 @@ test("all public routes render without runtime or console errors", async ({
   const routes = [
     "/",
     "/games",
+    "/discover",
     "/leagues",
     "/teams",
     ...SUPPORTED_LEAGUES.map((league) => `/leagues/${league.key}`),
@@ -104,7 +105,16 @@ test("team discovery has no horizontal overflow across supported breakpoints", a
   }
 });
 
-for (const route of ["/games", "/teams", "/leagues", "/leagues/mlb"]) {
+for (const route of [
+  "/discover",
+  "/games",
+  "/teams",
+  "/leagues",
+  "/leagues/mlb",
+  "/debates",
+  "/hall-of-flame",
+  "/search",
+]) {
   test(`${route} premium sports hub has no horizontal overflow`, async ({
     page,
   }) => {

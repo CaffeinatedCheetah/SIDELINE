@@ -13,16 +13,60 @@ type GameResult = {
 };
 type Results = {
   users: Array<{ handle: string; displayName: string }>;
+  teams: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    abbreviation: string;
+    league: { key: string; abbreviation: string };
+  }>;
+  leagues: Array<{
+    key: string;
+    name: string;
+    abbreviation: string;
+    sport: { name: string };
+  }>;
   games: GameResult[];
   communities: Array<{ slug: string; name: string }>;
   debates: Array<{ slug: string; title: string }>;
+  takes: Array<{
+    id: string;
+    body: string;
+    gameId: string | null;
+    debate: { slug: string } | null;
+    community: { slug: string } | null;
+    author: { handle: string; displayName: string };
+  }>;
+  flashThreads: Array<{
+    id: string;
+    gameId: string;
+    title: string;
+    game: {
+      league: { abbreviation: string };
+      homeTeam: { abbreviation: string };
+      awayTeam: { abbreviation: string };
+    };
+  }>;
 };
-const empty: Results = { users: [], games: [], communities: [], debates: [] };
+const empty: Results = {
+  users: [],
+  teams: [],
+  leagues: [],
+  games: [],
+  communities: [],
+  debates: [],
+  takes: [],
+  flashThreads: [],
+};
 
 const TYPES = [
   { key: "all", label: "All" },
   { key: "games", label: "Games" },
+  { key: "teams", label: "Teams" },
+  { key: "leagues", label: "Leagues" },
   { key: "debates", label: "Debates" },
+  { key: "takes", label: "Takes" },
+  { key: "flash-threads", label: "Flash Threads" },
   { key: "communities", label: "Communities" },
   { key: "people", label: "People" },
 ] as const;
@@ -113,7 +157,9 @@ export function SearchPanel({
     // Deferred a tick so runSearch's setState calls aren't synchronous
     // within the effect body itself (same reasoning as the debounce effect
     // above, which defers via setTimeout for an unrelated UX reason).
-    void Promise.resolve().then(() => runSearch(committedQuery, controller.signal));
+    void Promise.resolve().then(() =>
+      runSearch(committedQuery, controller.signal),
+    );
     return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [committedQuery, type]);
@@ -127,10 +173,10 @@ export function SearchPanel({
     if (type !== "all") params.set("type", type);
     router.push(`/search${params.toString() ? `?${params}` : ""}`);
     if (trimmed.length >= 2) {
-      const next = [trimmed, ...readRecent().filter((v) => v !== trimmed)].slice(
-        0,
-        5,
-      );
+      const next = [
+        trimmed,
+        ...readRecent().filter((v) => v !== trimmed),
+      ].slice(0, 5);
       writeRecent(next);
       setRecent(next);
     }
@@ -162,7 +208,7 @@ export function SearchPanel({
         <Input
           autoFocus
           aria-label="Search FanTakes"
-          placeholder="Search people, games, communities, and debates"
+          placeholder="Search teams, games, debates, takes, and leagues"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
         />
@@ -220,7 +266,8 @@ export function SearchPanel({
             </ul>
           ) : (
             <p className="text-text-muted text-sm">
-              Search for people, games, communities, or debates.
+              Search for teams, games, debates, takes, Flash Threads, or
+              leagues.
             </p>
           )}
           {trendingSearches.length > 0 && (
@@ -289,6 +336,28 @@ export function SearchPanel({
                     ))}
                   </ResultSection>
                 )}
+                {results.teams.length > 0 && (
+                  <ResultSection title="Teams">
+                    {results.teams.map((team) => (
+                      <ResultLink
+                        key={team.id}
+                        href={`/games?league=${team.league.key}&team=${team.id}`}
+                        label={`${team.name} · ${team.league.abbreviation}`}
+                      />
+                    ))}
+                  </ResultSection>
+                )}
+                {results.leagues.length > 0 && (
+                  <ResultSection title="Leagues">
+                    {results.leagues.map((league) => (
+                      <ResultLink
+                        key={league.key}
+                        href={`/leagues/${league.key}`}
+                        label={`${league.name} · ${league.sport.name}`}
+                      />
+                    ))}
+                  </ResultSection>
+                )}
                 {results.debates.length > 0 && (
                   <ResultSection title="Debates">
                     {results.debates.map((debate) => (
@@ -311,6 +380,36 @@ export function SearchPanel({
                     ))}
                   </ResultSection>
                 )}
+                {results.flashThreads.length > 0 && (
+                  <ResultSection title="Flash Threads">
+                    {results.flashThreads.map((thread) => (
+                      <ResultLink
+                        key={thread.id}
+                        href={`/games/${thread.gameId}`}
+                        label={`${thread.title} · ${thread.game.league.abbreviation}`}
+                      />
+                    ))}
+                  </ResultSection>
+                )}
+                {results.takes.length > 0 && (
+                  <ResultSection title="Takes">
+                    {results.takes.map((take) => (
+                      <ResultLink
+                        key={take.id}
+                        href={
+                          take.gameId
+                            ? `/games/${take.gameId}`
+                            : take.debate
+                              ? `/debates/${take.debate.slug}`
+                              : take.community
+                                ? `/communities/${take.community.slug}`
+                                : `/users/${take.author.handle}`
+                        }
+                        label={`${take.body.slice(0, 120)} · ${take.author.displayName}`}
+                      />
+                    ))}
+                  </ResultSection>
+                )}
               </>
             )}
           </div>
@@ -323,9 +422,13 @@ export function SearchPanel({
 function resultCount(results: Results) {
   return (
     results.users.length +
+    results.teams.length +
+    results.leagues.length +
     results.games.length +
     results.communities.length +
-    results.debates.length
+    results.debates.length +
+    results.takes.length +
+    results.flashThreads.length
   );
 }
 

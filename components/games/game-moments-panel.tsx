@@ -6,11 +6,13 @@ import {
   Clock3,
   Flame,
   MessageCircle,
+  MessageSquareText,
   Radio,
   RefreshCw,
   Sparkles,
   Target,
   Trophy,
+  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -46,6 +48,7 @@ type FlashThread = {
   id: string;
   title: string;
   status: "ACTIVE" | "ARCHIVED";
+  createdAt?: string;
   moment: Moment;
   takes: ThreadTake[];
   takeCount: number;
@@ -233,6 +236,47 @@ export function GameMomentsPanel({
       }),
     [archive, moments],
   );
+  const activity = useMemo(() => {
+    const momentItems = moments.map((moment) => ({
+      id: `moment-${moment.id}`,
+      kind: "moment" as const,
+      title: moment.title,
+      detail: [moment.period, moment.clock].filter(Boolean).join(" · "),
+      timestamp: moment.occurredAt,
+      importance: moment.importance,
+    }));
+    const threadItems = threads.map((thread) => ({
+      id: `thread-${thread.id}`,
+      kind: "thread" as const,
+      title: `Flash Thread opened: ${thread.title}`,
+      detail: `${thread.takeCount} takes · ${thread.reactionCount} reactions`,
+      timestamp: thread.createdAt ?? thread.moment.occurredAt,
+      importance: thread.moment.importance,
+    }));
+    const takeItems = threads.flatMap((thread) =>
+      thread.takes
+        .filter(
+          (take) =>
+            take._count.reactions + take._count.votes + take._count.replies > 0,
+        )
+        .map((take) => ({
+          id: `take-${take.id}`,
+          kind: "take" as const,
+          title: `Popular Take by ${take.author.displayName}`,
+          detail: take.body,
+          timestamp: take.createdAt,
+          importance:
+            take._count.reactions + take._count.votes + take._count.replies,
+        })),
+    );
+    return [...momentItems, ...threadItems, ...takeItems]
+      .sort(
+        (left, right) =>
+          new Date(right.timestamp).getTime() -
+          new Date(left.timestamp).getTime(),
+      )
+      .slice(0, 10);
+  }, [moments, threads]);
 
   return (
     <section
@@ -400,6 +444,91 @@ export function GameMomentsPanel({
           </div>
         </Card>
       )}
+
+      <Card className="border-brand/20 bg-surface-1/75 overflow-hidden rounded-2xl p-0">
+        <div className="border-border-subtle flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+          <div>
+            <p className="text-brand text-xs font-bold tracking-[0.16em] uppercase">
+              Live fan experience
+            </p>
+            <h3 className="font-display mt-1 text-2xl font-black">
+              Activity timeline
+            </h3>
+          </div>
+          {!archive ? (
+            <Badge tone="live" className="gap-1.5">
+              <span
+                aria-hidden
+                className="size-2 rounded-full bg-white motion-safe:animate-pulse"
+              />
+              Live
+            </Badge>
+          ) : (
+            <Badge tone="neutral">Archive</Badge>
+          )}
+        </div>
+        {activity.length ? (
+          <ol className="divide-border-subtle divide-y" data-live-activity>
+            {activity.map((item) => {
+              const ActivityIcon =
+                item.kind === "thread"
+                  ? MessageSquareText
+                  : item.kind === "take"
+                    ? Flame
+                    : Zap;
+              return (
+                <li
+                  key={item.id}
+                  className="hover:bg-surface-2/65 grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 px-4 py-3 transition motion-reduce:transition-none sm:px-6"
+                  data-activity-kind={item.kind}
+                >
+                  <span
+                    className={cn(
+                      "grid size-10 place-items-center rounded-xl",
+                      item.kind === "thread"
+                        ? "bg-brand-surface text-brand"
+                        : item.kind === "take"
+                          ? "bg-warning/10 text-warning"
+                          : "bg-info/10 text-info",
+                    )}
+                  >
+                    <ActivityIcon aria-hidden className="size-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <strong className="text-sm">{item.title}</strong>
+                      <LocalDateTime
+                        value={item.timestamp}
+                        className="text-text-muted shrink-0 text-xs"
+                      />
+                    </div>
+                    {item.detail ? (
+                      <p className="text-text-secondary mt-1 line-clamp-2 text-sm">
+                        {item.detail}
+                      </p>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        ) : (
+          <div className="px-5 py-10 text-center">
+            <p className="font-bold">
+              No one has started the conversation yet.
+            </p>
+            <p className="text-text-secondary mt-1 text-sm">
+              Verified moments and real fan activity will appear here as the
+              game unfolds.
+            </p>
+            {!archive ? (
+              <div className="border-border-subtle bg-surface-2/60 mx-auto mt-5 max-w-2xl rounded-xl border p-3 text-left">
+                <TakeComposer gameId={gameId} onPosted={refresh} />
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Card>
 
       <Card className="border-border-strong bg-surface-1/65 rounded-2xl p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">

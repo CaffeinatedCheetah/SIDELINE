@@ -243,17 +243,68 @@ async function handleGet(request: Request, context: Context) {
     if (!query || query.length < 2)
       return apiSuccess({
         users: [],
+        teams: [],
+        leagues: [],
         games: [],
         communities: [],
         debates: [],
+        takes: [],
+        flashThreads: [],
       });
     const contains = { contains: query, mode: "insensitive" as const };
-    const [users, games, communities, debates] = await Promise.all([
+    const [
+      users,
+      teams,
+      leagues,
+      games,
+      communities,
+      debates,
+      takes,
+      flashThreads,
+    ] = await Promise.all([
       type === "all" || type === "people"
         ? db.user.findMany({
             where: { OR: [{ displayName: contains }, { handle: contains }] },
             select: { handle: true, displayName: true, image: true },
             take: 5,
+          })
+        : [],
+      type === "all" || type === "teams"
+        ? db.team.findMany({
+            where: {
+              OR: [
+                { name: contains },
+                { city: contains },
+                { abbreviation: contains },
+              ],
+            },
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              abbreviation: true,
+              league: { select: { key: true, abbreviation: true } },
+            },
+            take: 8,
+          })
+        : [],
+      type === "all" || type === "leagues"
+        ? db.league.findMany({
+            where: {
+              active: true,
+              OR: [
+                { name: contains },
+                { abbreviation: contains },
+                { sport: { name: contains } },
+              ],
+            },
+            select: {
+              key: true,
+              name: true,
+              abbreviation: true,
+              sport: { select: { name: true } },
+            },
+            take: 8,
           })
         : [],
       type === "all" || type === "games"
@@ -288,8 +339,58 @@ async function handleGet(request: Request, context: Context) {
             take: 5,
           })
         : [],
+      type === "all" || type === "takes"
+        ? db.take.findMany({
+            where: { body: contains, status: ContentStatus.ACTIVE },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              body: true,
+              gameId: true,
+              debate: { select: { slug: true } },
+              community: { select: { slug: true } },
+              author: { select: { handle: true, displayName: true } },
+            },
+            take: 8,
+          })
+        : [],
+      type === "all" || type === "flash-threads"
+        ? db.flashThread.findMany({
+            where: {
+              OR: [
+                { title: contains },
+                { moment: { title: contains } },
+                { moment: { description: contains } },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              gameId: true,
+              title: true,
+              status: true,
+              game: {
+                select: {
+                  league: { select: { abbreviation: true } },
+                  homeTeam: { select: { abbreviation: true } },
+                  awayTeam: { select: { abbreviation: true } },
+                },
+              },
+            },
+            take: 8,
+          })
+        : [],
     ]);
-    return apiSuccess({ users, games, communities, debates });
+    return apiSuccess({
+      users,
+      teams,
+      leagues,
+      games,
+      communities,
+      debates,
+      takes,
+      flashThreads,
+    });
   }
   return apiError("NOT_FOUND", "API resource not found.", 404);
 }
@@ -645,7 +746,14 @@ async function handlePost(request: Request, context: Context) {
         .object({
           takeId: z.string().uuid().optional(),
           commentId: z.string().uuid().optional(),
-          kind: z.enum(["FIRE", "INSIGHTFUL", "FUNNY", "DISAGREE"]),
+          kind: z.enum([
+            "LOVE",
+            "FIRE",
+            "INSIGHTFUL",
+            "FUNNY",
+            "WOW",
+            "DISAGREE",
+          ]),
         })
         .refine(
           (value) => Boolean(value.takeId) !== Boolean(value.commentId),

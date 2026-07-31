@@ -5,7 +5,7 @@ import { fetchScoreboardsForTab } from "@/lib/sports/espn";
 
 export const metadata: Metadata = {
   title: "Search",
-  description: "Find fans, games, communities, and debates.",
+  description: "Find teams, leagues, games, debates, takes, and Flash Threads.",
   // Every query variant is thin/personalized; only the bare route is worth
   // indexing (docs/pages/SEARCH.md: "Page and all query variants use
   // noindex; canonical is /search without query").
@@ -49,9 +49,13 @@ export default async function SearchPage({
       <PageHeading
         eyebrow="Across FanTakes"
         title="Search"
-        description="Find fans, games, communities, and debates."
+        description="Find teams, leagues, games, debates, takes, and Flash Threads."
       />
-      <SearchPanel initialQuery={q} initialType={type} trendingSearches={trending} />
+      <SearchPanel
+        initialQuery={q}
+        initialType={type}
+        trendingSearches={trending}
+      />
     </>
   );
 }

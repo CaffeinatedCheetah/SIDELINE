@@ -463,6 +463,12 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     await request("POST", "votes", { takeId: ids.take, kind: "DISAGREE" });
     expect(await db.vote.count({ where: { takeId: ids.take } })).toBe(1);
     await request("POST", "reactions", { takeId: ids.take, kind: "FIRE" });
+    await request("POST", "reactions", { takeId: ids.take, kind: "WOW" });
+    expect(
+      await db.reaction.count({
+        where: { takeId: ids.take, kind: { in: ["FIRE", "WOW"] } },
+      }),
+    ).toBe(2);
     await request("POST", "saved-items", {
       kind: "TAKE",
       entityId: ids.take,
@@ -619,16 +625,20 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     const tooShort = await get("search?q=i&type=all");
     expect(tooShort.body.data).toEqual({
       users: [],
+      teams: [],
+      leagues: [],
       games: [],
       communities: [],
       debates: [],
+      takes: [],
+      flashThreads: [],
     });
     const debates = await get(
       `search?q=${encodeURIComponent("integration game")}&type=debates`,
     );
     const debateData = debates.body.data as { debates: { id: string }[] };
     expect(debateData.debates.map((d) => d.id)).toContain(ids.debate);
-    // A debates-typed search must not also run the people/games/communities
+    // A debates-typed search must not also run other content queries
     // queries -- only the requested type comes back populated.
     expect((debates.body.data as Record<string, unknown[]>).users).toEqual([]);
     const people = await get(
@@ -640,9 +650,11 @@ databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
     expect(peopleData.users.map((u) => u.handle)).toContain(
       `verified-${suffix}`,
     );
-    // Authored takes are deferred pending privacy/moderation review
-    // (docs/pages/SEARCH.md) -- the response shape must never include them.
-    expect(debates.body.data).not.toHaveProperty("takes");
+    const takes = await get(
+      `search?q=${encodeURIComponent("database-backed")}&type=takes`,
+    );
+    const takeData = takes.body.data as { takes: { id: string }[] };
+    expect(takeData.takes.map((take) => take.id)).toContain(ids.take);
   });
 
   it("creates polls and prevents duplicate votes", async () => {

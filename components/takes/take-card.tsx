@@ -1,9 +1,12 @@
 "use client";
-import { Flame, MessageCircle, Share2 } from "lucide-react";
+import { MessageCircle, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { apiAction } from "@/components/actions/api-action";
 import { TakeComposer } from "@/components/actions/take-composer";
+import {
+  ReactionPicker,
+  type LiveReactionKind,
+} from "@/components/reactions/reaction-picker";
 import { Avatar, Card } from "@/components/ui/foundations";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { Modal } from "@/components/ui/modal";
@@ -17,6 +20,9 @@ export interface TakeCardProps {
   createdAtIso?: string;
   reactions: number;
   replies: number;
+  initialReactionCounts?: Partial<Record<LiveReactionKind, number>>;
+  initialReactionKinds?: LiveReactionKind[];
+  /** Backward-compatible Fire state for existing server read models. */
   initialReacted?: boolean;
 }
 export function TakeCard({
@@ -28,32 +34,12 @@ export function TakeCard({
   createdAtIso,
   reactions,
   replies,
+  initialReactionCounts,
+  initialReactionKinds,
   initialReacted = false,
 }: TakeCardProps) {
-  const [reacted, setReacted] = useState(initialReacted);
-  const [reactionCount, setReactionCount] = useState(reactions);
-  const [reacting, setReacting] = useState(false);
   const [replyCount, setReplyCount] = useState(replies);
   const [shared, setShared] = useState(false);
-
-  async function toggleReaction() {
-    if (reacting) return;
-    setReacting(true);
-    const nextReacted = !reacted;
-    setReacted(nextReacted);
-    setReactionCount((count) => count + (nextReacted ? 1 : -1));
-    try {
-      await apiAction("reactions", { takeId: id, kind: "FIRE" });
-    } catch (error) {
-      // Roll back on failure (including the redirect-to-sign-in case, where
-      // the count should never have moved in the first place).
-      setReacted(!nextReacted);
-      setReactionCount((count) => count + (nextReacted ? -1 : 1));
-      if (error instanceof Error && error.message === "AUTH_REQUIRED") return;
-    } finally {
-      setReacting(false);
-    }
-  }
 
   async function share() {
     try {
@@ -96,16 +82,14 @@ export function TakeCard({
         )}
         <p className="mt-3 text-base leading-6 whitespace-pre-wrap">{body}</p>
         <footer className="border-border-subtle mt-4 flex items-center gap-1 border-t pt-2">
-          <button
-            aria-label={`${reacted ? "Remove flame" : "Give flame"}, ${formatCount(reactionCount)} total`}
-            aria-pressed={reacted}
-            disabled={reacting}
-            onClick={toggleReaction}
-            className={`hover:bg-surface-3 flex min-h-11 items-center gap-2 rounded-sm px-3 text-sm disabled:opacity-60 ${reacted ? "text-brand" : ""}`}
-          >
-            <Flame aria-hidden className="size-5" fill={reacted ? "currentColor" : "none"} />
-            {formatCount(reactionCount)}
-          </button>
+          <ReactionPicker
+            takeId={id}
+            initialTotal={reactions}
+            initialCounts={initialReactionCounts}
+            initialActive={
+              initialReactionKinds ?? (initialReacted ? ["FIRE"] : [])
+            }
+          />
           <Modal
             title="Reply"
             description={`Replying to ${author.displayName}.`}

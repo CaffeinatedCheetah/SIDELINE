@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { DebateVote } from "@/components/actions/debate-vote";
 import { TakeComposer } from "@/components/actions/take-composer";
+import { TakeCard } from "@/components/takes/take-card";
 import { PageHeading } from "@/components/layout/page-heading";
 import { Card, EmptyState } from "@/components/ui/foundations";
 import { db } from "@/lib/db/client";
@@ -39,7 +40,18 @@ export default async function DebateDetail({
         },
         takes: {
           where: { status: "ACTIVE" },
-          include: { author: { select: { displayName: true } } },
+          orderBy: [{ reactions: { _count: "desc" } }, { createdAt: "desc" }],
+          take: 12,
+          include: {
+            author: {
+              select: {
+                handle: true,
+                displayName: true,
+                image: true,
+              },
+            },
+            _count: { select: { reactions: true, replies: true } },
+          },
         },
       },
     }),
@@ -77,36 +89,74 @@ export default async function DebateDetail({
             initialSelected={myVote?.debateOptionId ?? undefined}
             disabled={debate.status !== "OPEN"}
           />
-          {debate.options.map((option) => (
-            <Card key={option.id} className="flex items-center justify-between">
-              <div>
-                <h3 className="font-bold">{option.label}</h3>
-                <p className="text-text-secondary text-sm">
-                  {option.description}
-                </p>
-              </div>
-              <strong>
-                {total ? Math.round((option._count.votes / total) * 100) : 0}%
-              </strong>
-            </Card>
-          ))}
+          {debate.options.map((option) => {
+            const percentage = total
+              ? Math.round((option._count.votes / total) * 100)
+              : 0;
+            const leading =
+              total > 0 &&
+              option._count.votes ===
+                Math.max(...debate.options.map((item) => item._count.votes));
+            return (
+              <Card
+                key={option.id}
+                className={`overflow-hidden rounded-xl ${leading ? "border-success/45 bg-success/8" : ""}`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold">
+                      {option.label}
+                      {leading ? (
+                        <span className="text-success ml-2 text-xs uppercase">
+                          Leading
+                        </span>
+                      ) : null}
+                    </h3>
+                    <p className="text-text-secondary text-sm">
+                      {option.description}
+                    </p>
+                  </div>
+                  <strong className="font-display text-2xl">
+                    {percentage}%
+                  </strong>
+                </div>
+                <div
+                  className="bg-surface-3 mt-3 h-2 overflow-hidden rounded-full"
+                  aria-label={`${option.label}: ${option._count.votes} votes`}
+                >
+                  <span
+                    className={`block h-full rounded-full ${leading ? "bg-success" : "bg-brand"}`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </Card>
+            );
+          })}
           <h2 className="font-display mt-6 text-2xl font-black">
             Counter-takes
           </h2>
           <TakeComposer debateId={debate.id} />
           {debate.takes.length ? (
             debate.takes.map((take) => (
-              <Card key={take.id}>
-                <p>{take.body}</p>
-                <p className="text-text-muted mt-2 text-sm">
-                  — {take.author.displayName}
-                </p>
-              </Card>
+              <TakeCard
+                key={take.id}
+                id={take.id}
+                author={{
+                  handle: take.author.handle,
+                  displayName: take.author.displayName,
+                  avatarUrl: take.author.image,
+                }}
+                body={take.body}
+                createdAt=""
+                createdAtIso={take.createdAt.toISOString()}
+                reactions={take._count.reactions}
+                replies={take._count.replies}
+              />
             ))
           ) : (
             <EmptyState
               title="No counter-takes yet"
-              description="Sign in to add evidence or challenge an assumption."
+              description="Be the first fan to spark this debate with a clear argument."
             />
           )}
         </section>

@@ -82,9 +82,11 @@ enum VoteKind {
 }
 
 enum ReactionKind {
+  LOVE
   FIRE
   INSIGHTFUL
   FUNNY
+  WOW
   DISAGREE
 }
 

@@ -19,8 +19,9 @@ describe("content cards", () => {
     );
     expect(screen.getByRole("article")).toHaveTextContent("Defense wins this.");
     expect(
-      screen.getByRole("button", { name: "Give flame, 12 total" }),
+      screen.getByRole("button", { name: "Add Fire reaction" }),
     ).toBeEnabled();
+    expect(screen.getByLabelText("12 reactions")).toBeInTheDocument();
   });
 
   it("calculates debate percentages from votes", () => {
@@ -37,6 +38,7 @@ describe("content cards", () => {
       />,
     );
     expect(screen.getByText("75%")).toBeInTheDocument();
+    expect(screen.getByText("Leading opinion: Detroit")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Who wins?" })).toHaveAttribute(
       "href",
       "/debates/d1",

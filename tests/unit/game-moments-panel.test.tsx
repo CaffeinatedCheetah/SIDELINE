@@ -44,7 +44,7 @@ describe("GameMomentsPanel", () => {
     expect(screen.getAllByRole("heading", { name: moment.title })).toHaveLength(
       2,
     );
-    expect(screen.getAllByText("Bottom 5th")).toHaveLength(2);
+    expect(screen.getAllByText("Bottom 5th")).toHaveLength(3);
     expect(screen.getByLabelText("Add your take")).toBeInTheDocument();
     expect(screen.getByText("Takes")).toBeInTheDocument();
     expect(screen.getAllByText("1–2")).toHaveLength(2);
@@ -58,6 +58,13 @@ describe("GameMomentsPanel", () => {
     ).toBeInTheDocument();
     expect(
       document.querySelector("[data-featured-flash-thread]"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Activity timeline" }),
+    ).toBeInTheDocument();
+    expect(document.querySelector("[data-live-activity]")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-activity-kind="thread"]'),
     ).toBeInTheDocument();
   });
 
@@ -75,6 +82,9 @@ describe("GameMomentsPanel", () => {
       screen.getByText(
         "Major game moments will appear here as the action unfolds.",
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("No one has started the conversation yet."),
     ).toBeInTheDocument();
   });
 
