@@ -4,6 +4,7 @@ import {
   GameStatus,
   HallPeriod,
 } from "@prisma/client";
+import { seedOfficialCommunities } from "./scripts/seed-official-communities.shared";
 
 const db = new PrismaClient();
 
@@ -268,6 +269,8 @@ async function main() {
       reasons: { quality: 0.9, conversation: 0.8, trust: 0.75 },
     },
   });
+
+  await seedOfficialCommunities(db);
 
   console.info("Seeded FanTakes development data. All records are demo-only.");
 }

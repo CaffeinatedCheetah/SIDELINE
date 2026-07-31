@@ -14,8 +14,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/foundations";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
-import { materializeContest } from "@/lib/sports/materializer";
-import { getSportsSchedule } from "@/lib/sports/service";
 import { getSupportedLeague } from "@/lib/sports/leagues";
 import {
   getGameFlashThreads,
@@ -71,30 +69,6 @@ export async function generateMetadata({
   };
 }
 
-async function refreshFromProviderIfMaterialized(
-  game: NonNullable<Awaited<ReturnType<typeof getGame>>>,
-) {
-  if (
-    !game.providerRef ||
-    ["FINAL", "POSTPONED", "CANCELLED"].includes(game.status)
-  )
-    return game;
-  try {
-    const schedule = await getSportsSchedule({
-      leagueKeys: [game.league.key],
-    });
-    const contest = schedule.contests.find(
-      (candidate) =>
-        candidate.id === game.providerRef ||
-        game.providerRef?.endsWith(`-${candidate.providerGameId}`),
-    );
-    if (!contest) return game;
-    return { ...game, ...(await materializeContest(contest)) };
-  } catch {
-    return game;
-  }
-}
-
 export default async function GameRoom({
   params,
 }: {
@@ -103,7 +77,10 @@ export default async function GameRoom({
   const { gameId } = await params;
   const [session, rawGame] = await Promise.all([auth(), getGame(gameId)]);
   if (!rawGame) notFound();
-  const game = await refreshFromProviderIfMaterialized(rawGame);
+  // Render from the canonical database row. Provider refreshes happen through
+  // the sync pipeline and client polling, which keeps the initial route
+  // render from stalling behind ESPN/network work.
+  const game = rawGame;
   const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";
 
   const [myPollVotes, myGameFollow] = session?.user?.id

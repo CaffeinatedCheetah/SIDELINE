@@ -9,6 +9,7 @@ import { HallOfFlamePreviewSection } from "@/components/home/hall-of-flame-previ
 import { ExploreLeaguesSection } from "@/components/home/explore-leagues-section";
 import { LiveRightNowSection } from "@/components/home/live-right-now-section";
 import { MySidelineSection } from "@/components/home/my-sideline-section";
+import { ScoutSection } from "@/components/home/scout-section";
 import { TodaysScheduleSection } from "@/components/home/todays-schedule-section";
 import { ProfileCard } from "@/components/profile/profile-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -269,6 +270,7 @@ export default async function Home() {
           </>
         ) : null}
         <ExploreLeaguesSection leagues={leagueHub.leagues} />
+        <ScoutSection />
         {data.followingTakes.length ? (
           <Section title="From fans you follow" href="/discover">
             {data.followingTakes.map((take) => (

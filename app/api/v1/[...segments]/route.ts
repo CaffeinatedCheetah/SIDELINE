@@ -18,8 +18,6 @@ import {
 import { assertPredictionOpen } from "@/lib/services/predictions";
 import { runHallOfFlameJob } from "@/lib/services/hall-of-flame-job";
 import { getCanonicalGame } from "@/lib/sports/game-domain";
-import { materializeContests } from "@/lib/sports/materializer";
-import { getSportsSchedule } from "@/lib/sports/service";
 import { createTake, TakeCreationError } from "@/lib/takes/create-take";
 
 type Context = { params: Promise<{ segments: string[] }> };
@@ -100,27 +98,6 @@ async function handleGet(request: Request, context: Context) {
   };
 
   if (resource === "games" && segments[1]) {
-    const current = await db.game.findUnique({
-      where: { id: segments[1] },
-      select: {
-        providerRef: true,
-        status: true,
-        league: { select: { key: true } },
-      },
-    });
-    if (current?.providerRef && current.status !== "FINAL") {
-      try {
-        const schedule = await getSportsSchedule({
-          leagueKeys: [current.league.key],
-        });
-        const contest = schedule.contests.find(
-          (candidate) => candidate.id === current.providerRef,
-        );
-        if (contest) await materializeContests([contest]);
-      } catch {
-        // The persisted Game Room remains available during provider failures.
-      }
-    }
     const game = await getCanonicalGame(segments[1]);
     const userId = game ? await identity() : undefined;
     const following =
