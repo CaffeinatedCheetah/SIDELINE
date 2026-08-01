@@ -2,20 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { checkRateLimit, rateLimitKey } from "@/lib/api/rate-limit";
 import { callClaude, parseJSON } from "@/lib/services/scout-content";
+import { gatherSportsBrief } from "@/lib/services/scout-news";
+import type { SportsBrief } from "@/lib/services/scout-news";
 
-// SCOUT (Prisma-based rebuild). Replaces api/agent-scout.js's breaking-news/
-// viral-scan/SEO/repurpose/publisher tasks with a single job: seed the
-// platform with real Take/Debate rows so it isn't empty for early users.
-// api/agent-scout.js and its cron entry are removed; the other agent-*.js
-// crons (agent-pulse, agent-social, agent-hunter, agent-rivals, push-notify)
-// are untouched -- they still share _claude-api.js/_scout-memory.js with
-// each other and are out of scope here.
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const BOT_EMAIL = "scout@fantakes.local";
 const BOT_HANDLE = "fantakes-bot";
-const MAX_TAKES_PER_DAY = 5;
+const MAX_TAKES_PER_DAY = 8;
 const TAKE_MAX_LENGTH = 1000;
 
 function startOfUtcDay(date = new Date()) {
@@ -60,8 +55,6 @@ async function ensureBotUser() {
       onboardedAt: new Date(),
       profile: {
         create: {
-          // Honest disclosure per this project's own "platform-generated
-          // content must be labeled" standard -- not just an internal flag.
           bio: "Automated account. Takes and debates posted here are AI-generated conversation starters, not news, analysis, or advice.",
           favoriteSports: [],
           favoriteTeams: [],
@@ -71,80 +64,80 @@ async function ensureBotUser() {
   });
 }
 
-type TodaysGame = {
-  id: string;
-  homeTeam: { name: string };
-  awayTeam: { name: string };
-  league: { abbreviation: string };
-};
+const SYSTEM_PROMPT = `You are FanTakes Scout, a sports fan who watches EVERYTHING — NFL, NBA, MLB, NHL, MLS, WNBA, college football, UFC/MMA, soccer, F1, boxing, tennis. You react to what's happening RIGHT NOW like a real fan scrolling Twitter and Reddit.
 
-async function todaysGames(): Promise<TodaysGame[]> {
-  const start = startOfUtcDay();
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-  return db.game.findMany({
-    where: { scheduledAt: { gte: start, lt: end } },
-    orderBy: { scheduledAt: "asc" },
-    take: 10,
-    select: {
-      id: true,
-      homeTeam: { select: { name: true } },
-      awayTeam: { select: { name: true } },
-      league: { select: { abbreviation: true } },
-    },
-  });
+Your takes should sound like someone who:
+- Just watched the game and has OPINIONS
+- Reads r/nba, r/nfl, r/baseball, r/soccer, r/mma
+- Knows the storylines, rivalries, and context
+- Has strong but fun takes, not boring analysis
+- Uses specific player names, team names, and real situations
+- Covers DIFFERENT sports in each batch (not all NBA or all NFL)
+
+You are NOT a news source. Frame everything as opinion, prediction, or question.
+Never invent specific scores or stats unless given to you.
+Keep takes under 260 characters — punchy, not essays.`;
+
+function buildPrompt(brief: SportsBrief): string {
+  const sections: string[] = [];
+
+  if (brief.liveGames.length > 0) {
+    sections.push("=== LIVE RIGHT NOW ===");
+    for (const g of brief.liveGames.slice(0, 10)) {
+      sections.push(`[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}${g.situation ? ` | ${g.situation}` : ""}`);
+    }
+  }
+
+  if (brief.recentResults.length > 0) {
+    sections.push("\n=== FINAL SCORES (today) ===");
+    for (const g of brief.recentResults.slice(0, 10)) {
+      sections.push(`[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}`);
+    }
+  }
+
+  if (brief.headlines.length > 0) {
+    sections.push("\n=== BREAKING / TRENDING NEWS ===");
+    for (const h of brief.headlines.slice(0, 15)) {
+      sections.push(`[${h.sport}] ${h.title} (${h.source})`);
+    }
+  }
+
+  if (brief.redditTrending.length > 0) {
+    sections.push("\n=== HOT ON REDDIT ===");
+    for (const r of brief.redditTrending.slice(0, 10)) {
+      sections.push(`r/${r.subreddit} (⬆${r.score}): ${r.title}`);
+    }
+  }
+
+  const hasData = sections.length > 0;
+
+  return `${hasData ? sections.join("\n") : "No live data available right now."}
+
+Based on what's ACTUALLY happening above, write:
+
+1. 5 short fan takes (each under 260 characters). REQUIREMENTS:
+   - Each take MUST reference a specific team, player, or event from the data above
+   - Cover at LEAST 3 different sports/leagues across your 5 takes
+   - React like a fan who just saw this happen — not generic "hot takes"
+   - Mix of: game reactions, bold predictions, spicy opinions, trash talk, hype
+   - Use emojis sparingly (1 max per take, or none)
+
+2. One debate: a question fans would actually argue about RIGHT NOW based on the news above.
+   - title: under 130 chars, framed as a question
+   - prompt: 1-2 sentence setup, under 300 chars
+   - teamA / teamB: two opposing positions (can be team names or stance labels)
+
+3. One community discussion starter (under 260 chars): an open question that could spark a real thread.
+
+Return ONLY JSON:
+{"takes":["...","...","...","...","..."],"debate":{"title":"...","prompt":"...","teamA":"...","teamB":"..."},"communityStarter":"..."}`;
 }
-
-const SYSTEM_PROMPT = `You are FanTakes Scout, an automated content account for a sports fan
-community platform. You write short, opinionated conversation-starters to
-seed discussion. You are NOT a news source: never state specific scores,
-injuries, stats, or events as fact unless they were explicitly given to you
-in this prompt. Frame everything as opinion, prediction, or an open
-question -- never invent facts.`;
 
 type GeneratedContent = {
   takes?: string[];
   debate?: { title?: string; prompt?: string; teamA?: string; teamB?: string };
   communityStarter?: string;
 };
-
-async function generateContent(games: TodaysGame[]) {
-  const prompt = games.length
-    ? `Today's real games:
-${games.map((g) => `- ${g.league.abbreviation}: ${g.awayTeam.name} at ${g.homeTeam.name}`).join("\n")}
-
-Write:
-1. 3 short fan takes (each under 260 characters), each a strong opinion or
-   prediction about ONE of the matchups listed above. Use the exact team
-   names given. Do not invent scores, injuries, or stats.
-2. One debate: a short title framed as a question (under 130 characters),
-   a one-sentence setup prompt (under 300 characters), and pick exactly one
-   matchup from the list as the two debate options (teamA/teamB must be the
-   exact team names from the list).
-3. One community discussion-starter take (under 260 characters): an
-   open-ended, evergreen sports question NOT tied to a specific unconfirmed
-   live event.
-
-Return ONLY JSON, no other text:
-{"takes":["...","...","..."],"debate":{"title":"...","prompt":"...","teamA":"...","teamB":"..."},"communityStarter":"..."}`
-    : `No real game data is available right now. Write general, evergreen sports
-fan content instead -- do not invent specific games, scores, or events.
-
-Write:
-1. 3 short fan takes (each under 260 characters), general sports opinions or
-   hot takes not tied to any specific unconfirmed game or event.
-2. One debate: a short title framed as a question (under 130 characters), a
-   one-sentence setup prompt (under 300 characters), and two distinct
-   opposing position labels (teamA/teamB, under 80 characters each) fans
-   could pick between.
-3. One community discussion-starter take (under 260 characters): an
-   open-ended, evergreen sports question.
-
-Return ONLY JSON, no other text:
-{"takes":["...","...","..."],"debate":{"title":"...","prompt":"...","teamA":"...","teamB":"..."},"communityStarter":"..."}`;
-
-  const text = await callClaude({ prompt, system: SYSTEM_PROMPT, maxTokens: 900 });
-  return parseJSON<GeneratedContent>(text);
-}
 
 async function recentBotTakeBodies(botId: string) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -155,19 +148,16 @@ async function recentBotTakeBodies(botId: string) {
   return new Set(rows.map((row) => row.body.trim().toLowerCase()));
 }
 
-async function topCommunity() {
+async function randomActiveCommunity() {
   const communities = await db.community.findMany({
     where: { status: "ACTIVE" },
-    include: { _count: { select: { members: true } } },
-    orderBy: { members: { _count: "desc" } },
-    take: 1,
+    select: { id: true },
   });
-  return communities[0] ?? null;
+  if (communities.length === 0) return null;
+  return communities[Math.floor(Math.random() * communities.length)];
 }
 
 export async function GET(request: Request) {
-  // Vercel sets CRON_SECRET automatically when a project has one configured;
-  // this check is a no-op (route stays reachable) until that env var is set.
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
     const auth = request.headers.get("authorization");
@@ -176,7 +166,7 @@ export async function GET(request: Request) {
   }
 
   const rateLimit = await checkRateLimit(rateLimitKey(request, "scout"), {
-    limit: 2,
+    limit: 4,
     windowMs: 60 * 60_000,
   });
   if (!rateLimit.allowed)
@@ -206,20 +196,23 @@ export async function GET(request: Request) {
       reason: "Daily content cap already reached",
     });
 
-  const games = await todaysGames();
-  const generated = await generateContent(games);
+  // Gather real-time sports data from ESPN, Reddit, and RSS
+  const brief = await gatherSportsBrief();
+  const prompt = buildPrompt(brief);
+
+  const text = await callClaude({ prompt, system: SYSTEM_PROMPT, maxTokens: 1200 });
+  const generated = parseJSON<GeneratedContent>(text);
+
   if (!generated)
     return NextResponse.json(
-      { ok: false, error: "Content generation returned no usable JSON" },
+      { ok: false, error: "Content generation returned no usable JSON", sourcesScanned: { liveGames: brief.liveGames.length, headlines: brief.headlines.length, reddit: brief.redditTrending.length } },
       { status: 200 },
     );
 
   const seenRecently = await recentBotTakeBodies(bot.id);
-  const created = { takes: [] as string[], debate: null as string | null, communityStarter: null as string | null };
+  const created = { takes: [] as string[], debate: null as string | null, communityStarter: null as string | null, sourcesScanned: { liveGames: brief.liveGames.length, results: brief.recentResults.length, headlines: brief.headlines.length, reddit: brief.redditTrending.length } };
   let remaining = MAX_TAKES_PER_DAY - takesToday;
 
-  // Regular takes -- never override or reference other users' content,
-  // pure inserts only.
   for (const raw of generated.takes ?? []) {
     if (remaining <= 0) break;
     const body = raw.trim().slice(0, TAKE_MAX_LENGTH);
@@ -230,13 +223,10 @@ export async function GET(request: Request) {
     remaining--;
   }
 
-  // Debate -- grounded in a real matchup when games exist; skip rather than
-  // post malformed content if the model's output doesn't fit the schema's
-  // real constraints (title 10-140, prompt 20-2000, 2 distinct options).
   if (debateToday === 0 && generated.debate) {
-    const { title, prompt, teamA, teamB } = generated.debate;
+    const { title, prompt: debatePrompt, teamA, teamB } = generated.debate;
     const validTitle = title?.trim().slice(0, 140) ?? "";
-    const validPrompt = prompt?.trim().slice(0, 2000) ?? "";
+    const validPrompt = debatePrompt?.trim().slice(0, 2000) ?? "";
     const options = [teamA?.trim(), teamB?.trim()].filter(
       (value): value is string => Boolean(value) && value!.length <= 80,
     );
@@ -270,11 +260,8 @@ export async function GET(request: Request) {
     }
   }
 
-  // Community discussion starter -- ensures bot membership first (a take
-  // with a communityId requires active membership, same rule real users
-  // follow) rather than bypassing that check for itself.
   if (remaining > 0 && generated.communityStarter) {
-    const community = await topCommunity();
+    const community = await randomActiveCommunity();
     if (community) {
       await db.communityMember.upsert({
         where: { communityId_userId: { communityId: community.id, userId: bot.id } },
