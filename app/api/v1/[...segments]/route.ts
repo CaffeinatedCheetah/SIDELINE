@@ -16,6 +16,7 @@ import {
   reverseFanScoreEvent,
 } from "@/lib/scoring/fan-score";
 import { assertPredictionOpen } from "@/lib/services/predictions";
+import { ensureLivePredictions, voteLivePrediction } from "@/lib/services/live-predictions";
 import { runHallOfFlameJob } from "@/lib/services/hall-of-flame-job";
 import { getCanonicalGame } from "@/lib/sports/game-domain";
 import { materializeContests } from "@/lib/sports/materializer";
@@ -99,6 +100,21 @@ async function handleGet(request: Request, context: Context) {
     ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
   };
 
+  if (resource === "live-predictions" && segments[1]) {
+    const game = await db.game.findUnique({ where: { id: segments[1] } });
+    if (!game) return apiError("NOT_FOUND", "Game not found.", 404);
+    const predictions = await ensureLivePredictions(db, game.id);
+    const userId = await identity();
+    return apiSuccess(predictions.map((prediction) => ({
+      ...prediction,
+      totalVotes: prediction.votes.length,
+      distribution: prediction.status === "LOCKED" || prediction.status === "RESOLVED" || prediction.status === "ARCHIVED"
+        ? prediction.votes.reduce<Record<string, number>>((counts, vote) => ({ ...counts, [vote.option]: (counts[vote.option] ?? 0) + 1 }), {})
+        : undefined,
+      myOption: userId ? prediction.votes.find((vote) => vote.userId === userId)?.option ?? null : null,
+      votes: undefined,
+    })));
+  }
   if (resource === "games" && segments[1]) {
     const current = await db.game.findUnique({
       where: { id: segments[1] },
@@ -1165,6 +1181,18 @@ async function handlePost(request: Request, context: Context) {
       )
         throw error;
       return apiError("DUPLICATE_VOTE", "You already voted in this poll.", 409);
+    }
+  }
+  if (resource === "live-prediction-votes") {
+    const parsed = await parseJson(request, z.object({ predictionId: z.string().uuid(), option: z.string().min(1).max(100) }));
+    if (!parsed.success) return apiError("INVALID_REQUEST", "Invalid prediction vote.", 400, parsed.error.flatten());
+    try {
+      const vote = await voteLivePrediction(db, parsed.data.predictionId, userId, parsed.data.option);
+      return apiSuccess(vote, 201);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return apiError("DUPLICATE_VOTE", "You already voted on this prediction.", 409);
+      if (error instanceof Error && ["PREDICTION_LOCKED", "INVALID_OPTION"].includes(error.message)) return apiError(error.message, error.message === "PREDICTION_LOCKED" ? "This prediction is locked." : "That answer is unavailable.", 409);
+      throw error;
     }
   }
   if (resource === "predictions") {

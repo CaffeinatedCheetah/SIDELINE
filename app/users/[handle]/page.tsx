@@ -40,6 +40,10 @@ const getProfileUser = cache(async (handle: string) => {
           location: true,
           favoriteSports: true,
           favoriteTeams: true,
+          predictionCurrentStreak: true,
+          predictionBestStreak: true,
+          predictionCorrect: true,
+          predictionTotal: true,
         },
       },
       preferences: { select: { privacySettings: true } },
@@ -276,6 +280,8 @@ export default async function ProfilePage({
         resolvedCount={resolvedCount}
         correctCount={correctCount}
         badges={user.badges}
+        currentStreak={user.profile?.predictionCurrentStreak ?? 0}
+        bestStreak={user.profile?.predictionBestStreak ?? 0}
       />
       <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_280px]">
         <div className="min-w-0">
@@ -473,6 +479,8 @@ function ReputationSummary({
   resolvedCount: number;
   correctCount: number;
   badges: ProfileUser["badges"];
+  currentStreak: number;
+  bestStreak: number;
 }) {
   const accuracy = resolvedCount
     ? Math.round((correctCount / resolvedCount) * 100)
@@ -492,6 +500,8 @@ function ReputationSummary({
               : undefined
           }
         />
+        <Stat label="Current streak" value={currentStreak} />
+        <Stat label="Best streak" value={bestStreak} />
         <Stat label="Badges earned" value={badges.length} />
       </div>
       <details className="text-text-secondary mt-4 text-sm">

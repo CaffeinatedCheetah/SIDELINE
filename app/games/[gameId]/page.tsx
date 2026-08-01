@@ -8,6 +8,7 @@ import { TakeComposer } from "@/components/actions/take-composer";
 import { LiveGameRoom } from "@/components/games/live-game-room";
 import { GameRoomPhase } from "@/components/games/game-room-phase";
 import { GameMomentsPanel } from "@/components/games/game-moments-panel";
+import { LivePredictionsPanel } from "@/components/games/live-predictions-panel";
 import { PageHeading } from "@/components/layout/page-heading";
 import { PollVoteCard } from "@/components/games/poll-vote-card";
 import { TakeCard } from "@/components/takes/take-card";
@@ -276,6 +277,7 @@ export default async function GameRoom({
         />
       ) : null}
       <GameRoomPhase phase={game.status} />
+      <LivePredictionsPanel gameId={game.id} signedIn={Boolean(session?.user?.id)} />
       <GameMomentsPanel
         gameId={game.id}
         phase={game.status}

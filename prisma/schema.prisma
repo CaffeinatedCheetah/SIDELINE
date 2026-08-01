@@ -48,6 +48,13 @@ enum FlashThreadStatus {
   ACTIVE
   ARCHIVED
 }
+enum LivePredictionStatus {
+  UPCOMING
+  OPEN
+  LOCKED
+  RESOLVED
+  ARCHIVED
+}
 
 enum ContentStatus {
   ACTIVE
@@ -213,6 +220,7 @@ model User {
   reactions            Reaction[]
   pollVotes            PollVote[]
   predictions          Prediction[]
+  livePredictionVotes  LivePredictionVote[]
   followers            Follow[]           @relation("Followed")
   following            Follow[]           @relation("Follower")
   notifications        Notification[]     @relation("NotificationRecipient")
@@ -284,6 +292,8 @@ model Profile {
   reputation        Int      @default(0)
   predictionCorrect Int      @default(0)
   predictionTotal   Int      @default(0)
+  predictionCurrentStreak Int @default(0)
+  predictionBestStreak    Int @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -387,6 +397,7 @@ model Game {
   takes                  Take[]
   polls                  Poll[]
   predictions            Prediction[]
+  livePredictions       LivePrediction[]
   debates                Debate[]
   follows                GameFollow[]
   moments                GameMoment[]
@@ -419,6 +430,7 @@ model GameMoment {
   updatedAt   DateTime       @updatedAt
   game        Game           @relation(fields: [gameId], references: [id], onDelete: Cascade)
   flashThread FlashThread?
+  predictionResolutions LivePrediction[]
 
   @@unique([provider, providerRef])
   @@index([gameId, occurredAt])
@@ -739,6 +751,41 @@ model PredictionResult {
   prediction        Prediction           @relation(fields: [predictionId], references: [id], onDelete: Cascade)
 }
 
+model LivePrediction {
+  id             String               @id @default(uuid()) @db.Uuid
+  gameId         String               @db.Uuid
+  templateKey    String
+  question       String               @db.VarChar(280)
+  options        Json
+  lockAt         DateTime
+  status         LivePredictionStatus @default(UPCOMING)
+  correctOption  String?
+  sourceMomentId String?              @db.Uuid
+  resolvedAt     DateTime?
+  archivedAt     DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  game           Game                  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  sourceMoment   GameMoment?           @relation(fields: [sourceMomentId], references: [id], onDelete: SetNull)
+  votes          LivePredictionVote[]
+
+  @@unique([gameId, templateKey])
+  @@index([gameId, status, lockAt])
+  @@index([sourceMomentId])
+}
+
+model LivePredictionVote {
+  id           String         @id @default(uuid()) @db.Uuid
+  predictionId String         @db.Uuid
+  userId       String         @db.Uuid
+  option       String
+  createdAt    DateTime       @default(now())
+  prediction   LivePrediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([predictionId, userId])
+  @@index([predictionId, option])
+}
 model Follow {
   id         String   @id @default(uuid()) @db.Uuid
   followerId String   @db.Uuid
