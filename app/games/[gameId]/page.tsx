@@ -17,13 +17,9 @@ import { LocalDateTime } from "@/components/ui/local-date-time";
 import { db } from "@/lib/db/client";
 import { getAiConfig } from "@/lib/ai/config";
 import { gameRecapSchema } from "@/lib/ai/schemas/game-recap";
-import { materializeContest } from "@/lib/sports/materializer";
-import { getSportsSchedule } from "@/lib/sports/service";
+import { getGameLiveExperience } from "@/lib/games/live-experience";
+import { getFanLevel } from "@/lib/scoring/fan-level";
 import { getSupportedLeague } from "@/lib/sports/leagues";
-import {
-  getGameFlashThreads,
-  getGameMoments,
-} from "@/lib/sports/moments/read-model";
 
 export const dynamic = "force-dynamic";
 
@@ -74,30 +70,6 @@ export async function generateMetadata({
   };
 }
 
-async function refreshFromProviderIfMaterialized(
-  game: NonNullable<Awaited<ReturnType<typeof getGame>>>,
-) {
-  if (
-    !game.providerRef ||
-    ["FINAL", "POSTPONED", "CANCELLED"].includes(game.status)
-  )
-    return game;
-  try {
-    const schedule = await getSportsSchedule({
-      leagueKeys: [game.league.key],
-    });
-    const contest = schedule.contests.find(
-      (candidate) =>
-        candidate.id === game.providerRef ||
-        game.providerRef?.endsWith(`-${candidate.providerGameId}`),
-    );
-    if (!contest) return game;
-    return { ...game, ...(await materializeContest(contest)) };
-  } catch {
-    return game;
-  }
-}
-
 export default async function GameRoom({
   params,
 }: {
@@ -106,11 +78,11 @@ export default async function GameRoom({
   const { gameId } = await params;
   const [session, rawGame] = await Promise.all([auth(), getGame(gameId)]);
   if (!rawGame) notFound();
-  const game = await refreshFromProviderIfMaterialized(rawGame);
+  const game = rawGame;
   const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";
   const aiConfig = getAiConfig();
 
-  const [myPollVotes, myGameFollow] = session?.user?.id
+  const [myPollVotes, myGameFollow, viewerProfile] = session?.user?.id
     ? await Promise.all([
         db.pollVote.findMany({
           where: {
@@ -125,14 +97,17 @@ export default async function GameRoom({
           },
           select: { userId: true },
         }),
+        db.profile.findUnique({
+          where: { userId: session.user.id },
+          select: { reputation: true },
+        }),
       ])
-    : [[], null];
+    : [[], null, null];
   const votedOptionByPoll = new Map(
     myPollVotes.map((vote) => [vote.pollId, vote.pollOptionId]),
   );
-  const [moments, flashThreads, recapArtifact] = await Promise.all([
-    getGameMoments(game.id),
-    getGameFlashThreads(game.id),
+  const [liveExperience, recapArtifact] = await Promise.all([
+    getGameLiveExperience(game.id),
     game.status === "FINAL" && aiConfig.gameRecapsEnabled
       ? db.aiArtifact.findFirst({
           where: { type: "GAME_RECAP", entityType: "GAME", entityId: game.id },
@@ -145,45 +120,10 @@ export default async function GameRoom({
         })
       : null,
   ]);
-  const serializedMoments = (moments ?? []).map((moment) => ({
-    id: moment.id,
-    type: moment.type,
-    title: moment.title,
-    description: moment.description,
-    period: moment.period,
-    clock: moment.clock,
-    homeScore: moment.homeScore,
-    awayScore: moment.awayScore,
-    importance: moment.importance,
-    occurredAt: moment.occurredAt.toISOString(),
-  }));
-  const serializedThreads = (flashThreads ?? []).map((thread) => ({
-    id: thread.id,
-    title: thread.title,
-    status: thread.status,
-    moment: {
-      id: thread.moment.id,
-      type: thread.moment.type,
-      title: thread.moment.title,
-      description: thread.moment.description,
-      period: thread.moment.period,
-      clock: thread.moment.clock,
-      homeScore: thread.moment.homeScore,
-      awayScore: thread.moment.awayScore,
-      importance: thread.moment.importance,
-      occurredAt: thread.moment.occurredAt.toISOString(),
-    },
-    takes: thread.takes.map((take) => ({
-      id: take.id,
-      body: take.body,
-      createdAt: take.createdAt.toISOString(),
-      author: take.author,
-      _count: take._count,
-    })),
-    takeCount: thread.takeCount,
-    reactionCount: thread.reactionCount,
-    replyCount: thread.replyCount,
-  }));
+  if (!liveExperience) notFound();
+  const viewerLevel = viewerProfile
+    ? getFanLevel(viewerProfile.reputation)
+    : null;
 
   return (
     <div className="page-container py-10">
@@ -242,6 +182,9 @@ export default async function GameRoom({
         initialFollowerCount={game._count.follows}
         initialFollowing={Boolean(myGameFollow)}
         signedIn={Boolean(session?.user?.id)}
+        flashThreadCount={liveExperience.flashThreadCount}
+        activePredictionCount={liveExperience.activePredictionCount}
+        viewerLevelLabel={viewerLevel?.label ?? null}
       />
       {game.status === "FINAL" ? (
         <GameRecapPanel
@@ -280,8 +223,47 @@ export default async function GameRoom({
         gameId={game.id}
         phase={game.status}
         sportKey={sportKey}
-        initialMoments={serializedMoments}
-        initialThreads={serializedThreads}
+        initialMoments={liveExperience.moments!.map((moment) => ({
+          id: moment.id,
+          type: moment.type,
+          title: moment.title,
+          description: moment.description,
+          period: moment.period,
+          clock: moment.clock,
+          homeScore: moment.homeScore,
+          awayScore: moment.awayScore,
+          importance: moment.importance,
+          occurredAt: moment.occurredAt.toISOString(),
+        }))}
+        initialThreads={liveExperience.flashThreads!.map((thread) => ({
+          id: thread.id,
+          title: thread.title,
+          status: thread.status,
+          moment: {
+            id: thread.moment.id,
+            type: thread.moment.type,
+            title: thread.moment.title,
+            description: thread.moment.description,
+            period: thread.moment.period,
+            clock: thread.moment.clock,
+            homeScore: thread.moment.homeScore,
+            awayScore: thread.moment.awayScore,
+            importance: thread.moment.importance,
+            occurredAt: thread.moment.occurredAt.toISOString(),
+          },
+          takes: thread.takes.map((take) => ({
+            id: take.id,
+            body: take.body,
+            createdAt: take.createdAt.toISOString(),
+            author: take.author,
+            _count: take._count,
+          })),
+          takeCount: thread.takeCount,
+          reactionCount: thread.reactionCount,
+          replyCount: thread.replyCount,
+        }))}
+        initialPredictions={liveExperience.predictions}
+        initialActivity={liveExperience.activity}
       />
       <Tabs defaultValue="takes">
         <TabsList>

@@ -56,6 +56,31 @@ type FlashThread = {
   replyCount: number;
 };
 
+type LivePrediction = {
+  id: string;
+  selection: string;
+  status: "OPEN" | "LOCKED" | "RESOLVED" | "CANCELED";
+  locksAt: string;
+  submittedAt: string;
+  resolvedAt: string | null;
+  resolvedSelection: string | null;
+  outcome: "CORRECT" | "INCORRECT" | "VOID" | null;
+  user: { handle: string; displayName: string; image: string | null };
+};
+
+type LiveFeedItem = {
+  id: string;
+  kind: "moment" | "thread" | "take" | "prediction" | "milestone";
+  title: string;
+  detail?: string | null;
+  timestamp: string;
+  importance: number;
+  featured?: boolean;
+  score?: { away: number | null; home: number | null };
+  status?: string | null;
+  href?: string | null;
+};
+
 type MomentPresentation = {
   Icon: LucideIcon;
   label: string;
@@ -169,39 +194,125 @@ function MomentScore({ moment }: { moment: Moment }) {
   );
 }
 
+function predictionLabel(selection: string) {
+  if (selection === "home") return "picked the home team";
+  if (selection === "away") return "picked the away team";
+  return `picked ${selection}`;
+}
+
+function buildInitialActivity(
+  moments: Moment[],
+  threads: FlashThread[],
+  predictions: LivePrediction[],
+): LiveFeedItem[] {
+  const featuredThread = threads[0];
+  return [
+    ...(featuredThread
+      ? [
+          {
+            id: `thread:${featuredThread.id}`,
+            kind: "thread" as const,
+            title: featuredThread.title,
+            detail: `${featuredThread.takeCount} takes · ${featuredThread.reactionCount} reactions · ${featuredThread.replyCount} replies`,
+            timestamp:
+              featuredThread.createdAt ?? featuredThread.moment.occurredAt,
+            importance: featuredThread.moment.importance,
+            featured: true,
+            score: {
+              away: featuredThread.moment.awayScore,
+              home: featuredThread.moment.homeScore,
+            },
+            status: featuredThread.status,
+            href: null,
+          },
+        ]
+      : []),
+    ...moments
+      .filter((moment) => !threads.some((thread) => thread.moment.id === moment.id))
+      .map((moment) => ({
+        id: `moment:${moment.id}`,
+        kind: "moment" as const,
+        title: moment.title,
+        detail: moment.description,
+        timestamp: moment.occurredAt,
+        importance: moment.importance,
+        score: {
+          away: moment.awayScore,
+          home: moment.homeScore,
+        },
+        href: null,
+      })),
+    ...predictions.map((prediction) => ({
+      id: `prediction:${prediction.id}`,
+      kind: "prediction" as const,
+      title: `${prediction.user.displayName} ${predictionLabel(prediction.selection)}`,
+      detail:
+        prediction.outcome === "CORRECT"
+          ? "Correct"
+          : prediction.outcome === "INCORRECT"
+            ? "Incorrect"
+            : prediction.status,
+      timestamp: prediction.resolvedAt ?? prediction.submittedAt,
+      importance: prediction.outcome === "CORRECT" ? 95 : 40,
+      status: prediction.status,
+      href: null,
+    })),
+  ].sort((left, right) => {
+    const difference =
+      new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime();
+    if (difference !== 0) return difference;
+    return right.importance - left.importance;
+  });
+}
+
 export function GameMomentsPanel({
   gameId,
   phase,
   initialMoments,
   initialThreads,
+  initialPredictions = [],
+  initialActivity = [],
   sportKey,
 }: {
   gameId: string;
   phase: GamePhase;
   initialMoments: Moment[];
   initialThreads: FlashThread[];
+  initialPredictions?: LivePrediction[];
+  initialActivity?: LiveFeedItem[];
   sportKey?: string;
 }) {
   const [moments, setMoments] = useState(initialMoments);
   const [threads, setThreads] = useState(initialThreads);
+  const [predictions, setPredictions] = useState(initialPredictions);
+  const [activity, setActivity] = useState(
+    initialActivity.length
+      ? initialActivity
+      : buildInitialActivity(initialMoments, initialThreads, initialPredictions),
+  );
   const [updateState, setUpdateState] = useState<
     "current" | "checking" | "delayed"
   >("current");
+
   const refresh = useCallback(async () => {
     setUpdateState("checking");
     try {
-      const [momentsResponse, threadsResponse] = await Promise.all([
-        fetch(`/api/games/${gameId}/moments`, { cache: "no-store" }),
-        fetch(`/api/games/${gameId}/flash-threads`, { cache: "no-store" }),
-      ]);
-      if (!momentsResponse.ok || !threadsResponse.ok)
-        throw new Error("Moment refresh failed.");
-      const [momentBody, threadBody] = (await Promise.all([
-        momentsResponse.json(),
-        threadsResponse.json(),
-      ])) as [{ data: Moment[] }, { data: FlashThread[] }];
-      setMoments(momentBody.data);
-      setThreads(threadBody.data);
+      const response = await fetch(`/api/games/${gameId}/live-experience`, {
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Live feed refresh failed.");
+      const body = (await response.json()) as {
+        data: {
+          moments: Moment[];
+          flashThreads: FlashThread[];
+          predictions: LivePrediction[];
+          activity: LiveFeedItem[];
+        };
+      };
+      setMoments(body.data.moments);
+      setThreads(body.data.flashThreads);
+      setPredictions(body.data.predictions);
+      setActivity(body.data.activity);
       setUpdateState("current");
     } catch {
       setUpdateState("delayed");
@@ -215,68 +326,13 @@ export function GameMomentsPanel({
   }, [phase, refresh]);
 
   const archive = phase === "FINAL";
-  const featuredThread = useMemo(
-    () =>
-      [...threads]
-        .filter((thread) => archive || thread.status === "ACTIVE")
-        .sort(
-          (left, right) =>
-            new Date(right.moment.occurredAt).getTime() -
-            new Date(left.moment.occurredAt).getTime(),
-        )[0],
-    [archive, threads],
+  const featuredThread = activity.find(
+    (item) => item.kind === "thread" && item.featured,
   );
-  const timeline = useMemo(
-    () =>
-      [...moments].sort((left, right) => {
-        const difference =
-          new Date(left.occurredAt).getTime() -
-          new Date(right.occurredAt).getTime();
-        return archive ? difference : -difference;
-      }),
-    [archive, moments],
+  const renderedActivity = useMemo(
+    () => activity.filter((item) => item.id !== featuredThread?.id),
+    [activity, featuredThread?.id],
   );
-  const activity = useMemo(() => {
-    const momentItems = moments.map((moment) => ({
-      id: `moment-${moment.id}`,
-      kind: "moment" as const,
-      title: moment.title,
-      detail: [moment.period, moment.clock].filter(Boolean).join(" · "),
-      timestamp: moment.occurredAt,
-      importance: moment.importance,
-    }));
-    const threadItems = threads.map((thread) => ({
-      id: `thread-${thread.id}`,
-      kind: "thread" as const,
-      title: `Flash Thread opened: ${thread.title}`,
-      detail: `${thread.takeCount} takes · ${thread.reactionCount} reactions`,
-      timestamp: thread.createdAt ?? thread.moment.occurredAt,
-      importance: thread.moment.importance,
-    }));
-    const takeItems = threads.flatMap((thread) =>
-      thread.takes
-        .filter(
-          (take) =>
-            take._count.reactions + take._count.votes + take._count.replies > 0,
-        )
-        .map((take) => ({
-          id: `take-${take.id}`,
-          kind: "take" as const,
-          title: `Popular Take by ${take.author.displayName}`,
-          detail: take.body,
-          timestamp: take.createdAt,
-          importance:
-            take._count.reactions + take._count.votes + take._count.replies,
-        })),
-    );
-    return [...momentItems, ...threadItems, ...takeItems]
-      .sort(
-        (left, right) =>
-          new Date(right.timestamp).getTime() -
-          new Date(left.timestamp).getTime(),
-      )
-      .slice(0, 10);
-  }, [moments, threads]);
 
   return (
     <section
@@ -287,146 +343,62 @@ export function GameMomentsPanel({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-brand text-xs font-bold tracking-[0.18em] uppercase">
-            {archive ? "Permanent game archive" : "Live event conversation"}
+            {archive ? "Permanent game archive" : "Live fan experience"}
           </p>
           <h2
             id="game-moments-title"
             className="font-display text-3xl font-black"
           >
-            Game Moments
+            Live timeline
           </h2>
         </div>
-        <p
-          role="status"
-          aria-live="polite"
-          className={cn(
-            "flex items-center gap-2 text-xs font-semibold",
-            updateState === "delayed" ? "text-warning" : "text-text-muted",
-          )}
-        >
-          <Radio
-            aria-hidden
-            className={cn(
-              "size-3.5",
-              updateState === "checking" && "motion-safe:animate-pulse",
-            )}
-          />
-          {updateState === "checking"
-            ? "Checking for moments"
-            : updateState === "delayed"
-              ? "Live updates delayed"
-              : archive
-                ? "Archive current"
-                : "Live updates on"}
-        </p>
-      </div>
-
-      {featuredThread ? (
-        <Card
-          className="border-brand/50 relative overflow-hidden rounded-2xl bg-[linear-gradient(135deg,var(--brand-surface),var(--surface-2)_58%,color-mix(in_srgb,var(--info)_10%,var(--surface-2)))] p-0 shadow-xl md:p-0"
-          data-featured-flash-thread
-        >
-          <div
-            aria-hidden
-            className="bg-brand/15 absolute -top-20 -right-16 size-52 rounded-full blur-3xl"
-          />
-          <div className="border-brand/25 relative flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
-            <Badge tone="live" className="gap-2 px-3 py-1.5 uppercase">
+        <div className="flex flex-wrap items-center gap-2">
+          {predictions.length ? (
+            <Badge tone="live" className="gap-1.5">
               <span
                 aria-hidden
                 className="size-2 rounded-full bg-white motion-safe:animate-pulse"
               />
-              Flash Thread
+              {predictions.length} prediction
+              {predictions.length === 1 ? "" : "s"}
             </Badge>
-            <span className="text-text-secondary flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase">
-              <MessageCircle aria-hidden className="text-brand size-3.5" />
-              {featuredThread.status}
-            </span>
-          </div>
-          <div className="relative p-5 sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-text-muted text-xs font-bold tracking-[0.16em] uppercase">
-                  Fans are talking now
-                </p>
-                <h3 className="font-display mt-2 max-w-4xl text-2xl leading-tight font-black text-balance sm:text-4xl">
-                  {featuredThread.title}
-                </h3>
-              </div>
-              <MomentScore moment={featuredThread.moment} />
-            </div>
-            <p className="text-text-secondary mt-3 flex flex-wrap items-center gap-2 text-sm">
-              <Clock3 aria-hidden className="text-brand size-4" />
-              {[featuredThread.moment.period, featuredThread.moment.clock]
-                .filter(Boolean)
-                .join(" · ") || "Verified game moment"}
-            </p>
-            <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
-              {[
-                ["Takes", featuredThread.takeCount],
-                ["Reactions", featuredThread.reactionCount],
-                ["Replies", featuredThread.replyCount],
-              ].map(([label, count]) => (
-                <div
-                  key={label}
-                  className="border-border-subtle bg-surface-1/55 rounded-xl border p-3 text-center"
-                >
-                  <strong className="font-display block text-xl font-black tabular-nums sm:text-2xl">
-                    {count}
-                  </strong>
-                  <span className="text-text-muted text-[0.65rem] font-bold tracking-wide uppercase">
-                    {label}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {featuredThread.status === "ACTIVE" && !archive ? (
-              <div className="border-brand/25 bg-surface-1/45 mt-6 rounded-xl border p-3 sm:p-4">
-                <TakeComposer
-                  gameId={gameId}
-                  flashThreadId={featuredThread.id}
-                  onPosted={refresh}
-                />
-              </div>
-            ) : (
-              <p className="border-border-subtle bg-surface-1/45 text-text-muted mt-6 rounded-xl border p-4 text-sm">
-                This Flash Thread is preserved as a read-only game archive.
-              </p>
+          ) : null}
+          {threads.length ? <Badge tone="neutral">{threads.length} Flash Threads</Badge> : null}
+          <p
+            role="status"
+            aria-live="polite"
+            className={cn(
+              "flex items-center gap-2 text-xs font-semibold",
+              updateState === "delayed" ? "text-warning" : "text-text-muted",
             )}
-            {featuredThread.takes.length ? (
-              <div className="mt-6 grid gap-4">
-                {featuredThread.takes.slice(0, 3).map((take) => (
-                  <div
-                    key={take.id}
-                    className="border-border-subtle bg-surface-1/40 rounded-xl border p-1"
-                  >
-                    <TakeCard
-                      id={take.id}
-                      author={{
-                        handle: take.author.handle,
-                        displayName: take.author.displayName,
-                        avatarUrl: take.author.image,
-                      }}
-                      body={take.body}
-                      context={[
-                        featuredThread.moment.period,
-                        featuredThread.title,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                      createdAt=""
-                      createdAtIso={take.createdAt}
-                      reactions={take._count.reactions + take._count.votes}
-                      replies={take._count.replies}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </Card>
-      ) : (
-        <Card className="border-brand/25 relative grid min-h-48 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(135deg,var(--brand-surface),var(--surface-2))] px-5 py-10 text-center">
+          >
+            <Radio
+              aria-hidden
+              className={cn(
+                "size-3.5",
+                updateState === "checking" && "motion-safe:animate-pulse",
+              )}
+            />
+            {updateState === "checking"
+              ? "Checking for updates"
+              : updateState === "delayed"
+                ? "Live updates delayed"
+                : archive
+                  ? "Archive current"
+                  : "Live updates on"}
+          </p>
+        </div>
+      </div>
+
+      {featuredThread ? (
+        renderFeedItem(featuredThread, sportKey, threads, archive, refresh, gameId)
+      ) : null}
+
+      {!featuredThread && !renderedActivity.length ? (
+        <Card
+          className="border-brand/25 relative grid min-h-48 place-items-center overflow-hidden rounded-2xl bg-[linear-gradient(135deg,var(--brand-surface),var(--surface-2))] px-5 py-10 text-center"
+          data-featured-flash-thread
+        >
           <div
             aria-hidden
             className="bg-brand/15 absolute -top-16 size-44 rounded-full blur-3xl"
@@ -439,78 +411,43 @@ export function GameMomentsPanel({
             <p className="text-text-secondary mx-auto mt-2 max-w-lg">
               {archive
                 ? "This game’s verified moments will remain here as a permanent archive."
-                : "Major game moments will appear here as the action unfolds."}
+                : "Major game moments and the conversation around them will appear here as the action unfolds."}
             </p>
           </div>
         </Card>
-      )}
+      ) : null}
 
-      <Card className="border-brand/20 bg-surface-1/75 overflow-hidden rounded-2xl p-0">
-        <div className="border-border-subtle flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
+      <Card className="border-border-strong bg-surface-1/65 rounded-2xl p-4 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-brand text-xs font-bold tracking-[0.16em] uppercase">
-              Live fan experience
+            <p className="text-text-muted text-xs font-bold tracking-[0.16em] uppercase">
+              Unified live feed
             </p>
             <h3 className="font-display mt-1 text-2xl font-black">
-              Activity timeline
+              {archive ? "Game timeline" : "Moments, takes, predictions, and milestones"}
             </h3>
           </div>
-          {!archive ? (
-            <Badge tone="live" className="gap-1.5">
-              <span
-                aria-hidden
-                className="size-2 rounded-full bg-white motion-safe:animate-pulse"
-              />
-              Live
-            </Badge>
-          ) : (
-            <Badge tone="neutral">Archive</Badge>
-          )}
+          {renderedActivity.length ? (
+            <span className="text-text-muted text-xs">
+              {renderedActivity.length}{" "}
+              {renderedActivity.length === 1 ? "item" : "items"}
+            </span>
+          ) : null}
         </div>
-        {activity.length ? (
-          <ol className="divide-border-subtle divide-y" data-live-activity>
-            {activity.map((item) => {
-              const ActivityIcon =
-                item.kind === "thread"
-                  ? MessageSquareText
-                  : item.kind === "take"
-                    ? Flame
-                    : Zap;
-              return (
-                <li
-                  key={item.id}
-                  className="hover:bg-surface-2/65 grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 px-4 py-3 transition motion-reduce:transition-none sm:px-6"
-                  data-activity-kind={item.kind}
-                >
+
+        {renderedActivity.length ? (
+          <ol className="mt-6 grid gap-3" data-live-activity>
+            {renderedActivity.map((item, index) => (
+              <li key={item.id} className="relative" data-activity-kind={item.kind}>
+                {renderedActivity[index + 1] ? (
                   <span
-                    className={cn(
-                      "grid size-10 place-items-center rounded-xl",
-                      item.kind === "thread"
-                        ? "bg-brand-surface text-brand"
-                        : item.kind === "take"
-                          ? "bg-warning/10 text-warning"
-                          : "bg-info/10 text-info",
-                    )}
-                  >
-                    <ActivityIcon aria-hidden className="size-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <strong className="text-sm">{item.title}</strong>
-                      <LocalDateTime
-                        value={item.timestamp}
-                        className="text-text-muted shrink-0 text-xs"
-                      />
-                    </div>
-                    {item.detail ? (
-                      <p className="text-text-secondary mt-1 line-clamp-2 text-sm">
-                        {item.detail}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
+                    aria-hidden
+                    className="from-border-subtle via-border-subtle to-transparent absolute top-10 bottom-[-0.875rem] left-5 w-px bg-gradient-to-b"
+                  />
+                ) : null}
+                {renderFeedItem(item, sportKey, threads, archive, refresh, gameId)}
+              </li>
+            ))}
           </ol>
         ) : (
           <div className="px-5 py-10 text-center">
@@ -530,96 +467,104 @@ export function GameMomentsPanel({
         )}
       </Card>
 
-      <Card className="border-border-strong bg-surface-1/65 rounded-2xl p-4 sm:p-6">
+      <Card className="border-border-subtle bg-surface-1/70 rounded-2xl p-4 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-text-muted text-xs font-bold tracking-[0.16em] uppercase">
               Verified play-by-play
             </p>
             <h3 className="font-display mt-1 text-2xl font-black">
-              {archive ? "Game timeline" : "Recent moments"}
+              {archive ? "Moments archive" : "Recent moments"}
             </h3>
           </div>
-          {timeline.length ? (
+          {moments.length ? (
             <span className="text-text-muted text-xs">
-              {timeline.length} {timeline.length === 1 ? "moment" : "moments"}
+              {moments.length} {moments.length === 1 ? "moment" : "moments"}
             </span>
           ) : null}
         </div>
-        {timeline.length ? (
-          <ol className="mt-6 grid" data-moments-timeline>
-            {timeline.map((moment, index) => {
-              const presentation = momentPresentation(moment, sportKey);
-              const Icon = presentation.Icon;
-              const major = moment.importance >= 70;
-              return (
-                <li
-                  key={moment.id}
-                  className="relative grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 pb-5 last:pb-0 sm:grid-cols-[3rem_minmax(0,1fr)] sm:gap-4"
-                  data-moment-type={moment.type}
-                  data-moment-importance={major ? "major" : "standard"}
-                >
-                  {index < timeline.length - 1 ? (
-                    <span
-                      aria-hidden
-                      className="from-brand/60 to-border-subtle absolute top-10 bottom-0 left-[1.35rem] w-px bg-gradient-to-b sm:left-[1.48rem]"
-                    />
-                  ) : null}
-                  <span
-                    className={cn(
-                      "relative z-10 grid size-11 place-items-center rounded-2xl border border-white/10 shadow-md sm:size-12",
-                      presentation.node,
-                    )}
+        {moments.length ? (
+          <ol className="mt-6 grid gap-4" data-moments-timeline>
+            {moments
+              .slice()
+              .sort((left, right) =>
+                archive
+                  ? new Date(left.occurredAt).getTime() -
+                    new Date(right.occurredAt).getTime()
+                  : new Date(right.occurredAt).getTime() -
+                    new Date(left.occurredAt).getTime(),
+              )
+              .map((moment, index) => {
+                const presentation = momentPresentation(moment, sportKey);
+                const Icon = presentation.Icon;
+                const major = moment.importance >= 70;
+                return (
+                  <li
+                    key={moment.id}
+                    className="relative grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 pb-5 last:pb-0 sm:grid-cols-[3rem_minmax(0,1fr)] sm:gap-4"
+                    data-moment-type={moment.type}
+                    data-moment-importance={major ? "major" : "standard"}
                   >
-                    <Icon aria-hidden className="size-5" />
-                  </span>
-                  <article
-                    className={cn(
-                      "min-w-0 rounded-xl border p-4",
-                      major && "shadow-lg",
-                      presentation.surface,
-                    )}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "text-[0.65rem] font-black tracking-[0.15em] uppercase",
-                              presentation.accent,
-                            )}
-                          >
-                            {presentation.label}
-                          </span>
-                          {major ? (
-                            <span className="border-brand/30 bg-brand-surface text-brand rounded-full border px-2 py-0.5 text-[0.65rem] font-bold uppercase">
-                              Major moment
-                            </span>
-                          ) : null}
-                        </div>
-                        <h4 className="mt-1 font-bold text-balance sm:text-lg">
-                          {moment.title}
-                        </h4>
-                      </div>
-                      <MomentScore moment={moment} />
-                    </div>
-                    {moment.description ? (
-                      <p className="text-text-secondary mt-2 text-sm leading-relaxed">
-                        {moment.description}
-                      </p>
+                    {index < moments.length - 1 ? (
+                      <span
+                        aria-hidden
+                        className="from-brand/60 to-border-subtle absolute top-10 bottom-0 left-[1.35rem] w-px bg-gradient-to-b sm:left-[1.48rem]"
+                      />
                     ) : null}
-                    <p className="text-text-muted mt-3 flex flex-wrap items-center gap-2 text-xs">
-                      <Clock3 aria-hidden className="size-3.5" />
-                      {[moment.period, moment.clock]
-                        .filter(Boolean)
-                        .join(" · ") || "Game update"}
-                      <span aria-hidden>·</span>
-                      <LocalDateTime value={moment.occurredAt} />
-                    </p>
-                  </article>
-                </li>
-              );
-            })}
+                    <span
+                      className={cn(
+                        "relative z-10 grid size-11 place-items-center rounded-2xl border border-white/10 shadow-md sm:size-12",
+                        presentation.node,
+                      )}
+                    >
+                      <Icon aria-hidden className="size-5" />
+                    </span>
+                    <article
+                      className={cn(
+                        "min-w-0 rounded-xl border p-4",
+                        major && "shadow-lg",
+                        presentation.surface,
+                      )}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={cn(
+                                "text-[0.65rem] font-black tracking-[0.15em] uppercase",
+                                presentation.accent,
+                              )}
+                            >
+                              {presentation.label}
+                            </span>
+                            {major ? (
+                              <span className="border-brand/30 bg-brand-surface text-brand rounded-full border px-2 py-0.5 text-[0.65rem] font-bold uppercase">
+                                Major moment
+                              </span>
+                            ) : null}
+                          </div>
+                          <h4 className="mt-1 font-bold text-balance sm:text-lg">
+                            {moment.title}
+                          </h4>
+                        </div>
+                        <MomentScore moment={moment} />
+                      </div>
+                      {moment.description ? (
+                        <p className="text-text-secondary mt-2 text-sm leading-relaxed">
+                          {moment.description}
+                        </p>
+                      ) : null}
+                      <p className="text-text-muted mt-3 flex flex-wrap items-center gap-2 text-xs">
+                        <Clock3 aria-hidden className="size-3.5" />
+                        {[moment.period, moment.clock].filter(Boolean).join(" · ") ||
+                          "Game update"}
+                        <span aria-hidden>·</span>
+                        <LocalDateTime value={moment.occurredAt} />
+                      </p>
+                    </article>
+                  </li>
+                );
+              })}
           </ol>
         ) : (
           <p className="text-text-secondary border-border-strong bg-surface-2/60 mt-4 rounded-xl border border-dashed p-6 text-center text-sm">
@@ -628,5 +573,199 @@ export function GameMomentsPanel({
         )}
       </Card>
     </section>
+  );
+}
+
+function renderFeedItem(
+  item: LiveFeedItem,
+  sportKey: string | undefined,
+  threads: FlashThread[],
+  archive: boolean,
+  refresh: () => Promise<void>,
+  gameId: string,
+) {
+  if (item.kind === "thread") {
+    const thread = threads.find((candidate) => `thread:${candidate.id}` === item.id);
+    if (!thread) return null;
+    return (
+      <Card
+        className={cn(
+          "border-brand/50 relative overflow-hidden rounded-2xl p-0 shadow-xl",
+          item.featured
+            ? "bg-[linear-gradient(135deg,var(--brand-surface),var(--surface-2)_58%,color-mix(in_srgb,var(--info)_10%,var(--surface-2)))]"
+            : "bg-surface-1/80",
+        )}
+        data-featured-flash-thread={item.featured ? "" : undefined}
+      >
+        {item.featured ? (
+          <div
+            aria-hidden
+            className="bg-brand/15 absolute -top-20 -right-16 size-52 rounded-full blur-3xl"
+          />
+        ) : null}
+        <div className="border-border-subtle relative flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
+          <Badge tone="live" className="gap-2 px-3 py-1.5 uppercase">
+            <span
+              aria-hidden
+              className="size-2 rounded-full bg-white motion-safe:animate-pulse"
+            />
+            Flash Thread
+          </Badge>
+          <span className="text-text-secondary flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase">
+            <MessageCircle aria-hidden className="text-brand size-3.5" />
+            {thread.status}
+          </span>
+        </div>
+        <div className="relative p-5 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-text-muted text-xs font-bold tracking-[0.16em] uppercase">
+                Fans are talking now
+              </p>
+              <h3 className="font-display mt-2 max-w-4xl text-2xl leading-tight font-black text-balance sm:text-4xl">
+                {thread.title}
+              </h3>
+            </div>
+            <MomentScore moment={thread.moment} />
+          </div>
+          <p className="text-text-secondary mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <Clock3 aria-hidden className="text-brand size-4" />
+            {[thread.moment.period, thread.moment.clock]
+              .filter(Boolean)
+              .join(" · ") || "Verified game moment"}
+          </p>
+          <div className="mt-5 grid grid-cols-3 gap-2 sm:max-w-xl sm:gap-3">
+            {[
+              ["Takes", thread.takeCount],
+              ["Reactions", thread.reactionCount],
+              ["Replies", thread.replyCount],
+            ].map(([label, count]) => (
+              <div
+                key={label}
+                className="border-border-subtle bg-surface-1/55 rounded-xl border p-3 text-center"
+              >
+                <strong className="font-display block text-xl font-black tabular-nums sm:text-2xl">
+                  {count}
+                </strong>
+                <span className="text-text-muted text-[0.65rem] font-bold tracking-wide uppercase">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+          {thread.status === "ACTIVE" && !archive ? (
+            <div className="border-brand/25 bg-surface-1/45 mt-6 rounded-xl border p-3 sm:p-4">
+              <TakeComposer gameId={gameId} flashThreadId={thread.id} onPosted={refresh} />
+            </div>
+          ) : (
+            <p className="border-border-subtle bg-surface-1/45 text-text-muted mt-6 rounded-xl border p-4 text-sm">
+              This Flash Thread is preserved as a read-only game archive.
+            </p>
+          )}
+          {thread.takes.length ? (
+            <div className="mt-6 grid gap-4">
+              {thread.takes.slice(0, 3).map((take) => (
+                <div
+                  key={take.id}
+                  className="border-border-subtle bg-surface-1/40 rounded-xl border p-1"
+                >
+                  <TakeCard
+                    id={take.id}
+                    author={{
+                      handle: take.author.handle,
+                      displayName: take.author.displayName,
+                      avatarUrl: take.author.image,
+                    }}
+                    body={take.body}
+                    context={[
+                      thread.moment.period,
+                      thread.title,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                    createdAt=""
+                    createdAtIso={take.createdAt}
+                    reactions={take._count.reactions + take._count.votes}
+                    replies={take._count.replies}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </Card>
+    );
+  }
+
+  const iconByKind: Record<LiveFeedItem["kind"], LucideIcon> = {
+    moment: Radio,
+    take: Flame,
+    prediction: Sparkles,
+    milestone: Zap,
+    thread: MessageSquareText,
+  };
+  const toneByKind: Record<LiveFeedItem["kind"], string> = {
+    moment: "bg-brand/10 text-brand",
+    take: "bg-warning/10 text-warning",
+    prediction: "bg-success/10 text-success",
+    milestone: "bg-info/10 text-info",
+    thread: "bg-brand-surface text-brand",
+  };
+  const Icon = iconByKind[item.kind];
+
+  return (
+    <article
+      className="border-border-subtle bg-surface-1/75 hover:bg-surface-1/90 grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 rounded-xl border p-4 transition motion-reduce:transition-none"
+      data-live-activity-item
+    >
+      <span
+        className={cn(
+          "grid size-10 place-items-center rounded-xl",
+          toneByKind[item.kind],
+        )}
+      >
+        <Icon aria-hidden className="size-5" />
+      </span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <strong className="text-sm">{item.title}</strong>
+              {item.kind === "prediction" ? (
+                <Badge tone="neutral" className="px-2 py-0.5 text-[0.65rem]">
+                  {item.status ?? "OPEN"}
+                </Badge>
+              ) : null}
+            </div>
+            {item.detail ? (
+              <p className="text-text-secondary mt-1 line-clamp-2 text-sm">
+                {item.detail}
+              </p>
+            ) : null}
+            {item.kind === "prediction" ? (
+              <p className="text-text-muted mt-1 text-xs">
+                {item.status === "RESOLVED"
+                  ? "Resolved prediction"
+                  : item.status === "LOCKED"
+                    ? "Locked server-side"
+                    : "Open prediction"}
+              </p>
+            ) : null}
+          </div>
+          <LocalDateTime
+            value={item.timestamp}
+            className="text-text-muted shrink-0 text-xs"
+          />
+        </div>
+        {item.score ? (
+          <p className="text-text-secondary mt-2 text-xs">
+            Score context{" "}
+            {item.score.away !== null && item.score.home !== null
+              ? `${item.score.away}–${item.score.home}`
+              : "unavailable"}
+          </p>
+        ) : null}
+      </div>
+    </article>
   );
 }

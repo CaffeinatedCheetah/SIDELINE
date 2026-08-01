@@ -25,6 +25,9 @@ const defaults = {
   initialVersion: 2,
   initialFollowerCount: 12,
   initialFollowing: false,
+  flashThreadCount: 1,
+  activePredictionCount: 2,
+  viewerLevelLabel: "Veteran",
   signedIn: false,
 };
 
@@ -45,6 +48,9 @@ describe("LiveGameRoom", () => {
     expect(screen.getByText("Yankee Stadium")).toBeInTheDocument();
     expect(screen.getByText("ESPN")).toBeInTheDocument();
     expect(screen.getByText("12 fans following")).toBeInTheDocument();
+    expect(screen.getByText("1 Flash Thread")).toBeInTheDocument();
+    expect(screen.getByText("2 active predictions")).toBeInTheDocument();
+    expect(screen.getByText("Veteran")).toBeInTheDocument();
     expect(screen.getByText("Score current")).toHaveAttribute(
       "aria-live",
       "polite",

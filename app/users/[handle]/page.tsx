@@ -15,6 +15,7 @@ import { TakeCard } from "@/components/takes/take-card";
 import { Avatar, Badge, Card, EmptyState } from "@/components/ui/foundations";
 import { buttonStyles } from "@/components/ui/button";
 import { db } from "@/lib/db/client";
+import { getFanLevel } from "@/lib/scoring/fan-level";
 import { FAN_SCORE_POINTS } from "@/lib/scoring/fan-score";
 import { LocalDateTime } from "@/components/ui/local-date-time";
 
@@ -477,10 +478,12 @@ function ReputationSummary({
   const accuracy = resolvedCount
     ? Math.round((correctCount / resolvedCount) * 100)
     : null;
+  const level = getFanLevel(fanScore);
   return (
     <Card>
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Fan Score" value={fanScore} />
+        <Stat label="Fan level" value={level.label} />
         <Stat
           label="Prediction accuracy"
           value={

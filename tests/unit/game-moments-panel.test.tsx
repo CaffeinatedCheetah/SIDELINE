@@ -39,18 +39,41 @@ describe("GameMomentsPanel", () => {
             replyCount: 0,
           },
         ]}
+        initialActivity={[
+          {
+            id: "thread:thread-1",
+            kind: "thread",
+            title: moment.title,
+            detail: "0 takes · 0 reactions · 0 replies",
+            timestamp: "2026-07-30T00:21:00.000Z",
+            importance: 90,
+            featured: true,
+            score: { away: 1, home: 2 },
+            status: "ACTIVE",
+          },
+          {
+            id: "moment:moment-1",
+            kind: "moment",
+            title: moment.title,
+            detail: moment.description,
+            timestamp: moment.occurredAt,
+            importance: 90,
+            score: { away: 1, home: 2 },
+            status: moment.type,
+          },
+        ]}
       />,
     );
     expect(screen.getAllByRole("heading", { name: moment.title })).toHaveLength(
       2,
     );
-    expect(screen.getAllByText("Bottom 5th")).toHaveLength(3);
+    expect(screen.getAllByText("Bottom 5th")).toHaveLength(2);
     expect(screen.getByLabelText("Add your take")).toBeInTheDocument();
     expect(screen.getByText("Takes")).toBeInTheDocument();
     expect(screen.getAllByText("1–2")).toHaveLength(2);
     expect(
-      screen.getByText("A verified scoring play changed the lead."),
-    ).toBeInTheDocument();
+      screen.getAllByText("A verified scoring play changed the lead."),
+    ).toHaveLength(2);
     expect(
       document.querySelector(
         '[data-moment-type="LEAD_CHANGE"][data-moment-importance="major"]',
@@ -60,11 +83,14 @@ describe("GameMomentsPanel", () => {
       document.querySelector("[data-featured-flash-thread]"),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Activity timeline" }),
+      screen.getByRole("heading", { name: "Moments, takes, predictions, and milestones" }),
     ).toBeInTheDocument();
     expect(document.querySelector("[data-live-activity]")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-live-activity-item]")).toHaveLength(
+      1,
+    );
     expect(
-      document.querySelector('[data-activity-kind="thread"]'),
+      document.querySelector('[data-activity-kind="moment"]'),
     ).toBeInTheDocument();
   });
 
@@ -80,7 +106,7 @@ describe("GameMomentsPanel", () => {
     expect(screen.getByText("No major moments yet")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Major game moments will appear here as the action unfolds.",
+        "Major game moments and the conversation around them will appear here as the action unfolds.",
       ),
     ).toBeInTheDocument();
     expect(
