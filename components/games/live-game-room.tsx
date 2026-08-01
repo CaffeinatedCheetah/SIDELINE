@@ -8,6 +8,7 @@ import {
   MapPin,
   Radio,
   RefreshCw,
+  Share2,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -190,6 +191,9 @@ export function LiveGameRoom({
   initialVersion,
   initialFollowerCount,
   initialFollowing,
+  flashThreadCount,
+  activePredictionCount,
+  viewerLevelLabel,
   signedIn,
 }: {
   gameId: string;
@@ -209,6 +213,9 @@ export function LiveGameRoom({
   initialVersion: number;
   initialFollowerCount: number;
   initialFollowing: boolean;
+  flashThreadCount: number;
+  activePredictionCount: number;
+  viewerLevelLabel: string | null;
   signedIn: boolean;
 }) {
   const [game, setGame] = useState<LiveGameState>({
@@ -224,6 +231,7 @@ export function LiveGameRoom({
   const [following, setFollowing] = useState(initialFollowing);
   const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [followPending, setFollowPending] = useState(false);
+  const [shareState, setShareState] = useState<"idle" | "shared">("idle");
   const [activeUsers, setActiveUsers] = useState<number | null>(null);
   const [connection, setConnection] = useState<
     "current" | "refreshing" | "stale"
@@ -334,6 +342,25 @@ export function LiveGameRoom({
     }
   }
 
+  async function shareGame() {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${awayTeam.name} at ${homeTeam.name}`,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareState("shared");
+        window.setTimeout(() => setShareState("idle"), 2000);
+      }
+    } catch {
+      // Sharing can fail when the browser disallows it; keep the control
+      // visually stable without escalating the error surface.
+    }
+  }
+
   const hasScore =
     game.homeScore !== null &&
     game.awayScore !== null &&
@@ -360,83 +387,111 @@ export function LiveGameRoom({
       <div aria-hidden className="game-room-glow game-room-glow-away" />
       <div aria-hidden className="game-room-glow game-room-glow-home" />
       <div className="relative">
-        <div className="border-border-subtle flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="flex flex-wrap items-center gap-2">
-            {league ? (
-              <span className="border-border-subtle bg-surface-1/70 rounded-full border px-2.5 py-1 text-xs font-black uppercase">
-                {league.abbreviation}
-              </span>
-            ) : null}
-            <Badge
-              tone={phaseTone(game.phase)}
-              className="gap-2 px-3 py-1.5 uppercase"
-            >
-              {live ? (
-                <span
-                  aria-hidden
-                  className="size-2 rounded-full bg-white motion-safe:animate-pulse"
-                />
+        <div className="border-border-subtle flex flex-col gap-3 border-b px-4 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {league ? (
+                <span className="border-border-subtle bg-surface-1/70 rounded-full border px-2.5 py-1 text-xs font-black uppercase">
+                  {league.abbreviation}
+                </span>
               ) : null}
-              {game.phase === "LIVE"
-                ? `Live · ${phaseLabel(game, league?.sportKey)}`
-                : phaseLabel(game, league?.sportKey)}
-            </Badge>
-            <span className="text-text-secondary flex items-center gap-1.5 text-xs font-semibold">
-              <span className="relative grid size-4 place-items-center">
-                {live && activeUsers !== null ? (
+              <Badge
+                tone={phaseTone(game.phase)}
+                className="gap-2 px-3 py-1.5 uppercase"
+              >
+                {live ? (
                   <span
                     aria-hidden
-                    className="bg-success/35 absolute size-4 rounded-full motion-safe:animate-ping"
+                    className="size-2 rounded-full bg-white motion-safe:animate-pulse"
                   />
                 ) : null}
-                <Users aria-hidden className="relative size-3.5" />
+                {game.phase === "LIVE"
+                  ? `Live · ${phaseLabel(game, league?.sportKey)}`
+                  : phaseLabel(game, league?.sportKey)}
+              </Badge>
+              <span className="text-text-secondary flex items-center gap-1.5 text-xs font-semibold">
+                <span className="relative grid size-4 place-items-center">
+                  {live && activeUsers !== null ? (
+                    <span
+                      aria-hidden
+                      className="bg-success/35 absolute size-4 rounded-full motion-safe:animate-ping"
+                    />
+                  ) : null}
+                  <Users aria-hidden className="relative size-3.5" />
+                </span>
+                {activeUsers === null
+                  ? `${followerCount} ${followerCount === 1 ? "fan" : "fans"} following`
+                  : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} watching`}
               </span>
-              {activeUsers === null
-                ? `${followerCount} ${followerCount === 1 ? "fan" : "fans"} following`
-                : `${activeUsers} ${activeUsers === 1 ? "fan" : "fans"} active in the last minute`}
-            </span>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
-            <span
-              aria-live="polite"
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-semibold",
-                connection === "stale" ? "text-warning" : "text-text-muted",
-              )}
-            >
-              <RefreshCw
-                aria-hidden
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="border-border-subtle bg-surface-1/70 rounded-full border px-2.5 py-1 text-xs font-bold">
+                {flashThreadCount} Flash Thread
+                {flashThreadCount === 1 ? "" : "s"}
+              </span>
+              <span className="border-border-subtle bg-surface-1/70 rounded-full border px-2.5 py-1 text-xs font-bold">
+                {activePredictionCount} active prediction
+                {activePredictionCount === 1 ? "" : "s"}
+              </span>
+              {viewerLevelLabel ? (
+                <span className="border-brand/30 bg-brand-surface text-brand rounded-full border px-2.5 py-1 text-xs font-black uppercase">
+                  {viewerLevelLabel}
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span
+                aria-live="polite"
                 className={cn(
-                  "size-3.5",
-                  connection === "refreshing" && "motion-safe:animate-spin",
+                  "flex items-center gap-1.5 text-xs font-semibold",
+                  connection === "stale" ? "text-warning" : "text-text-muted",
                 )}
-              />
-              {connectionLabel}
-            </span>
-            {signedIn ? (
+              >
+                <RefreshCw
+                  aria-hidden
+                  className={cn(
+                    "size-3.5",
+                    connection === "refreshing" && "motion-safe:animate-spin",
+                  )}
+                />
+                {connectionLabel}
+              </span>
               <Button
-                variant={following ? "secondary" : "primary"}
+                variant="secondary"
                 size="sm"
-                onClick={toggleFollow}
-                disabled={followPending}
-                aria-pressed={following}
+                onClick={shareGame}
                 className="shrink-0"
               >
-                {following ? <BellOff aria-hidden /> : <Bell aria-hidden />}
-                {following ? "Unfollow game" : "Follow game"}
+                <Share2 aria-hidden />
+                {shareState === "shared" ? "Link copied" : "Share game"}
               </Button>
-            ) : (
-              <Link
-                className={cn(
-                  buttonStyles({ variant: "primary", size: "sm" }),
-                  "shrink-0",
-                )}
-                href={`/auth/sign-in?callbackUrl=/games/${gameId}`}
-              >
-                <Bell aria-hidden />
-                Follow game
-              </Link>
-            )}
+              {signedIn ? (
+                <Button
+                  variant={following ? "secondary" : "primary"}
+                  size="sm"
+                  onClick={toggleFollow}
+                  disabled={followPending}
+                  aria-pressed={following}
+                  className="shrink-0"
+                >
+                  {following ? <BellOff aria-hidden /> : <Bell aria-hidden />}
+                  {following ? "Unfollow game" : "Follow game"}
+                </Button>
+              ) : (
+                <Link
+                  className={cn(
+                    buttonStyles({ variant: "primary", size: "sm" }),
+                    "shrink-0",
+                  )}
+                  href={`/auth/sign-in?callbackUrl=/games/${gameId}`}
+                >
+                  <Bell aria-hidden />
+                  Follow game
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 
