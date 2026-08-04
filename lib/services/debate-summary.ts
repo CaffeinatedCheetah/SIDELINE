@@ -25,7 +25,7 @@ export async function generateDebateSummary(
       options: { orderBy: { displayOrder: "asc" } },
       votes: {
         include: {
-          option: { select: { label: true, key: true } },
+          debateOption: { select: { label: true, key: true } },
           user: { select: { handle: true } },
         },
       },
@@ -37,10 +37,10 @@ export async function generateDebateSummary(
   const optionA = debate.options[0];
   const optionB = debate.options[1];
   const votesA = debate.votes.filter(
-    (v) => v.option?.key === optionA.key,
+    (v) => v.debateOption?.key === optionA.key,
   );
   const votesB = debate.votes.filter(
-    (v) => v.option?.key === optionB.key,
+    (v) => v.debateOption?.key === optionB.key,
   );
   const total = votesA.length + votesB.length;
   if (total === 0) return null;

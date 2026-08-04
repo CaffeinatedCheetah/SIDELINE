@@ -3,7 +3,7 @@
 // into a single at-a-glance panel showing momentum, crowd sentiment,
 // and SCOUT's AI commentary on the game.
 
-import { callClaude, parseJSON } from "@/lib/services/scout-content";
+import { callClaude } from "@/lib/services/scout-content";
 import { db } from "@/lib/db/client";
 
 export type GamePulse = {
@@ -36,7 +36,7 @@ async function getGameActivity(gameId: string) {
     }),
     db.prediction.findMany({
       where: { gameId },
-      select: { outcome: true },
+      select: { selection: true },
     }),
     db.take.findMany({
       where: { gameId, createdAt: { gte: since } },
@@ -46,10 +46,10 @@ async function getGameActivity(gameId: string) {
     }),
   ]);
 
-  // Count predictions per outcome
+  // Count predictions per selection
   const predictionCounts: Record<string, number> = {};
   for (const p of predictions) {
-    predictionCounts[p.outcome] = (predictionCounts[p.outcome] || 0) + 1;
+    predictionCounts[p.selection] = (predictionCounts[p.selection] || 0) + 1;
   }
   const topPrediction = Object.entries(predictionCounts)
     .sort(([, a], [, b]) => b - a)[0]?.[0] || null;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Sparkles, TrendingUp, MessageSquareText } from "lucide-react";
 
-import { Badge, Card, EmptyState } from "@/components/ui/foundations";
+import { Badge, Card } from "@/components/ui/foundations";
 import { getScoutHighlights } from "@/lib/db/scout-highlights";
 
 function truncate(value: string, max = 140) {
@@ -38,7 +38,7 @@ export async function ScoutSection() {
       <div className="flex items-center gap-2">
         <Sparkles className="text-brand h-5 w-5" />
         <h2 className="text-lg font-bold">Scout&apos;s Picks</h2>
-        <Badge variant="accent" className="text-xs">AI-Generated</Badge>
+        <Badge tone="live" className="text-xs">AI-Generated</Badge>
       </div>
 
       {hasTakes && (
@@ -74,7 +74,7 @@ export async function ScoutSection() {
               <p className="text-text-muted text-sm">{truncate(highlights.debate!.prompt, 200)}</p>
               <div className="flex flex-wrap gap-2">
                 {highlights.debate!.options.map((opt) => (
-                  <Badge key={opt.key} variant="outline">{opt.label}</Badge>
+                  <Badge key={opt.key} tone="neutral">{opt.label}</Badge>
                 ))}
               </div>
               <p className="text-text-muted text-xs">

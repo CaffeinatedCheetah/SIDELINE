@@ -15,7 +15,7 @@ export default function GameRoomError({
       <ErrorState
         title="Game Room unavailable"
         description="The game could not be loaded right now. Try again, or open the Games page and choose another game."
-        action={
+        retry={
           <div className="mt-4 flex flex-wrap gap-3">
             <Button variant="primary" onClick={() => reset()}>
               Try again

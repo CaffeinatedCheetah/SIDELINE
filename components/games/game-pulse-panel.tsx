@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, TrendingUp, Users, MessageSquare, Zap, Bot } from "lucide-react";
+import { Flame, TrendingUp, Users, Zap, Bot } from "lucide-react";
 import type { GamePulse } from "@/lib/services/game-pulse";
 
 function ProgressBar({ percent, color }: { percent: number; color: string }) {
