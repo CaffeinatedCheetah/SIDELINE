@@ -35,17 +35,7 @@
     { "source": "/onboarding",  "destination": "/onboarding.html"  }
   ],
   "crons": [
-    {
-      "path": "/api/jobs/ai-game-recaps",
-      "schedule": "*/10 * * * *"
-    },
-    { "path": "/api/jobs/sports-sync", "schedule": "* * * * *" },
-    { "path": "/api/scout",            "schedule": "0 10 * * *" },
-    { "path": "/api/agent-pulse",      "schedule": "0 10 * * *" },
-    { "path": "/api/agent-social",     "schedule": "0 12 * * *" },
-    { "path": "/api/agent-hunter",     "schedule": "0 14 * * *" },
-    { "path": "/api/push-notify",      "schedule": "0 16 * * *" },
-    { "path": "/api/agent-rivals",     "schedule": "0 18 * * *" },
-    { "path": "/api/jobs/hall-of-flame", "schedule": "15 0 * * *" }
+    { "path": "/api/scout",             "schedule": "0 10 * * *"  },
+    { "path": "/api/jobs/hall-of-flame", "schedule": "15 0 * * *"  }
   ]
 }
