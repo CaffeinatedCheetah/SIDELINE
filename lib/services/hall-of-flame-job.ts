@@ -8,43 +8,55 @@ export async function generateHallOfFlame(
   now = new Date(),
 ) {
   const periodStart = hallPeriodStartUtc(period, now);
-  const [takes, reportCounts] = await Promise.all([
-    db.take.findMany({
+  let ranked: ReturnType<typeof rankHallCandidates> = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const takes = await db.take.findMany({
       where: {
         status: "ACTIVE",
         author: { status: "ACTIVE" },
-        createdAt: period === "ALL_TIME" ? undefined : { gte: periodStart },
+        createdAt: { gte: periodStart, lte: now },
       },
+      orderBy: { id: "asc" },
+      take: 1000,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: {
         _count: { select: { reactions: true, comments: true } },
         author: { select: { status: true } },
       },
-    }),
-    db.report.groupBy({
+    });
+    if (!takes.length) break;
+    const reportCounts = await db.report.groupBy({
       by: ["targetId"],
       where: {
         targetType: "TAKE",
+        targetId: { in: takes.map((take) => take.id) },
         state: { in: ["OPEN", "IN_REVIEW", "RESOLVED"] },
       },
       _count: { _all: true },
-    }),
-  ]);
-  const reportsByTake = new Map(
-    reportCounts.map((entry) => [entry.targetId, entry._count._all]),
-  );
-  const ranked = rankHallCandidates(
-    takes.map((take) => ({
-      id: take.id,
-      quality: Math.min(1, take.body.length / 400),
-      conversation: Math.min(
-        1,
-        (take._count.reactions + take._count.comments) / 25,
-      ),
-      trust: take.author.status === "ACTIVE" ? 1 : 0,
-      reports: reportsByTake.get(take.id) ?? 0,
-      isActive: take.status === "ACTIVE",
-    })),
-  );
+    });
+    const reports = new Map(
+      reportCounts.map((entry) => [entry.targetId, entry._count._all]),
+    );
+    const batch = rankHallCandidates(
+      takes.map((take) => ({
+        id: take.id,
+        quality: Math.min(1, take.body.length / 400),
+        conversation: Math.min(
+          1,
+          (take._count.reactions + take._count.comments) / 25,
+        ),
+        trust: 1,
+        reports: reports.get(take.id) ?? 0,
+        isActive: true,
+      })),
+    );
+    ranked = [...ranked, ...batch]
+      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+      .slice(0, 100)
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
+    cursor = takes.at(-1)!.id;
+  }
   return db.$transaction(async (transaction) => {
     await transaction.hallOfFlameEntry.deleteMany({
       where: { period, periodStart, leagueId: null, communityId: null },

@@ -883,7 +883,7 @@ async function handlePost(request: Request, context: Context) {
         : await db.comment.findUnique({
             where: { id: parsed.data.commentId! },
           });
-      if (!reactionTarget || !(await canInteract(userId, reactionTarget)))
+      if (!reactionTarget || !(await canInteract(userId, reactionTarget, db)))
         return apiError("FORBIDDEN", "This content is unavailable.", 403);
       const existing = await db.reaction.findFirst({
         where: {

@@ -43,6 +43,8 @@ try {
     FROM "TeamFollow"
     LIMIT 0
   `;
+  await prisma.$queryRaw`SELECT "key", "owner", "expiresAt" FROM "JobLease" LIMIT 0`;
+  await prisma.$queryRaw`SELECT "id", "reservedUsd", "status" FROM "AiUsage" LIMIT 0`;
   console.info("Verified the FanTakes runtime database schema.");
 } catch (error) {
   console.error(

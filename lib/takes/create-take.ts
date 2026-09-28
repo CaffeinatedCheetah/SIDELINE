@@ -68,7 +68,7 @@ export async function createTake({
       throw new TakeCreationError("NOT_FOUND", "Parent Take not found.");
     if (
       parent &&
-      (!(await canInteract(authorId, parent)) ||
+      (!(await canInteract(authorId, parent, db)) ||
         parent.communityId !== (communityId ?? null) ||
         parent.debateId !== (debateId ?? null))
     )

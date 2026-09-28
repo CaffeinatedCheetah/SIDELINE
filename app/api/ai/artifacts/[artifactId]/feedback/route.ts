@@ -1,6 +1,7 @@
 import { AiFeedbackReason, AiFeedbackValue } from "@prisma/client";
 import { z } from "zod";
 
+import { checkRateLimit, rateLimitKey } from "@/lib/api/rate-limit";
 import { auth } from "@/auth";
 import { apiError, apiSuccess, parseJson } from "@/lib/api/http";
 import { db } from "@/lib/db/client";
@@ -19,6 +20,10 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id)
     return apiError("UNAUTHORIZED", "Sign in is required.", 401);
+  const rate = await checkRateLimit(
+    rateLimitKey(request, "ai-feedback", session.user.id),
+  );
+  if (!rate.allowed) return apiError("RATE_LIMITED", "Please wait.", 429);
   const parsed = await parseJson(request, bodySchema);
   if (!parsed.success)
     return apiError("INVALID_REQUEST", "Invalid feedback.", 400);

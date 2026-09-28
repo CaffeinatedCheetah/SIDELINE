@@ -38,6 +38,16 @@ run("launch safeguards on PostgreSQL", () => {
       }),
     ).toBeNull();
   });
+  it("keeps default privacy settings discoverable", async () => {
+    await db.userPreference.create({
+      data: { userId: a, privacySettings: {} },
+    });
+    expect(
+      await db.user.findFirst({
+        where: { id: a, ...discoverableUserWhere(b) },
+      }),
+    ).not.toBeNull();
+  });
   it("blocks interaction in both directions", async () => {
     await db.block.create({ data: { blockerId: a, blockedId: b } });
     expect(await canInteract(a, { authorId: b, status: "ACTIVE" })).toBe(false);

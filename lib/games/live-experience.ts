@@ -195,10 +195,13 @@ export async function getGameLiveExperience(gameId: string, viewerId?: string) {
       })
     : [];
 
-  const activePredictionCount = predictions.filter(
-    (prediction) =>
-      prediction.status === "OPEN" || prediction.status === "LOCKED",
-  ).length;
+  const activePredictionCount = await db.prediction.count({
+    where: {
+      gameId,
+      status: { in: ["OPEN", "LOCKED"] },
+      user: visibleUserWhere(viewerId),
+    },
+  });
   const flashThreadCount = flashThreads?.length ?? 0;
   const featuredThread = flashThreads?.[0] ?? null;
 

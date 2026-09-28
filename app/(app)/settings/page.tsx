@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Prisma } from "@prisma/client";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { validInterests } from "@/lib/accounts/interests";
 import { auth } from "@/auth";
 import { LogoutButton } from "@/components/actions/logout-button";
 import { AccountDangerZone } from "@/components/profile/account-danger-zone";
@@ -85,6 +86,7 @@ export default async function Settings({
       displayName.length < 2 ||
       displayName.length > 50 ||
       bio.length > 300 ||
+      (avatarUrl !== "" && !/^https:\/\//i.test(avatarUrl)) ||
       !/^[a-z0-9-]{3,30}$/.test(handle)
     )
       redirect("/settings?section=profile&error=invalid");
@@ -133,6 +135,8 @@ export default async function Settings({
     if (!current?.user?.id) redirect("/auth/sign-in");
     const favoriteSports = formData.getAll("sports").map(String);
     const favoriteTeams = formData.getAll("teams").map(String);
+    if (!(await validInterests(favoriteSports, favoriteTeams)))
+      redirect("/settings?section=interests&error=invalid");
     await db.user.update({
       where: { id: current.user.id },
       data: {

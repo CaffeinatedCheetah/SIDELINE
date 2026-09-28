@@ -39,6 +39,7 @@ for (const command of [
     "node_modules/vitest/vitest.mjs",
     "run",
     "tests/integration/database-flows.test.ts",
+    "tests/integration/launch-hardening.test.ts",
     "tests/integration/sports-materialization.test.ts",
     "tests/integration/game-moments-materialization.test.ts",
   ],

@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import { db } from "@/lib/db/client";
 import { expect, test, type Page } from "@playwright/test";
 
-const require = createRequire(import.meta.url);
+const resolveDependency = createRequire(`${process.cwd()}/package.json`);
 type AxeResult = {
   violations: Array<{
     id: string;
@@ -13,7 +13,9 @@ type AxeResult = {
 };
 
 async function scanForSeriousViolations(page: Page) {
-  await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
+  await page.addScriptTag({
+    path: resolveDependency.resolve("axe-core/axe.min.js"),
+  });
   const results = (await page.evaluate(() =>
     (window as unknown as { axe: { run: () => Promise<AxeResult> } }).axe.run(),
   )) as AxeResult;

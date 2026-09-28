@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { db } from "@/lib/db/client";
 
 export function visibleUserWhere(viewerId?: string): Prisma.UserWhereInput {
@@ -25,6 +25,16 @@ export function discoverableUserWhere(
       {
         preferences: {
           is: {
+            privacySettings: {
+              path: ["profileDiscoverable"],
+              equals: Prisma.AnyNull,
+            },
+          },
+        },
+      },
+      {
+        preferences: {
+          is: {
             NOT: {
               privacySettings: { path: ["profileDiscoverable"], equals: false },
             },
@@ -38,10 +48,11 @@ export function discoverableUserWhere(
 export async function canInteract(
   actorId: string,
   target: { authorId: string; status: string },
+  client: PrismaClient | Prisma.TransactionClient = db,
 ) {
   if (target.status !== "ACTIVE") return false;
   return Boolean(
-    await db.user.findFirst({
+    await client.user.findFirst({
       where: { id: target.authorId, ...visibleUserWhere(actorId) },
       select: { id: true },
     }),

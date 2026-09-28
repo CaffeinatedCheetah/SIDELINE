@@ -5,7 +5,7 @@ import { getGameLiveExperience } from "@/lib/games/live-experience";
 const { dbMock, getGameMoments, getGameFlashThreads } = vi.hoisted(() => ({
   dbMock: {
     game: { findUnique: vi.fn() },
-    prediction: { findMany: vi.fn() },
+    prediction: { findMany: vi.fn(), count: vi.fn() },
     take: { findMany: vi.fn() },
     fanScoreEvent: { findMany: vi.fn() },
   },
@@ -26,6 +26,7 @@ describe("live experience read model", () => {
   beforeEach(() => {
     dbMock.game.findUnique.mockReset();
     dbMock.prediction.findMany.mockReset();
+    dbMock.prediction.count.mockResolvedValue(1);
     dbMock.take.findMany.mockReset();
     dbMock.fanScoreEvent.findMany.mockReset();
     getGameMoments.mockReset();
