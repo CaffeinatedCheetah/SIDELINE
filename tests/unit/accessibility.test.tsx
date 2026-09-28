@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { axe } from "jest-axe";
 import { describe, expect, it, vi } from "vitest";
+import Loading from "@/app/loading";
 import { DebateVote } from "@/components/actions/debate-vote";
 import { Navbar } from "@/components/navigation/navbar";
 import { Field, Input } from "@/components/ui/form-controls";
@@ -11,9 +12,17 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("accessibility smoke checks", () => {
+  it("announces loading without invalid ARIA attributes", async () => {
+    const { container, getByRole } = render(<Loading />);
+    expect(getByRole("status", { name: "Loading" })).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+    expect((await axe(container)).violations).toEqual([]);
+  });
   it("has no detectable navigation violations", async () => {
     const { container } = render(<Navbar authenticated unread={3} />);
-    expect(await axe(container)).toHaveNoViolations();
+    expect((await axe(container)).violations).toEqual([]);
   });
 
   it("labels form controls and debate choices", async () => {
@@ -31,6 +40,6 @@ describe("accessibility smoke checks", () => {
         />
       </>,
     );
-    expect(await axe(container)).toHaveNoViolations();
+    expect((await axe(container)).violations).toEqual([]);
   });
 });

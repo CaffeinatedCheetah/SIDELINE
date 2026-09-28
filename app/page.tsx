@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { withTimeout } from "@/lib/db/with-timeout";
+import { SUPPORTED_LEAGUES } from "@/lib/sports/leagues";
+import { visibleTakesWhere } from "@/lib/permissions/visibility";
 import { auth } from "@/auth";
 import { CommunityCard } from "@/components/communities/community-card";
 import { DebateCard } from "@/components/debates/debate-card";
@@ -34,12 +37,13 @@ export const metadata: Metadata = {
 
 async function discovery(viewerId: string | undefined) {
   try {
+    const takeVisibility = await visibleTakesWhere(viewerId);
     const [gameDirectory, takes, debates, communities, followingTakes] =
       await Promise.all([
         getSportsGameDirectory({ limit: 3 }),
         db.take.findMany({
           take: 3,
-          where: { status: "ACTIVE" },
+          where: takeVisibility,
           orderBy: { createdAt: "desc" },
           include: {
             // See app/games/[gameId]/page.tsx for why this is a scoped
@@ -71,10 +75,10 @@ async function discovery(viewerId: string | undefined) {
         viewerId
           ? db.take.findMany({
               where: {
-                status: "ACTIVE",
-                author: {
-                  followers: { some: { followerId: viewerId } },
-                },
+                AND: [
+                  takeVisibility,
+                  { author: { followers: { some: { followerId: viewerId } } } },
+                ],
               },
               orderBy: { createdAt: "desc" },
               take: 6,
@@ -158,8 +162,31 @@ export default async function Home() {
   const session = await auth();
   const [data, mySideline, leagueHub] = await Promise.all([
     discovery(session?.user?.id),
-    getMySideline(session?.user?.id),
-    getLeagueHub(session?.user?.id),
+    withTimeout(
+      getMySideline(session?.user?.id),
+      "home personalization",
+      3000,
+    ).catch(() => ({
+      teams: [],
+      liveGames: [],
+      upcomingGames: [],
+      recentGames: [],
+      flashThreads: [],
+    })),
+    withTimeout(getLeagueHub(session?.user?.id), "home leagues", 3000).catch(
+      () => ({
+        leagues: SUPPORTED_LEAGUES.map((league) => ({
+          ...league,
+          teamCount: 0,
+          gameCount: 0,
+          liveGameCount: 0,
+          followedTeamCount: 0,
+        })),
+        liveGames: [],
+        liveGameCount: 0,
+        followedTeamCount: 0,
+      }),
+    ),
   ]);
   const hasPersonalizedActivity =
     mySideline.liveGames.length > 0 ||
@@ -253,7 +280,7 @@ export default async function Home() {
           )}
         </div>
       </section>
-      <div className="page-container grid gap-16 py-14">
+      <div className="page-container grid min-w-0 grid-cols-1 gap-16 py-14">
         <MySidelineSection
           signedIn={Boolean(session?.user?.id)}
           teams={mySideline.teams}

@@ -1,9 +1,21 @@
 import { Prisma, type GameStatus } from "@prisma/client";
 
+import {
+  visibleTakesWhere,
+  visibleUserWhere,
+} from "@/lib/permissions/visibility";
 import { db } from "@/lib/db/client";
-import { getGameFlashThreads, getGameMoments } from "@/lib/sports/moments/read-model";
+import {
+  getGameFlashThreads,
+  getGameMoments,
+} from "@/lib/sports/moments/read-model";
 
-export type LiveFeedKind = "moment" | "thread" | "take" | "prediction" | "milestone";
+export type LiveFeedKind =
+  | "moment"
+  | "thread"
+  | "take"
+  | "prediction"
+  | "milestone";
 
 export type LiveFeedItem = {
   id: string;
@@ -71,7 +83,10 @@ function countEngagement(take: {
     take.reactions * 2 +
     take.replies * 2 +
     take.votes +
-    Math.max(0, 100 - Math.floor((Date.now() - take.createdAt.getTime()) / 60_000))
+    Math.max(
+      0,
+      100 - Math.floor((Date.now() - take.createdAt.getTime()) / 60_000),
+    )
   );
 }
 
@@ -92,7 +107,7 @@ function predictionOutcomeLabel(
     : `Incorrect · ${resolvedSelection ?? "resolved"}`;
 }
 
-export async function getGameLiveExperience(gameId: string) {
+export async function getGameLiveExperience(gameId: string, viewerId?: string) {
   const game = await db.game.findUnique({
     where: { id: gameId },
     select: {
@@ -108,35 +123,50 @@ export async function getGameLiveExperience(gameId: string) {
   const [momentsResult, flashThreadsResult, predictions, topTakes] =
     await Promise.all([
       getGameMoments(gameId),
-      getGameFlashThreads(gameId),
+      getGameFlashThreads(gameId, viewerId),
       db.prediction.findMany({
-      where: { gameId },
-      orderBy: [{ submittedAt: "desc" }],
-      take: 8,
-      select: {
-        id: true,
-        selection: true,
-        status: true,
-        locksAt: true,
-        submittedAt: true,
-        result: {
-          select: { outcome: true, resolvedSelection: true, resolvedAt: true },
+        where: {
+          gameId,
+          user: visibleUserWhere(viewerId),
+          OR: [
+            { locksAt: { lte: new Date() } },
+            ...(viewerId ? [{ userId: viewerId }] : []),
+          ],
         },
-        user: { select: { handle: true, displayName: true, image: true } },
-      },
-    }),
-    db.take.findMany({
-      where: { gameId, status: "ACTIVE", parentId: null },
-      orderBy: [{ createdAt: "desc" }],
-      take: 8,
-      select: {
-        id: true,
-        body: true,
-        createdAt: true,
-        author: { select: { handle: true, displayName: true, image: true } },
-        _count: { select: { reactions: true, replies: true, votes: true } },
-      },
-    }),
+        orderBy: [{ submittedAt: "desc" }],
+        take: 8,
+        select: {
+          id: true,
+          selection: true,
+          status: true,
+          locksAt: true,
+          submittedAt: true,
+          result: {
+            select: {
+              outcome: true,
+              resolvedSelection: true,
+              resolvedAt: true,
+            },
+          },
+          user: { select: { handle: true, displayName: true, image: true } },
+        },
+      }),
+      db.take.findMany({
+        where: {
+          gameId,
+          ...(await visibleTakesWhere(viewerId)),
+          parentId: null,
+        },
+        orderBy: [{ createdAt: "desc" }],
+        take: 8,
+        select: {
+          id: true,
+          body: true,
+          createdAt: true,
+          author: { select: { handle: true, displayName: true, image: true } },
+          _count: { select: { reactions: true, replies: true, votes: true } },
+        },
+      }),
     ]);
   const moments = momentsResult ?? [];
   const flashThreads = flashThreadsResult ?? [];
@@ -154,21 +184,24 @@ export async function getGameLiveExperience(gameId: string) {
       sourceType: "PREDICTION",
       sourceId: { in: predictionIds },
     });
-  const fanMomentumEvents =
-    fanMomentumConditions.length
-      ? await db.fanScoreEvent.findMany({
-          where: { OR: fanMomentumConditions },
-          orderBy: { occurredAt: "desc" },
-          take: 8,
-          include: {
-            user: { select: { handle: true, displayName: true } },
-          },
-        })
-      : [];
+  const fanMomentumEvents = fanMomentumConditions.length
+    ? await db.fanScoreEvent.findMany({
+        where: { OR: fanMomentumConditions },
+        orderBy: { occurredAt: "desc" },
+        take: 8,
+        include: {
+          user: { select: { handle: true, displayName: true } },
+        },
+      })
+    : [];
 
-  const activePredictionCount = predictions.filter(
-    (prediction) => prediction.status === "OPEN" || prediction.status === "LOCKED",
-  ).length;
+  const activePredictionCount = await db.prediction.count({
+    where: {
+      gameId,
+      status: { in: ["OPEN", "LOCKED"] },
+      user: visibleUserWhere(viewerId),
+    },
+  });
   const flashThreadCount = flashThreads?.length ?? 0;
   const featuredThread = flashThreads?.[0] ?? null;
 
@@ -235,7 +268,8 @@ export async function getGameLiveExperience(gameId: string) {
         timestamp: (
           prediction.result?.resolvedAt ?? prediction.submittedAt
         ).toISOString(),
-        importance: outcome === "CORRECT" ? 95 : outcome === "INCORRECT" ? 65 : 40,
+        importance:
+          outcome === "CORRECT" ? 95 : outcome === "INCORRECT" ? 65 : 40,
         status: prediction.status,
         href: `/games/${gameId}`,
       };

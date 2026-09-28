@@ -1,11 +1,13 @@
 # SIDELINE — fantakes.app
 
-Sports fan platform. Vercel serverless (Node.js ESM). No build step — files are deployed directly.
+Sports fan platform. The active application is Next.js App Router, React, TypeScript and Prisma/PostgreSQL. Run npm run build. Root HTML and api/*.js files are legacy references; they are not the canonical application. Follow docs/LAUNCH_HARDENING.md for release gates.
 
 ## Project Layout
 
-- `index.html` — single-page app, all tabs/sections, inline JS (IIFE)
-- `api/*.js` — Vercel serverless functions (ESM `export default async function handler(req, res)`)
+- `app/`, `components/`, `lib/` — active Next.js application
+- `prisma/` — database schema and migrations
+- `index.html` — legacy single-page reference
+- `api/*.js` — legacy Vercel serverless functions (ESM `export default async function handler(req, res)`)
 - `api/_ratelimit.js` — shared rate-limit helper
 
 ## Content & Media Conventions

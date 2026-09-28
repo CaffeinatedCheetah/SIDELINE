@@ -50,17 +50,17 @@ export function Navbar({
         Skip to content
       </a>
       <header className="border-border-subtle bg-surface-1/95 sticky top-0 z-40 border-b backdrop-blur">
-        <div className="page-container flex h-16 items-center gap-6">
+        <div className="page-container flex h-16 items-center gap-2 sm:gap-4 xl:gap-6">
           <Link
             href="/"
             aria-label="FanTakes home"
-            className="display text-2xl"
+            className="display shrink-0 text-2xl"
           >
             <span className="text-brand">FAN</span>TAKES
           </Link>
           <nav
             aria-label="Primary"
-            className="hidden items-center gap-1 lg:flex"
+            className="hidden items-center gap-1 xl:flex"
           >
             {links.map(({ href, label, icon: Icon }) => {
               const active = isActive(pathname, href);
@@ -97,7 +97,10 @@ export function Navbar({
                 trigger={
                   <button
                     aria-label="Create a take"
-                    className={cn(buttonStyles({ variant: "secondary" }))}
+                    className={cn(
+                      buttonStyles({ variant: "secondary" }),
+                      "hidden sm:inline-flex",
+                    )}
                   >
                     <Plus aria-hidden className="size-4" />
                     Take
@@ -123,7 +126,10 @@ export function Navbar({
                 </Link>
                 <Link
                   href="/arena"
-                  className={cn(buttonStyles({ variant: "secondary" }))}
+                  className={cn(
+                    buttonStyles({ variant: "secondary" }),
+                    "hidden sm:inline-flex",
+                  )}
                 >
                   My Arena
                 </Link>
@@ -146,7 +152,7 @@ export function Navbar({
               trigger={
                 <button
                   aria-label="Open menu"
-                  className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm lg:hidden"
+                  className="hover:bg-surface-3 grid size-11 place-items-center rounded-sm xl:hidden"
                 >
                   <Menu aria-hidden className="size-5" />
                 </button>
@@ -196,7 +202,7 @@ export function Navbar({
       </header>
       <nav
         aria-label="Mobile"
-        className="border-border-subtle bg-surface-1 safe-bottom fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t lg:hidden"
+        className="border-border-subtle bg-surface-1 safe-bottom fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t xl:hidden"
       >
         <Link
           href="/"

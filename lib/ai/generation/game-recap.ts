@@ -1,4 +1,5 @@
 import "server-only";
+import { withJobLease } from "@/lib/jobs/lease";
 
 import {
   AiArtifactStatus,
@@ -40,34 +41,7 @@ function safeFailureMessage(error: unknown) {
     : "Recap generation failed.";
 }
 
-async function enforceBudget() {
-  const config = getAiConfig();
-  const start = new Date();
-  start.setUTCHours(0, 0, 0, 0);
-  const [count, cost] = await Promise.all([
-    db.aiArtifact.count({
-      where: {
-        type: AiArtifactType.GAME_RECAP,
-        generatedAt: { gte: start },
-        status: AiArtifactStatus.READY,
-      },
-    }),
-    db.aiArtifact.aggregate({
-      where: { generatedAt: { gte: start } },
-      _sum: { estimatedCost: true },
-    }),
-  ]);
-  if (
-    count >= config.dailyGenerationLimit ||
-    Number(cost._sum.estimatedCost ?? 0) >= config.dailyBudgetUsd
-  )
-    throw new AiError(
-      "BUDGET_EXHAUSTED",
-      "The daily AI generation budget is exhausted.",
-    );
-}
-
-export async function generateGameRecap(
+async function generateRecapWithLease(
   gameId: string,
   options: GenerateOptions = {},
 ) {
@@ -133,7 +107,10 @@ export async function generateGameRecap(
     return existing;
   }
   if (existing?.status === AiArtifactStatus.GENERATING)
-    throw new AiError("CONFLICT", "This recap is already generating.", true);
+    await db.aiArtifact.update({
+      where: { id: existing.id },
+      data: { status: AiArtifactStatus.FAILED },
+    });
 
   const artifact = existing
     ? await db.aiArtifact.update({
@@ -145,7 +122,7 @@ export async function generateGameRecap(
               errorCode: null,
               errorMessage: null,
             }
-          : {},
+          : { status: AiArtifactStatus.PENDING },
       })
     : await db.aiArtifact.create({
         data: {
@@ -168,7 +145,6 @@ export async function generateGameRecap(
     });
   }
 
-  await enforceBudget();
   const claimed = await db.aiArtifact.updateMany({
     where: {
       id: artifact.id,
@@ -256,4 +232,16 @@ export async function generateGameRecap(
     logAiEvent("generation_failed", { artifactId: artifact.id, gameId, code });
     throw error;
   }
+}
+
+export async function generateGameRecap(
+  gameId: string,
+  options: GenerateOptions = {},
+) {
+  const result = await withJobLease(`recap:${gameId}`, () =>
+    generateRecapWithLease(gameId, options),
+  );
+  if ("skipped" in result)
+    throw new AiError("CONFLICT", "This recap is already generating.", true);
+  return result;
 }

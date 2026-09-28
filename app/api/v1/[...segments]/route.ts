@@ -1,6 +1,12 @@
 import { ContentStatus, DebateStatus, Prisma, VoteKind } from "@prisma/client";
 import { z } from "zod";
 
+import {
+  canInteract,
+  discoverableUserWhere,
+  visibleUserWhere,
+  visibleTakesWhere,
+} from "@/lib/permissions/visibility";
 import { auth } from "@/auth";
 import { apiError, apiSuccess, cursorPage, parseJson } from "@/lib/api/http";
 import {
@@ -35,7 +41,7 @@ async function identity() {
   return session.user.id;
 }
 
-async function mutationIdentity() {
+async function mutationIdentity(allowMuted = false) {
   const session = await auth();
   if (!session?.user?.id)
     return {
@@ -53,7 +59,7 @@ async function mutationIdentity() {
         403,
       ),
     };
-  if (user.mutedUntil && user.mutedUntil.getTime() > Date.now())
+  if (!allowMuted && user.mutedUntil && user.mutedUntil.getTime() > Date.now())
     return {
       response: apiError(
         "ACCOUNT_MUTED",
@@ -92,6 +98,7 @@ async function resolveModerationTarget(
 async function handleGet(request: Request, context: Context) {
   const { segments } = await context.params;
   const resource = segments[0];
+  const viewerId = await identity();
   const url = new URL(request.url);
   const { limit, cursor } = cursorPage(url.searchParams);
   const page = {
@@ -172,7 +179,7 @@ async function handleGet(request: Request, context: Context) {
     return apiSuccess(
       await db.take.findMany({
         ...page,
-        where: { status: ContentStatus.ACTIVE },
+        where: await visibleTakesWhere(viewerId),
         orderBy: { createdAt: "desc" },
         include: {
           author: { select: { handle: true, displayName: true, image: true } },
@@ -182,8 +189,11 @@ async function handleGet(request: Request, context: Context) {
     );
   if (resource === "users" && segments[1])
     return apiSuccess(
-      await db.user.findUnique({
-        where: { normalizedHandle: segments[1].toLowerCase() },
+      await db.user.findFirst({
+        where: {
+          normalizedHandle: segments[1].toLowerCase(),
+          ...visibleUserWhere(viewerId),
+        },
         select: {
           id: true,
           handle: true,
@@ -238,6 +248,16 @@ async function handleGet(request: Request, context: Context) {
       }),
     );
   if (resource === "search") {
+    const quota = await checkRateLimit(
+      rateLimitKey(request, "search", viewerId),
+      { limit: 60, windowMs: 60_000 },
+    );
+    if (!quota.allowed)
+      return apiError(
+        "RATE_LIMITED",
+        "Please wait before searching again.",
+        429,
+      );
     // Doc-specified bounds (docs/pages/SEARCH.md: "Query 2-100 chars").
     const query = url.searchParams.get("q")?.trim().slice(0, 100);
     const type = url.searchParams.get("type") ?? "all";
@@ -265,7 +285,12 @@ async function handleGet(request: Request, context: Context) {
     ] = await Promise.all([
       type === "all" || type === "people"
         ? db.user.findMany({
-            where: { OR: [{ displayName: contains }, { handle: contains }] },
+            where: {
+              AND: [
+                discoverableUserWhere(viewerId),
+                { OR: [{ displayName: contains }, { handle: contains }] },
+              ],
+            },
             select: { handle: true, displayName: true, image: true },
             take: 5,
           })
@@ -692,16 +717,78 @@ async function handlePost(request: Request, context: Context) {
         400,
         parsed.error.flatten(),
       );
-    const comment = await db.comment.create({
-      data: { authorId: userId, ...parsed.data },
-    });
-    await recordFanScoreEvent(db, {
-      userId,
-      type: "CONSTRUCTIVE_REPLY",
-      sourceType: "COMMENT",
-      sourceId: comment.id,
-      idempotencyKey: `comment:${comment.id}`,
-      reason: "Posted a constructive comment",
+    const contextTarget = parsed.data.takeId
+      ? await db.take.findUnique({ where: { id: parsed.data.takeId } })
+      : await db.debate.findUnique({ where: { id: parsed.data.debateId! } });
+    if (
+      !contextTarget ||
+      !(await canInteract(userId, {
+        authorId:
+          "authorId" in contextTarget
+            ? contextTarget.authorId
+            : contextTarget.creatorId,
+        status:
+          "authorId" in contextTarget
+            ? contextTarget.status
+            : contextTarget.status === "OPEN"
+              ? "ACTIVE"
+              : "REMOVED",
+      }))
+    )
+      return apiError("FORBIDDEN", "This conversation is unavailable.", 403);
+    if (
+      contextTarget.communityId &&
+      !(await db.communityMember.findFirst({
+        where: {
+          communityId: contextTarget.communityId,
+          userId,
+          status: "ACTIVE",
+          community: { status: "ACTIVE" },
+        },
+      }))
+    )
+      return apiError(
+        "FORBIDDEN",
+        "Join this community before commenting.",
+        403,
+      );
+    if (parsed.data.parentId) {
+      const parent = await db.comment.findUnique({
+        where: { id: parsed.data.parentId },
+      });
+      if (
+        !parent ||
+        parent.takeId !== (parsed.data.takeId ?? null) ||
+        parent.debateId !== (parsed.data.debateId ?? null) ||
+        !(await canInteract(userId, parent))
+      )
+        return apiError("FORBIDDEN", "Reply target is unavailable.", 403);
+    }
+    const comment = await db.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${userId}))`;
+      const comment = await transaction.comment.create({
+        data: { authorId: userId, ...parsed.data },
+      });
+      if (
+        parsed.data.body.length >= 20 &&
+        !(await transaction.comment.findFirst({
+          where: {
+            authorId: userId,
+            body: parsed.data.body,
+            id: { not: comment.id },
+            createdAt: { gte: new Date(Date.now() - 86_400_000) },
+          },
+        }))
+      )
+        await recordFanScoreEvent(transaction, {
+          userId,
+          type: "CONSTRUCTIVE_REPLY",
+          sourceType: "COMMENT",
+          sourceId: comment.id,
+          idempotencyKey: `comment:${comment.id}`,
+          reason: "Posted a constructive comment",
+        });
+      return comment;
     });
     const recipient = parsed.data.parentId
       ? await db.comment.findUnique({
@@ -764,109 +851,118 @@ async function handlePost(request: Request, context: Context) {
     return apiSuccess(comment, 201);
   }
   if (resource === "reactions") {
-    const parsed = await parseJson(
-      request,
-      z
-        .object({
-          takeId: z.string().uuid().optional(),
-          commentId: z.string().uuid().optional(),
-          kind: z.enum([
-            "LOVE",
-            "FIRE",
-            "INSIGHTFUL",
-            "FUNNY",
-            "WOW",
-            "DISAGREE",
-          ]),
-        })
-        .refine(
-          (value) => Boolean(value.takeId) !== Boolean(value.commentId),
-          "Choose exactly one reaction target.",
-        ),
-    );
-    if (!parsed.success)
-      return apiError(
-        "INVALID_REQUEST",
-        "Invalid reaction.",
-        400,
-        parsed.error.flatten(),
+    return db.$transaction(async (db) => {
+      const parsed = await parseJson(
+        request,
+        z
+          .object({
+            takeId: z.string().uuid().optional(),
+            commentId: z.string().uuid().optional(),
+            kind: z.enum([
+              "LOVE",
+              "FIRE",
+              "INSIGHTFUL",
+              "FUNNY",
+              "WOW",
+              "DISAGREE",
+            ]),
+          })
+          .refine(
+            (value) => Boolean(value.takeId) !== Boolean(value.commentId),
+            "Choose exactly one reaction target.",
+          ),
       );
-    const existing = await db.reaction.findFirst({
-      where: {
-        userId,
-        takeId: parsed.data.takeId,
-        commentId: parsed.data.commentId,
-        kind: parsed.data.kind,
-      },
-    });
-    if (existing) {
-      await db.reaction.delete({ where: { id: existing.id } });
-      if (existing.kind === "INSIGHTFUL") {
-        const scoreEvent = await db.fanScoreEvent.findUnique({
-          where: { idempotencyKey: `reaction-insightful:${existing.id}` },
-        });
-        if (scoreEvent)
-          await reverseFanScoreEvent(db, {
-            eventId: scoreEvent.id,
-            reason: "Insightful reaction removed",
+      if (!parsed.success)
+        return apiError(
+          "INVALID_REQUEST",
+          "Invalid reaction.",
+          400,
+          parsed.error.flatten(),
+        );
+      const reactionTarget = parsed.data.takeId
+        ? await db.take.findUnique({ where: { id: parsed.data.takeId } })
+        : await db.comment.findUnique({
+            where: { id: parsed.data.commentId! },
           });
-      }
-      return apiSuccess({ active: false });
-    }
-    const reaction = await db.reaction.create({
-      data: { userId, ...parsed.data },
-    });
-    const target = parsed.data.takeId
-      ? await db.take.findUnique({
-          where: { id: parsed.data.takeId },
-          select: {
-            authorId: true,
-            gameId: true,
-            debateId: true,
-            community: { select: { slug: true } },
-            author: { select: { handle: true } },
-          },
-        })
-      : await db.comment.findUnique({
-          where: { id: parsed.data.commentId! },
-          select: {
-            authorId: true,
-            takeId: true,
-            debateId: true,
-            author: { select: { handle: true } },
-          },
-        });
-    if (target) {
-      const href =
-        "gameId" in target && target.gameId
-          ? `/games/${target.gameId}`
-          : "community" in target && target.community
-            ? `/communities/${target.community.slug}`
-            : target.debateId
-              ? `/debates/${target.debateId}`
-              : `/u/${target.author.handle}`;
-      await createNotification(db, {
-        recipientId: target.authorId,
-        actorId: userId,
-        type: "REACTION",
-        entityType: parsed.data.takeId ? "TAKE" : "COMMENT",
-        entityId: parsed.data.takeId ?? parsed.data.commentId!,
-        href,
-        deduplicationKey: `reaction:${reaction.id}`,
-        payload: { kind: reaction.kind },
+      if (!reactionTarget || !(await canInteract(userId, reactionTarget, db)))
+        return apiError("FORBIDDEN", "This content is unavailable.", 403);
+      const existing = await db.reaction.findFirst({
+        where: {
+          userId,
+          takeId: parsed.data.takeId,
+          commentId: parsed.data.commentId,
+          kind: parsed.data.kind,
+        },
       });
-      if (reaction.kind === "INSIGHTFUL" && target.authorId !== userId) {
-        await recordFanScoreEvent(db, {
-          userId: target.authorId,
-          type: "RECEIVED_INSIGHTFUL",
-          sourceType: "REACTION",
-          sourceId: reaction.id,
-          idempotencyKey: `reaction-insightful:${reaction.id}`,
-          reason: "Received an insightful reaction",
-        });
+      if (existing) {
+        await db.reaction.delete({ where: { id: existing.id } });
+        if (existing.kind === "INSIGHTFUL") {
+          const scoreEvent = await db.fanScoreEvent.findUnique({
+            where: { idempotencyKey: `reaction-insightful:${existing.id}` },
+          });
+          if (scoreEvent)
+            await reverseFanScoreEvent(db, {
+              eventId: scoreEvent.id,
+              reason: "Insightful reaction removed",
+            });
+        }
+        return apiSuccess({ active: false });
       }
-    }
-    return apiSuccess({ active: true }, 201);
+      const reaction = await db.reaction.create({
+        data: { userId, ...parsed.data },
+      });
+      const target = parsed.data.takeId
+        ? await db.take.findUnique({
+            where: { id: parsed.data.takeId },
+            select: {
+              authorId: true,
+              gameId: true,
+              debateId: true,
+              community: { select: { slug: true } },
+              author: { select: { handle: true } },
+            },
+          })
+        : await db.comment.findUnique({
+            where: { id: parsed.data.commentId! },
+            select: {
+              authorId: true,
+              takeId: true,
+              debateId: true,
+              author: { select: { handle: true } },
+            },
+          });
+      if (target) {
+        const href =
+          "gameId" in target && target.gameId
+            ? `/games/${target.gameId}`
+            : "community" in target && target.community
+              ? `/communities/${target.community.slug}`
+              : target.debateId
+                ? `/debates/${target.debateId}`
+                : `/u/${target.author.handle}`;
+        await createNotification(db, {
+          recipientId: target.authorId,
+          actorId: userId,
+          type: "REACTION",
+          entityType: parsed.data.takeId ? "TAKE" : "COMMENT",
+          entityId: parsed.data.takeId ?? parsed.data.commentId!,
+          href,
+          deduplicationKey: `reaction:${reaction.id}`,
+          payload: { kind: reaction.kind },
+        });
+        if (reaction.kind === "INSIGHTFUL" && target.authorId !== userId) {
+          await recordFanScoreEvent(db, {
+            userId: target.authorId,
+            type: "RECEIVED_INSIGHTFUL",
+            sourceType: "REACTION",
+            sourceId: reaction.id,
+            idempotencyKey: `reaction-insightful:${reaction.id}`,
+            reason: "Received an insightful reaction",
+          });
+        }
+      }
+      return apiSuccess({ active: true }, 201);
+    });
   }
   if (resource === "debates") {
     const parsed = await parseJson(
@@ -1862,25 +1958,35 @@ async function handlePatch(request: Request, context: Context) {
 
 async function handleDelete(_request: Request, context: Context) {
   const { segments } = await context.params;
-  const actor = await mutationIdentity();
+  const actor = await mutationIdentity(true);
   if (actor.response) return actor.response;
   const userId = actor.userId;
   if (segments[0] === "takes" && segments[1]) {
-    const result = await db.take.updateMany({
-      where: {
-        id: segments[1],
-        authorId: userId,
-        status: ContentStatus.ACTIVE,
-      },
-      data: {
-        status: ContentStatus.AUTHOR_REMOVED,
-        body: "",
-        deletedAt: new Date(),
-      },
+    return db.$transaction(async (db) => {
+      const result = await db.take.updateMany({
+        where: {
+          id: segments[1],
+          authorId: userId,
+          status: ContentStatus.ACTIVE,
+        },
+        data: {
+          status: ContentStatus.AUTHOR_REMOVED,
+          body: "",
+          deletedAt: new Date(),
+        },
+      });
+      if (!result.count)
+        return apiError("NOT_FOUND", "Removable take not found.", 404);
+      const reward = await db.fanScoreEvent.findUnique({
+        where: { idempotencyKey: `take:${segments[1]}` },
+      });
+      if (reward)
+        await reverseFanScoreEvent(db, {
+          eventId: reward.id,
+          reason: "Take removed by author",
+        });
+      return apiSuccess({ removed: true });
     });
-    if (!result.count)
-      return apiError("NOT_FOUND", "Removable take not found.", 404);
-    return apiSuccess({ removed: true });
   }
   if (segments[0] !== "account")
     return apiError("NOT_FOUND", "API operation not found.", 404);

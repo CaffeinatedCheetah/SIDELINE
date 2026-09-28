@@ -58,7 +58,7 @@ export default async function DiscoverPage() {
           description="Upcoming games and new fan conversations will appear here as activity starts."
         />
       ) : (
-        <div className="grid gap-10">
+        <div className="grid min-w-0 grid-cols-1 gap-10">
           {feed.trendingGames.length ? (
             <DiscoverSection
               eyebrow="Fans are gathering"
@@ -160,9 +160,13 @@ export default async function DiscoverPage() {
               title="Discover people"
               href="/search?type=people"
             >
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {feed.people.map((person) => (
-                  <Link key={person.id} href={`/u/${person.handle}`}>
+                  <Link
+                    className="min-w-0"
+                    key={person.id}
+                    href={`/u/${person.handle}`}
+                  >
                     <Card className="hover:border-brand/40 h-full transition hover:-translate-y-0.5 motion-reduce:transform-none">
                       <div className="flex items-center gap-3">
                         <Avatar

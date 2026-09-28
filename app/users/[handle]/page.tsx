@@ -88,7 +88,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle } = await params;
   const user = await getProfileUser(handle);
-  if (!user) return { title: "Profile not found" };
+  if (!user || !isPublic(user))
+    return {
+      title: "Profile unavailable",
+      robots: { index: false, follow: false },
+    };
   const indexable = isPublic(user) && isDiscoverable(user);
   return {
     title: `${user.displayName} (@${user.handle})`,

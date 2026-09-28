@@ -32,13 +32,13 @@ const pass = (
   monitoring: ReleaseStatus = "PASS",
 ): SystemStatus => ({
   system,
-  implementation: "PASS",
-  realData: "PASS",
-  persistence: "PASS",
-  errorHandling: "PASS",
-  tests: "PASS",
+  implementation: "PARTIAL",
+  realData: "BLOCKED",
+  persistence: "BLOCKED",
+  errorHandling: "PARTIAL",
+  tests: "BLOCKED",
   monitoring,
-  status: "PASS",
+  status: "BLOCKED",
 });
 
 const systems: SystemStatus[] = [
@@ -126,15 +126,15 @@ export default async function ReleaseDashboard() {
               Current recommendation
             </p>
             <strong className="font-display text-success text-2xl font-black">
-              READY FOR CLOSED ALPHA
+              RELEASE VERIFICATION REQUIRED
             </strong>
           </div>
           <Badge tone="warning">NOT READY FOR PUBLIC BETA</Badge>
         </div>
         <p className="text-text-secondary mt-3 text-sm">
-          92 unit/component/accessibility tests, 19 PostgreSQL integration
-          tests, and 46 desktop/mobile Playwright journeys pass. The production
-          build also passes.
+          Release checks must be verified for the deployed commit in GitHub
+          Actions. Runtime counts below are observations, not proof that tests
+          or user journeys pass.
         </p>
       </Card>
 
@@ -143,8 +143,14 @@ export default async function ReleaseDashboard() {
           MLB Live Game Room foundation
         </h2>
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-          <ReadinessRow label="Canonical lifecycle and API" ready />
-          <ReadinessRow label="Transactional materialization" ready />
+          <ReadinessRow
+            label="Canonical lifecycle and API verification"
+            ready={false}
+          />
+          <ReadinessRow
+            label="Database acceptance verification"
+            ready={false}
+          />
           <ReadinessRow
             label="Server synchronization authorization"
             ready={cronReady}

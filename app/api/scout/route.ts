@@ -1,7 +1,12 @@
+import { withJobLease } from "@/lib/jobs/lease";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db/client";
 import { checkRateLimit, rateLimitKey } from "@/lib/api/rate-limit";
-import { callClaude, parseJSON } from "@/lib/services/scout-content";
+import {
+  callClaude,
+  parseJSON,
+  scoutPostSchema,
+} from "@/lib/services/scout-content";
 import { gatherSportsBrief } from "@/lib/services/scout-news";
 import type { SportsBrief } from "@/lib/services/scout-news";
 
@@ -31,7 +36,8 @@ function slugify(text: string) {
 async function uniqueDebateSlug(title: string) {
   const base = slugify(title);
   for (let attempt = 0; attempt < 5; attempt++) {
-    const candidate = attempt === 0 ? base : `${base}-${Date.now().toString(36)}`;
+    const candidate =
+      attempt === 0 ? base : `${base}-${Date.now().toString(36)}`;
     const existing = await db.debate.findUnique({
       where: { slug: candidate },
       select: { id: true },
@@ -84,14 +90,18 @@ function buildPrompt(brief: SportsBrief): string {
   if (brief.liveGames.length > 0) {
     sections.push("=== LIVE RIGHT NOW ===");
     for (const g of brief.liveGames.slice(0, 10)) {
-      sections.push(`[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}${g.situation ? ` | ${g.situation}` : ""}`);
+      sections.push(
+        `[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}${g.situation ? ` | ${g.situation}` : ""}`,
+      );
     }
   }
 
   if (brief.recentResults.length > 0) {
     sections.push("\n=== FINAL SCORES (today) ===");
     for (const g of brief.recentResults.slice(0, 10)) {
-      sections.push(`[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}`);
+      sections.push(
+        `[${g.league}] ${g.awayTeam} ${g.awayScore ?? 0} @ ${g.homeTeam} ${g.homeScore ?? 0} — ${g.statusDetail}`,
+      );
     }
   }
 
@@ -133,12 +143,6 @@ Return ONLY JSON:
 {"takes":["...","...","...","...","..."],"debate":{"title":"...","prompt":"...","teamA":"...","teamB":"..."},"communityStarter":"..."}`;
 }
 
-type GeneratedContent = {
-  takes?: string[];
-  debate?: { title?: string; prompt?: string; teamA?: string; teamB?: string };
-  communityStarter?: string;
-};
-
 async function recentBotTakeBodies(botId: string) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const rows = await db.take.findMany({
@@ -159,6 +163,11 @@ async function randomActiveCommunity() {
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
+  if (
+    !cronSecret ||
+    request.headers.get("authorization") !== `Bearer ${cronSecret}`
+  )
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (cronSecret) {
     const auth = request.headers.get("authorization");
     if (auth !== `Bearer ${cronSecret}`)
@@ -178,109 +187,139 @@ export async function GET(request: Request) {
       { status: 200 },
     );
 
-  const bot = await ensureBotUser();
-  const startOfDay = startOfUtcDay();
+  const result = await withJobLease("scout-publish", async () => {
+    const bot = await ensureBotUser();
+    const startOfDay = startOfUtcDay();
 
-  const [takesToday, debateToday] = await Promise.all([
-    db.take.count({
-      where: { authorId: bot.id, createdAt: { gte: startOfDay } },
-    }),
-    db.debate.count({
-      where: { creatorId: bot.id, createdAt: { gte: startOfDay } },
-    }),
-  ]);
-  if (takesToday >= MAX_TAKES_PER_DAY && debateToday > 0)
-    return NextResponse.json({
-      ok: true,
-      skipped: true,
-      reason: "Daily content cap already reached",
+    const [takesToday, debateToday] = await Promise.all([
+      db.take.count({
+        where: { authorId: bot.id, createdAt: { gte: startOfDay } },
+      }),
+      db.debate.count({
+        where: { creatorId: bot.id, createdAt: { gte: startOfDay } },
+      }),
+    ]);
+    if (takesToday >= MAX_TAKES_PER_DAY && debateToday > 0)
+      return NextResponse.json({
+        ok: true,
+        skipped: true,
+        reason: "Daily content cap already reached",
+      });
+
+    // Gather real-time sports data from ESPN, Reddit, and RSS
+    const brief = await gatherSportsBrief();
+    const prompt = buildPrompt(brief);
+
+    const text = await callClaude({
+      prompt,
+      system: SYSTEM_PROMPT,
+      maxTokens: 1200,
     });
+    const validated = scoutPostSchema.safeParse(parseJSON(text));
+    const generated = validated.success ? validated.data : null;
 
-  // Gather real-time sports data from ESPN, Reddit, and RSS
-  const brief = await gatherSportsBrief();
-  const prompt = buildPrompt(brief);
-
-  const text = await callClaude({ prompt, system: SYSTEM_PROMPT, maxTokens: 1200 });
-  const generated = parseJSON<GeneratedContent>(text);
-
-  if (!generated)
-    return NextResponse.json(
-      { ok: false, error: "Content generation returned no usable JSON", sourcesScanned: { liveGames: brief.liveGames.length, headlines: brief.headlines.length, reddit: brief.redditTrending.length } },
-      { status: 200 },
-    );
-
-  const seenRecently = await recentBotTakeBodies(bot.id);
-  const created = { takes: [] as string[], debate: null as string | null, communityStarter: null as string | null, sourcesScanned: { liveGames: brief.liveGames.length, results: brief.recentResults.length, headlines: brief.headlines.length, reddit: brief.redditTrending.length } };
-  let remaining = MAX_TAKES_PER_DAY - takesToday;
-
-  for (const raw of generated.takes ?? []) {
-    if (remaining <= 0) break;
-    const body = raw.trim().slice(0, TAKE_MAX_LENGTH);
-    if (!body || seenRecently.has(body.toLowerCase())) continue;
-    await db.take.create({ data: { authorId: bot.id, body } });
-    seenRecently.add(body.toLowerCase());
-    created.takes.push(body);
-    remaining--;
-  }
-
-  if (debateToday === 0 && generated.debate) {
-    const { title, prompt: debatePrompt, teamA, teamB } = generated.debate;
-    const validTitle = title?.trim().slice(0, 140) ?? "";
-    const validPrompt = debatePrompt?.trim().slice(0, 2000) ?? "";
-    const options = [teamA?.trim(), teamB?.trim()].filter(
-      (value): value is string => Boolean(value) && value!.length <= 80,
-    );
-    const distinctOptions =
-      new Set(options.map((o) => o.toLowerCase())).size === options.length;
-    if (
-      validTitle.length >= 10 &&
-      validPrompt.length >= 20 &&
-      options.length === 2 &&
-      distinctOptions
-    ) {
-      const slug = await uniqueDebateSlug(validTitle);
-      const debate = await db.debate.create({
-        data: {
-          creatorId: bot.id,
-          title: validTitle,
-          prompt: validPrompt,
-          slug,
-          status: "OPEN",
-          opensAt: new Date(),
-          options: {
-            create: options.map((label, index) => ({
-              key: `option-${index + 1}`,
-              label,
-              displayOrder: index + 1,
-            })),
+    if (!generated)
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Content generation returned no usable JSON",
+          sourcesScanned: {
+            liveGames: brief.liveGames.length,
+            headlines: brief.headlines.length,
+            reddit: brief.redditTrending.length,
           },
         },
-      });
-      created.debate = debate.slug;
-    }
-  }
+        { status: 200 },
+      );
 
-  if (remaining > 0 && generated.communityStarter) {
-    const community = await randomActiveCommunity();
-    if (community) {
-      await db.communityMember.upsert({
-        where: { communityId_userId: { communityId: community.id, userId: bot.id } },
-        update: {},
-        create: {
-          communityId: community.id,
-          userId: bot.id,
-          rulesAcceptedAt: new Date(),
-        },
-      });
-      const body = generated.communityStarter.trim().slice(0, TAKE_MAX_LENGTH);
-      if (body && !seenRecently.has(body.toLowerCase())) {
-        await db.take.create({
-          data: { authorId: bot.id, communityId: community.id, body },
+    const seenRecently = await recentBotTakeBodies(bot.id);
+    const created = {
+      takes: [] as string[],
+      debate: null as string | null,
+      communityStarter: null as string | null,
+      sourcesScanned: {
+        liveGames: brief.liveGames.length,
+        results: brief.recentResults.length,
+        headlines: brief.headlines.length,
+        reddit: brief.redditTrending.length,
+      },
+    };
+    let remaining = MAX_TAKES_PER_DAY - takesToday;
+
+    for (const raw of generated.takes ?? []) {
+      if (remaining <= 0) break;
+      const body = raw.trim().slice(0, TAKE_MAX_LENGTH);
+      if (!body || seenRecently.has(body.toLowerCase())) continue;
+      await db.take.create({ data: { authorId: bot.id, body } });
+      seenRecently.add(body.toLowerCase());
+      created.takes.push(body);
+      remaining--;
+    }
+
+    if (debateToday === 0 && generated.debate) {
+      const { title, prompt: debatePrompt, teamA, teamB } = generated.debate;
+      const validTitle = title?.trim().slice(0, 140) ?? "";
+      const validPrompt = debatePrompt?.trim().slice(0, 2000) ?? "";
+      const options = [teamA?.trim(), teamB?.trim()].filter(
+        (value): value is string => Boolean(value) && value!.length <= 80,
+      );
+      const distinctOptions =
+        new Set(options.map((o) => o.toLowerCase())).size === options.length;
+      if (
+        validTitle.length >= 10 &&
+        validPrompt.length >= 20 &&
+        options.length === 2 &&
+        distinctOptions
+      ) {
+        const slug = await uniqueDebateSlug(validTitle);
+        const debate = await db.debate.create({
+          data: {
+            creatorId: bot.id,
+            title: validTitle,
+            prompt: validPrompt,
+            slug,
+            status: "OPEN",
+            opensAt: new Date(),
+            options: {
+              create: options.map((label, index) => ({
+                key: `option-${index + 1}`,
+                label,
+                displayOrder: index + 1,
+              })),
+            },
+          },
         });
-        created.communityStarter = body;
+        created.debate = debate.slug;
       }
     }
-  }
 
-  return NextResponse.json({ ok: true, created });
+    if (remaining > 0 && generated.communityStarter) {
+      const community = await randomActiveCommunity();
+      if (community) {
+        await db.communityMember.upsert({
+          where: {
+            communityId_userId: { communityId: community.id, userId: bot.id },
+          },
+          update: {},
+          create: {
+            communityId: community.id,
+            userId: bot.id,
+            rulesAcceptedAt: new Date(),
+          },
+        });
+        const body = generated.communityStarter
+          .trim()
+          .slice(0, TAKE_MAX_LENGTH);
+        if (body && !seenRecently.has(body.toLowerCase())) {
+          await db.take.create({
+            data: { authorId: bot.id, communityId: community.id, body },
+          });
+          created.communityStarter = body;
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true, created });
+  });
+  return result instanceof Response ? result : NextResponse.json(result);
 }

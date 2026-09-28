@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,7 +13,10 @@ export async function GET(
   const { gameId } = await context.params;
   if (!z.string().uuid().safeParse(gameId).success)
     return NextResponse.json({ error: "Invalid game." }, { status: 400 });
-  const experience = await getGameLiveExperience(gameId);
+  const experience = await getGameLiveExperience(
+    gameId,
+    (await auth())?.user?.id,
+  );
   return experience
     ? NextResponse.json({ data: experience })
     : NextResponse.json({ error: "Game not found." }, { status: 404 });

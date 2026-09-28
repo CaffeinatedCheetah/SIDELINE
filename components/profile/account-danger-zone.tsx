@@ -9,7 +9,9 @@ export function AccountDangerZone() {
   async function remove() {
     const response = await fetch("/api/v1/account", { method: "DELETE" });
     if (response.ok) {
-      await signOut({ callbackUrl: "/" });
+      await signOut({ redirect: false });
+      // Discard authenticated router caches after removing the account session.
+      window.location.assign(window.location.origin);
       return;
     } else {
       const body = (await response.json()) as { error?: { message?: string } };

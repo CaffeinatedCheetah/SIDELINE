@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
+import { validInterests } from "@/lib/accounts/interests";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/foundations";
@@ -26,10 +27,16 @@ export default async function Onboarding({
     const handle = String(formData.get("handle") ?? "")
       .trim()
       .toLowerCase();
-    if (displayName.length < 2 || !/^[a-z0-9-]{3,30}$/.test(handle))
+    if (
+      displayName.length < 2 ||
+      displayName.length > 50 ||
+      !/^[a-z0-9-]{3,30}$/.test(handle)
+    )
       redirect("/onboarding?error=details");
     const favoriteSports = formData.getAll("sports").map(String);
     const favoriteTeams = formData.getAll("teams").map(String);
+    if (!(await validInterests(favoriteSports, favoriteTeams)))
+      redirect("/onboarding?error=details");
     try {
       await db.user.update({
         where: { id: current.user.id },

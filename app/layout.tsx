@@ -37,7 +37,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`h-full antialiased theme-${theme}${preferences?.reducedMotion ? " reduce-motion" : ""}`}
+      className={`h-full antialiased theme-${theme}${preferences?.reducedMotion ? "reduce-motion" : ""}`}
       data-scroll-behavior="smooth"
       data-reduced-data={preferences?.reducedData ? "true" : "false"}
       suppressHydrationWarning
@@ -47,7 +47,7 @@ export default async function RootLayout({
           <Navbar authenticated={Boolean(userId)} unread={unread} />
           <main
             id="main-content"
-            className="flex flex-1 flex-col pb-16 lg:pb-0"
+            className="flex flex-1 flex-col pb-16 xl:pb-0"
           >
             <ShellGate>{children}</ShellGate>
           </main>

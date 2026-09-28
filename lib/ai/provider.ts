@@ -1,5 +1,6 @@
 import "server-only";
 
+import { reserveAiRequest, completeAiRequest } from "@/lib/ai/budget";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { z } from "zod";
@@ -30,8 +31,14 @@ export class OpenAiProvider implements AiProvider {
   }) {
     const started = Date.now();
     let lastError: unknown;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 1; attempt += 1) {
       try {
+        const usage = await reserveAiRequest(
+          "openai",
+          input.model,
+          input.instructions + JSON.stringify(input.context),
+          input.maxOutputTokens,
+        );
         const response = await this.client.responses.parse(
           {
             model: input.model,
@@ -51,6 +58,11 @@ export class OpenAiProvider implements AiProvider {
             timeout: this.timeoutMs,
             headers: { "Idempotency-Key": input.idempotencyKey },
           },
+        );
+        await completeAiRequest(
+          usage.id,
+          response.usage?.input_tokens ?? 0,
+          response.usage?.output_tokens ?? 0,
         );
         if (!response.output_parsed)
           throw new Error("Provider returned no structured output.");

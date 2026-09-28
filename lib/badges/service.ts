@@ -1,9 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 import { createNotification } from "@/lib/notifications/service";
 
 export async function awardBadge(
-  db: PrismaClient,
+  db: PrismaClient | Prisma.TransactionClient,
   input: {
     userId: string;
     badgeKey: "first-take" | "perfect-read" | "community-builder";

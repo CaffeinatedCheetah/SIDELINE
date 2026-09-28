@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { checkRateLimit, rateLimitKey } from "@/lib/api/rate-limit";
 import { db } from "@/lib/db/client";
 import { heartbeatGamePresence } from "@/lib/games/presence";
 
@@ -23,6 +24,12 @@ export async function POST(
         status: 400,
       },
     );
+  const quota = await checkRateLimit(rateLimitKey(request, "presence"), {
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (!quota.allowed)
+    return NextResponse.json({ error: "Rate limited" }, { status: 429 });
   const game = await db.game.findUnique({
     where: { id: gameId },
     select: { id: true },

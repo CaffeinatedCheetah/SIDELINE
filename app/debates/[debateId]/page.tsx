@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { visibleTakesWhere } from "@/lib/permissions/visibility";
 import { auth } from "@/auth";
 import { DebateVote } from "@/components/actions/debate-vote";
 import { TakeComposer } from "@/components/actions/take-composer";
@@ -13,6 +14,7 @@ export default async function DebateDetail({
   params: Promise<{ debateId: string }>;
 }) {
   const { debateId } = await params;
+  const viewer = await auth();
   // Debate.id is a native Postgres `uuid` column, so passing a non-UUID
   // slug into an `{ id: debateId }` OR branch fails at the query level
   // (Postgres can't cast "nfc-north-standings" to uuid) before the slug
@@ -39,7 +41,7 @@ export default async function DebateDetail({
           include: { _count: { select: { votes: true } } },
         },
         takes: {
-          where: { status: "ACTIVE" },
+          where: await visibleTakesWhere(viewer?.user?.id),
           orderBy: [{ reactions: { _count: "desc" } }, { createdAt: "desc" }],
           take: 12,
           include: {

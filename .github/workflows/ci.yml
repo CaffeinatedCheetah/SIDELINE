@@ -7,9 +7,6 @@ on:
     branches: [main]
 
 env:
-  # Placeholder values satisfying lib/env.ts's shape validation only.
-  # No live database connection is made during lint/typecheck/test/build
-  # for pages using force-dynamic + try/catch data fetching.
   DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
   DIRECT_URL: "postgresql://ci:ci@localhost:5432/ci"
   AUTH_SECRET: "ci-placeholder-secret-not-for-production-use"
@@ -44,11 +41,32 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Audit (advisory, non-blocking)
-        run: npm audit --audit-level=high || true
+      - name: Dependency security gate
+        run: npm audit --audit-level=high
 
   e2e:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Isolated preview permits fixture login while exercising the production build.
+      VERCEL_ENV: "preview"
+      ENABLE_DEV_AUTH: "true"
+      AUTH_URL: "http://127.0.0.1:3000"
+      PLAYWRIGHT_BASE_URL: "http://127.0.0.1:3000"
+      NEXT_PUBLIC_APP_URL: "http://127.0.0.1:3000"
+      RUN_DATABASE_TESTS: "true"
+      RUN_DATABASE_E2E: "true"
+      SPORTS_DATA_FIXTURE_PATH: "tests/fixtures/sports/contests.json"
+      SPORTS_MOMENTS_FIXTURE_PATH: "tests/fixtures/sports/espn-mlb-plays.json"
     steps:
       - uses: actions/checkout@v4
 
@@ -66,14 +84,19 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright (test:e2e)
-        # RUN_DATABASE_E2E is intentionally left unset here: the one
-        # DB-dependent spec (tests/e2e/authenticated-database.spec.ts)
-        # self-skips without it, since no seeded isolated Postgres test
-        # database exists in this CI environment yet. That gap is
-        # documented, not hidden — see docs/QA_CHECKLIST.md and the
-        # skip reason in tests/e2e/accessibility.spec.ts.
-        run: npm run test:e2e
+      - name: Migrate and seed isolated database
+        run: |
+          npm run db:deploy
+          npm run db:seed
+
+      - name: Database integration and concurrency tests
+        run: npm test
+
+      - name: Build browser-test application
+        run: npm run build
+
+      - name: Run authenticated desktop and mobile journeys
+        run: npm run test:e2e:fantakes -- --workers=1
 
       - name: Upload Playwright report
         if: always()

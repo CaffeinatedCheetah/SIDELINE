@@ -62,6 +62,11 @@ test("all public routes render without runtime or console errors", async ({
         throw error;
       await page.goto(route, { waitUntil: "domcontentloaded" });
     }
+    if (route === "/auth/sign-up") {
+      await expect(page).toHaveURL(
+        /\/auth\/sign-in\?callbackUrl=\/onboarding$/,
+      );
+    }
     await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
   }
   expect(consoleErrors).toEqual([]);
@@ -78,8 +83,23 @@ for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      overflowing: [...document.querySelectorAll("body *")]
+        .filter(
+          (el) =>
+            el.getBoundingClientRect().right >
+            document.documentElement.clientWidth + 1,
+        )
+        .slice(0, 8)
+        .map((el) => ({
+          tag: el.tagName,
+          className: el.className,
+          right: el.getBoundingClientRect().right,
+        })),
     }));
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
+    expect(
+      dimensions.scrollWidth,
+      JSON.stringify(dimensions),
+    ).toBeLessThanOrEqual(dimensions.clientWidth);
   });
 }
 
@@ -98,6 +118,18 @@ test("team discovery has no horizontal overflow across supported breakpoints", a
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      overflowing: [...document.querySelectorAll("body *")]
+        .filter(
+          (el) =>
+            el.getBoundingClientRect().right >
+            document.documentElement.clientWidth + 1,
+        )
+        .slice(0, 8)
+        .map((el) => ({
+          tag: el.tagName,
+          className: el.className,
+          right: el.getBoundingClientRect().right,
+        })),
     }));
     expect(
       dimensions.scrollWidth,
@@ -126,6 +158,18 @@ for (const route of [
       const dimensions = await page.evaluate(() => ({
         clientWidth: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
+        overflowing: [...document.querySelectorAll("body *")]
+          .filter(
+            (el) =>
+              el.getBoundingClientRect().right >
+              document.documentElement.clientWidth + 1,
+          )
+          .slice(0, 8)
+          .map((el) => ({
+            tag: el.tagName,
+            className: el.className,
+            right: el.getBoundingClientRect().right,
+          })),
       }));
       expect(
         dimensions.scrollWidth,
@@ -148,6 +192,18 @@ test("Game Room has no horizontal overflow across supported breakpoints", async 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      overflowing: [...document.querySelectorAll("body *")]
+        .filter(
+          (el) =>
+            el.getBoundingClientRect().right >
+            document.documentElement.clientWidth + 1,
+        )
+        .slice(0, 8)
+        .map((el) => ({
+          tag: el.tagName,
+          className: el.className,
+          right: el.getBoundingClientRect().right,
+        })),
     }));
     expect(dimensions.scrollWidth, `${width}px Game Room`).toBeLessThanOrEqual(
       dimensions.clientWidth,
@@ -171,6 +227,18 @@ test("public fan profile is responsive across supported breakpoints", async ({
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      overflowing: [...document.querySelectorAll("body *")]
+        .filter(
+          (el) =>
+            el.getBoundingClientRect().right >
+            document.documentElement.clientWidth + 1,
+        )
+        .slice(0, 8)
+        .map((el) => ({
+          tag: el.tagName,
+          className: el.className,
+          right: el.getBoundingClientRect().right,
+        })),
     }));
     expect(
       dimensions.scrollWidth,

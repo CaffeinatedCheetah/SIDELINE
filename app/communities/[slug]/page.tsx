@@ -1,11 +1,17 @@
 import { notFound } from "next/navigation";
+import { visibleTakesWhere } from "@/lib/permissions/visibility";
 import { auth } from "@/auth";
 import { JoinCommunityButton } from "@/components/actions/join-community-button";
 import { TakeComposer } from "@/components/actions/take-composer";
 import { PageHeading } from "@/components/layout/page-heading";
 import { DebateCard } from "@/components/debates/debate-card";
 import { TakeCard } from "@/components/takes/take-card";
-import { Avatar, Card, EmptyState, ErrorState } from "@/components/ui/foundations";
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  ErrorState,
+} from "@/components/ui/foundations";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { db } from "@/lib/db/client";
 export const dynamic = "force-dynamic";
@@ -15,6 +21,7 @@ export default async function CommunityDetail({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const viewer = await auth();
   let session, community;
   try {
     [session, community] = await Promise.all([
@@ -23,12 +30,14 @@ export default async function CommunityDetail({
         where: { slug },
         include: {
           takes: {
-            where: { status: "ACTIVE" },
+            where: await visibleTakesWhere(viewer?.user?.id),
             orderBy: { createdAt: "desc" },
             include: {
               // See app/games/[gameId]/page.tsx for why this is a scoped
               // select, not `author: true`.
-              author: { select: { handle: true, displayName: true, image: true } },
+              author: {
+                select: { handle: true, displayName: true, image: true },
+              },
               _count: { select: { reactions: true, replies: true } },
             },
           },
@@ -44,7 +53,9 @@ export default async function CommunityDetail({
             orderBy: { createdAt: "asc" },
             take: 100,
             include: {
-              user: { select: { handle: true, displayName: true, image: true } },
+              user: {
+                select: { handle: true, displayName: true, image: true },
+              },
             },
           },
           _count: { select: { members: true } },
@@ -161,10 +172,7 @@ export default async function CommunityDetail({
           <div className="mt-5 grid gap-2">
             {community.members.length ? (
               community.members.map((member) => (
-                <Card
-                  key={member.id}
-                  className="flex items-center gap-3 py-3"
-                >
+                <Card key={member.id} className="flex items-center gap-3 py-3">
                   <Avatar
                     name={member.user.displayName}
                     src={member.user.image}

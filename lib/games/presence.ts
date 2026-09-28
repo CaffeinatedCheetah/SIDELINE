@@ -31,3 +31,18 @@ export async function heartbeatGamePresence({
   const activeUsers = Number(results.at(-1) ?? 0);
   return { activeUsers, available: true };
 }
+
+export async function readGamePresence(gameId: string) {
+  if (!configured()) return null;
+  try {
+    return Number(
+      await kv.zcount(
+        key(gameId),
+        Date.now() - PRESENCE_TTL_SECONDS * 1000,
+        "+inf",
+      ),
+    );
+  } catch {
+    return null;
+  }
+}

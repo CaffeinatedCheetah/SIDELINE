@@ -1,3 +1,4 @@
+import { z } from "zod";
 // SCOUT Daily Briefing — personalized homepage greeting
 // "Good Evening. Your Yankees won. Judge hit 2 HR.
 //  Cowboys camp begins tomorrow. Three debates are trending."
@@ -37,17 +38,14 @@ export async function generateDailyBriefing(
         where: { id: userId },
         select: { displayName: true },
       }),
-      db.gameFollow.findMany({
+      db.teamFollow.findMany({
         where: { userId },
-        include: { game: { include: { homeTeam: true, awayTeam: true } } },
+        include: { team: true },
         take: 10,
       }),
     ]);
     userName = user?.displayName || null;
-    followedTeams = follows.flatMap((f) => [
-      f.game.homeTeam.name,
-      f.game.awayTeam.name,
-    ]);
+    followedTeams = follows.map((f) => f.team.name);
   }
 
   // Get real sports data
@@ -63,12 +61,18 @@ export async function generateDailyBriefing(
   const timeOfDay = getTimeOfDay();
   const resultsSection = brief.recentResults
     .slice(0, 8)
-    .map((g) => `[${g.league}] ${g.awayTeam} ${g.awayScore} @ ${g.homeTeam} ${g.homeScore} (${g.statusDetail})`)
+    .map(
+      (g) =>
+        `[${g.league}] ${g.awayTeam} ${g.awayScore} @ ${g.homeTeam} ${g.homeScore} (${g.statusDetail})`,
+    )
     .join("\n");
 
   const liveSection = brief.liveGames
     .slice(0, 5)
-    .map((g) => `[${g.league}] ${g.awayTeam} ${g.awayScore} @ ${g.homeTeam} ${g.homeScore} (${g.statusDetail})`)
+    .map(
+      (g) =>
+        `[${g.league}] ${g.awayTeam} ${g.awayScore} @ ${g.homeTeam} ${g.homeScore} (${g.statusDetail})`,
+    )
     .join("\n");
 
   const headlinesSection = brief.headlines
@@ -107,14 +111,23 @@ Return JSON: {"greeting": "...", "bullets": ["...", "..."]}`;
 
   try {
     const text = await callClaude({ prompt, maxTokens: 400 });
-    const parsed = text ? JSON.parse(
-      text.replace(/```json|```/g, "").trim(),
-    ) as { greeting?: string; bullets?: string[] } : null;
-    if (!parsed?.greeting || !parsed?.bullets) return null;
+    const parsed = text
+      ? (JSON.parse(text.replace(/```json|```/g, "").trim()) as {
+          greeting?: string;
+          bullets?: string[];
+        })
+      : null;
+    const valid = z
+      .object({
+        greeting: z.string().max(200),
+        bullets: z.array(z.string().max(300)).min(1).max(6),
+      })
+      .safeParse(parsed);
+    if (!valid.success) return null;
 
     return {
-      greeting: parsed.greeting,
-      bullets: parsed.bullets.slice(0, 6),
+      greeting: valid.data.greeting,
+      bullets: valid.data.bullets,
       generatedAt: new Date().toISOString(),
     };
   } catch {

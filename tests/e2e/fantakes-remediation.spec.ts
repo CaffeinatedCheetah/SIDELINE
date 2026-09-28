@@ -39,7 +39,9 @@ test("guest sees synchronized sports data and reaches a persistent Game Room", a
   expect(scoringMoment).toBeDefined();
   await materializeGameMoments([scoringMoment!]);
   await expect(
-    page.getByRole("heading", { name: /go-ahead two-run home run/i }),
+    page
+      .locator("[data-featured-flash-thread]")
+      .getByRole("heading", { name: /go-ahead two-run home run/i }),
   ).toBeVisible({ timeout: 20_000 });
   await expect(page.getByLabel("Add your take").first()).toBeVisible();
   await page.reload();

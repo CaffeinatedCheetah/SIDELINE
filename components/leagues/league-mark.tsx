@@ -39,7 +39,7 @@ export function LeagueMark({
         aria-hidden
         className="size-7 text-[color:var(--league-secondary)]"
       />
-      <span className="absolute -right-1 -bottom-1 rounded-full bg-[color:var(--league-primary)] px-1.5 py-0.5 text-[0.6rem] font-black text-white">
+      <span className="bg-surface-1 text-text-primary absolute -right-1 -bottom-1 rounded-full border border-[color:var(--league-primary)] px-1.5 py-0.5 text-[0.6rem] font-black">
         {abbreviation}
       </span>
     </span>

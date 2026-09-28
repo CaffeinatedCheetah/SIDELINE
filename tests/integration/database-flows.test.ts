@@ -69,7 +69,7 @@ async function get(path: string) {
   };
 }
 
-databaseDescribe.sequential("PostgreSQL-backed critical flows", () => {
+databaseDescribe("PostgreSQL-backed critical flows", () => {
   const suffix = randomUUID().slice(0, 8);
   const ids = {
     user: "",

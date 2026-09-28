@@ -7,6 +7,7 @@ export function TabsList({ children }: { children: React.ReactNode }) {
     <TabsPrimitive.List
       className="border-border-subtle flex gap-1 overflow-x-auto border-b"
       aria-label="Sections"
+      tabIndex={0}
     >
       {children}
     </TabsPrimitive.List>
