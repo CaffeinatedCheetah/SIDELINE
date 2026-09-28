@@ -56,7 +56,9 @@ export function GamePulsePanel({ gameId }: { gameId: string }) {
       {/* Header */}
       <div className="flex items-center gap-2">
         <Flame className="text-brand h-5 w-5" />
-        <h3 className="text-sm font-bold uppercase tracking-wider">Game Pulse</h3>
+        <h3 className="text-sm font-bold tracking-wider uppercase">
+          Game Pulse
+        </h3>
       </div>
 
       {/* Momentum */}
@@ -114,7 +116,9 @@ export function GamePulsePanel({ gameId }: { gameId: string }) {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 text-center">
         <div>
-          <p className="text-lg font-bold">{pulse.fansActive.toLocaleString()}</p>
+          <p className="text-lg font-bold">
+            {pulse.fansActive?.toLocaleString() ?? "—"}
+          </p>
           <p className="text-text-muted text-xs">Fans Active</p>
         </div>
         <div>

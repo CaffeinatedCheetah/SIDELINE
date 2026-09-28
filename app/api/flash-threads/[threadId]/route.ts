@@ -1,3 +1,4 @@
+import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -15,7 +16,7 @@ export async function GET(
       { error: "Invalid Flash Thread." },
       { status: 400 },
     );
-  const thread = await getFlashThread(threadId);
+  const thread = await getFlashThread(threadId, (await auth())?.user?.id);
   return thread
     ? NextResponse.json({ data: thread })
     : NextResponse.json({ error: "Flash Thread not found." }, { status: 404 });

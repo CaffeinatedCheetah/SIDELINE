@@ -1,10 +1,8 @@
+import { createRequire } from "node:module";
+import { db } from "@/lib/db/client";
 import { expect, test, type Page } from "@playwright/test";
 
-// axe-core is injected via CDN rather than added as an npm dependency,
-// so this test introduces zero package.json / lockfile changes.
-const AXE_CORE_CDN =
-  "https://cdn.jsdelivr.net/npm/axe-core@4.10.2/axe.min.js";
-
+const require = createRequire(import.meta.url);
 type AxeResult = {
   violations: Array<{
     id: string;
@@ -15,9 +13,9 @@ type AxeResult = {
 };
 
 async function scanForSeriousViolations(page: Page) {
-  await page.addScriptTag({ url: AXE_CORE_CDN });
-  const results = (await page.evaluate(
-    () => (window as unknown as { axe: { run: () => Promise<AxeResult> } }).axe.run(),
+  await page.addScriptTag({ path: require.resolve("axe-core/axe.min.js") });
+  const results = (await page.evaluate(() =>
+    (window as unknown as { axe: { run: () => Promise<AxeResult> } }).axe.run(),
   )) as AxeResult;
 
   const seriousOrCritical = results.violations.filter(
@@ -48,16 +46,21 @@ for (const route of PUBLIC_ROUTES) {
   });
 }
 
-// Game Room, Notifications, and Profile require an authenticated session
-// backed by real seeded data. That infrastructure doesn't exist in CI yet
-// (same gap documented for tests/e2e/authenticated-database.spec.ts) — this
-// is intentionally skipped rather than scanning a redirected sign-in page
-// and reporting false coverage.
-test.skip(
-  process.env.RUN_DATABASE_E2E !== "true",
-  "Requires the isolated seeded PostgreSQL test database — same blocker as authenticated-database.spec.ts. " +
-    "Once available, extend PUBLIC_ROUTES-style coverage to /games/[a live gameId], /notifications, and a profile route.",
-);
-test("no serious/critical axe violations on authenticated routes (blocked without seeded test DB)", async () => {
-  // Intentionally left as a documented placeholder; see skip reason above.
+test("authenticated pages have no serious accessibility violations", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.RUN_DATABASE_E2E !== "true",
+    "Requires isolated PostgreSQL",
+  );
+  await page.goto("/auth/sign-in?callbackUrl=/notifications");
+  await page.getByLabel("Email").fill("demo@fantakes.local");
+  await page.getByRole("button", { name: "Continue with email" }).click();
+  await expect(page).toHaveURL(/notifications$/);
+  await scanForSeriousViolations(page);
+  const user = await db.user.findUniqueOrThrow({
+    where: { email: "demo@fantakes.local" },
+  });
+  await page.goto(`/u/${user.handle}`);
+  await scanForSeriousViolations(page);
 });

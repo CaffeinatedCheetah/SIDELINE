@@ -11,7 +11,7 @@ export default function Privacy() {
         },
         {
           heading: "Controls",
-          body: "Profile and notification choices are available in Settings. Account deletion enters a review period before personal fields are removed under the published retention policy.",
+          body: "Profile and notification choices are available in Settings. Account deletion restricts access immediately. After 14 days, a daily job removes login credentials, profile fields and authored text. An anonymized account record, votes and safety/audit records may remain to preserve conversation integrity and investigate abuse.",
         },
         {
           heading: "Data protection",

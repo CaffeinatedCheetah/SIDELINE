@@ -1,3 +1,4 @@
+import { visibleTakesWhere } from "@/lib/permissions/visibility";
 import { db } from "@/lib/db/client";
 
 const takeInclude = {
@@ -28,7 +29,7 @@ export async function getGameMoments(gameId: string) {
   });
 }
 
-export async function getGameFlashThreads(gameId: string) {
+export async function getGameFlashThreads(gameId: string, viewerId?: string) {
   const game = await db.game.findUnique({
     where: { id: gameId },
     select: { id: true, status: true },
@@ -42,7 +43,7 @@ export async function getGameFlashThreads(gameId: string) {
     include: {
       moment: true,
       takes: {
-        where: { status: "ACTIVE", parentId: null },
+        where: { ...(await visibleTakesWhere(viewerId)), parentId: null },
         orderBy: { createdAt: "desc" },
         include: takeInclude,
       },
@@ -62,7 +63,7 @@ export async function getGameFlashThreads(gameId: string) {
   }));
 }
 
-export function getFlashThread(threadId: string) {
+export async function getFlashThread(threadId: string, viewerId?: string) {
   return db.flashThread.findUnique({
     where: { id: threadId },
     include: {
@@ -71,7 +72,7 @@ export function getFlashThread(threadId: string) {
       },
       moment: true,
       takes: {
-        where: { status: "ACTIVE", parentId: null },
+        where: { ...(await visibleTakesWhere(viewerId)), parentId: null },
         orderBy: { createdAt: "desc" },
         include: takeInclude,
       },

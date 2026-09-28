@@ -39,5 +39,12 @@ export function getEnv() {
     Boolean(result.data.AUTH_GOOGLE_SECRET)
   )
     throw new Error("Both Google OAuth variables must be supplied together.");
+  if (
+    (isVercelProduction || isNonVercelProduction) &&
+    process.env.NEXT_PHASE !== "phase-production-build" &&
+    !result.data.EMAIL_SERVER &&
+    !result.data.AUTH_GOOGLE_ID
+  )
+    throw new Error("Configure a production sign-in provider.");
   return result.data;
 }

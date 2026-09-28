@@ -1,6 +1,7 @@
 import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { visibleTakesWhere } from "@/lib/permissions/visibility";
 import { auth } from "@/auth";
 import { PredictionForm } from "@/components/actions/prediction-form";
 import { GameRecapPanel } from "@/components/ai/game-recap-panel";
@@ -23,7 +24,7 @@ import { getSupportedLeague } from "@/lib/sports/leagues";
 
 export const dynamic = "force-dynamic";
 
-const getGame = cache(async (gameId: string) =>
+const getGame = cache(async (gameId: string, viewerId?: string) =>
   db.game.findUnique({
     where: { id: gameId },
     include: {
@@ -31,7 +32,7 @@ const getGame = cache(async (gameId: string) =>
       homeTeam: true,
       awayTeam: true,
       takes: {
-        where: { status: "ACTIVE" },
+        where: await visibleTakesWhere(viewerId),
         orderBy: { createdAt: "desc" },
         include: {
           // Explicit select, not `author: true` -- the live DB is missing
@@ -76,7 +77,8 @@ export default async function GameRoom({
   params: Promise<{ gameId: string }>;
 }) {
   const { gameId } = await params;
-  const [session, rawGame] = await Promise.all([auth(), getGame(gameId)]);
+  const session = await auth();
+  const rawGame = await getGame(gameId, session?.user?.id);
   if (!rawGame) notFound();
   const game = rawGame;
   const sportKey = getSupportedLeague(game.league.key)?.sportKey ?? "";

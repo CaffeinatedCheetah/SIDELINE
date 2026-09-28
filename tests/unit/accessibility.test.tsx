@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
 describe("accessibility smoke checks", () => {
   it("has no detectable navigation violations", async () => {
     const { container } = render(<Navbar authenticated unread={3} />);
-    expect(await axe(container)).toHaveNoViolations();
+    expect((await axe(container)).violations).toEqual([]);
   });
 
   it("labels form controls and debate choices", async () => {
@@ -31,6 +31,6 @@ describe("accessibility smoke checks", () => {
         />
       </>,
     );
-    expect(await axe(container)).toHaveNoViolations();
+    expect((await axe(container)).violations).toEqual([]);
   });
 });

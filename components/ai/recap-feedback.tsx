@@ -1,5 +1,6 @@
 "use client";
 
+import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { ThumbsDown, ThumbsUp } from "lucide-react";
 
@@ -20,7 +21,7 @@ export function RecapFeedback({
 
   async function submit(next: Value) {
     if (!signedIn) {
-      window.location.href = `/auth/sign-in?callbackUrl=${encodeURIComponent(window.location.pathname)}`;
+      await signIn(undefined, { callbackUrl: window.location.pathname });
       return;
     }
     const previous = value;

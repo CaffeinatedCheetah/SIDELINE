@@ -34,8 +34,7 @@ if (environment.EMAIL_SERVER) {
 // Never available in Vercel Production — lib/env.ts throws if ENABLE_DEV_AUTH
 // is "true" when VERCEL_ENV === "production".
 const isNonProdRuntime =
-  process.env.NODE_ENV !== "production" ||
-  process.env.VERCEL_ENV === "preview";
+  process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
 
 if (isNonProdRuntime && environment.ENABLE_DEV_AUTH === "true") {
   providers.push(
@@ -64,6 +63,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user?.id) token.userId = user.id;
+      const account = await db.user.findUnique({
+        where: { id: String(token.userId ?? token.sub) },
+        select: { status: true, bannedAt: true },
+      });
+      if (!account || account.status !== "ACTIVE" || account.bannedAt)
+        return null;
       return token;
     },
     session: async ({ session, token }) => {

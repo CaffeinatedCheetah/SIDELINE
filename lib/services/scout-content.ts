@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { reserveAiRequest, completeAiRequest } from "@/lib/ai/budget";
 const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 
@@ -18,6 +20,12 @@ export async function callClaude({
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
 
+  const usage = await reserveAiRequest(
+    "anthropic",
+    model,
+    system + prompt,
+    maxTokens,
+  );
   const response = await fetch(ANTHROPIC_API, {
     method: "POST",
     headers: {
@@ -36,12 +44,20 @@ export async function callClaude({
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => "(no body)");
-    throw new Error(`Anthropic API ${response.status}: ${errorText.slice(0, 200)}`);
+    throw new Error(
+      `Anthropic API ${response.status}: ${errorText.slice(0, 200)}`,
+    );
   }
 
   const data = (await response.json()) as {
     content?: { text?: string }[];
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
+  await completeAiRequest(
+    usage.id,
+    data.usage?.input_tokens ?? 0,
+    data.usage?.output_tokens ?? 0,
+  );
   return data.content?.[0]?.text ?? "";
 }
 
@@ -62,3 +78,16 @@ export function parseJSON<T = unknown>(text: string): T | null {
     return null;
   }
 }
+
+export const scoutPostSchema = z.object({
+  takes: z.array(z.string().trim().min(1).max(1000)).max(8).optional(),
+  debate: z
+    .object({
+      title: z.string().max(140),
+      prompt: z.string().max(2000),
+      teamA: z.string().max(80),
+      teamB: z.string().max(80),
+    })
+    .optional(),
+  communityStarter: z.string().max(1000).optional(),
+});

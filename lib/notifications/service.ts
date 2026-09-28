@@ -27,7 +27,7 @@ const PREFERENCE_KEYS: Partial<Record<NotificationType, string>> = {
 };
 
 export async function createNotification(
-  db: PrismaClient,
+  db: PrismaClient | Prisma.TransactionClient,
   input: {
     recipientId: string;
     actorId?: string;
@@ -40,6 +40,19 @@ export async function createNotification(
   },
 ) {
   if (input.actorId === input.recipientId) return null;
+  if (
+    input.actorId &&
+    input.type !== "MODERATION" &&
+    (await db.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: input.actorId, blockedId: input.recipientId },
+          { blockerId: input.recipientId, blockedId: input.actorId },
+        ],
+      },
+    }))
+  )
+    return null;
   const preferences = await db.userPreference.findUnique({
     where: { userId: input.recipientId },
     select: { notificationSettings: true },

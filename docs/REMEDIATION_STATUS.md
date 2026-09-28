@@ -1,3 +1,5 @@
+> Historical snapshot. Superseded for launch decisions by LAUNCH_HARDENING.md and checks for the deployed commit.
+
 # FanTakes remediation release status
 
 Branch: `fix/fantakes-production-audit`

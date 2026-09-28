@@ -12,6 +12,11 @@ export default async function SignInPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const query = await searchParams;
+  const emailEnabled =
+    Boolean(process.env.EMAIL_SERVER) ||
+    (process.env.ENABLE_DEV_AUTH === "true" &&
+      (process.env.NODE_ENV !== "production" ||
+        process.env.VERCEL_ENV === "preview"));
   const isSignUpIntent = query.callbackUrl === "/onboarding";
   async function emailAction(formData: FormData) {
     "use server";
@@ -45,26 +50,33 @@ export default async function SignInPage({
             Sign-in failed. Check your details and try again.
           </p>
         )}
-        <form action={emailAction} className="mt-6 grid gap-4">
-          <Field
-            label="Email"
-            htmlFor="email"
-            help={
-              process.env.ENABLE_DEV_AUTH === "true"
-                ? "Development: use demo@fantakes.local"
-                : "We will email a secure sign-in link."
-            }
-          >
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-            />
-          </Field>
-          <Button type="submit">Continue with email</Button>
-        </form>
+        {emailEnabled && (
+          <form action={emailAction} className="mt-6 grid gap-4">
+            <Field
+              label="Email"
+              htmlFor="email"
+              help={
+                process.env.ENABLE_DEV_AUTH === "true"
+                  ? "Development: use demo@fantakes.local"
+                  : "We will email a secure sign-in link."
+              }
+            >
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+              />
+            </Field>
+            <Button type="submit">Continue with email</Button>
+          </form>
+        )}
+        {!emailEnabled && !process.env.AUTH_GOOGLE_ID && (
+          <p role="alert" className="mt-4">
+            Sign-in is temporarily unavailable. Please try again later.
+          </p>
+        )}
         {process.env.AUTH_GOOGLE_ID && (
           <form
             action={async () => {

@@ -1,3 +1,5 @@
+> Historical snapshot. Superseded for launch decisions by LAUNCH_HARDENING.md and checks for the deployed commit.
+
 # FanTakes Version 1 build progress
 
 Last updated: 2026-07-23

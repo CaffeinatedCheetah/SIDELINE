@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 export const FAN_SCORE_POINTS = {
   QUALITY_TAKE: 10,
@@ -11,7 +11,7 @@ export const FAN_SCORE_POINTS = {
 export type FanScoreEventType = keyof typeof FAN_SCORE_POINTS;
 
 export async function recordFanScoreEvent(
-  db: PrismaClient,
+  db: PrismaClient | Prisma.TransactionClient,
   input: {
     userId: string;
     type: FanScoreEventType;
@@ -21,18 +21,34 @@ export async function recordFanScoreEvent(
     reason: string;
   },
 ) {
-  return db.$transaction(async (transaction) => {
+  return transact(db, async (transaction) => {
+    await transaction.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${input.userId}))`;
     const existing = await transaction.fanScoreEvent.findUnique({
       where: { idempotencyKey: input.idempotencyKey },
     });
     if (existing) return existing;
+    const postingReward =
+      input.type === "QUALITY_TAKE" || input.type === "CONSTRUCTIVE_REPLY";
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const awards = postingReward
+      ? await transaction.fanScoreEvent.count({
+          where: {
+            userId: input.userId,
+            eventType: { in: ["QUALITY_TAKE", "CONSTRUCTIVE_REPLY"] },
+            occurredAt: { gte: today },
+            points: { gt: 0 },
+          },
+        })
+      : 0;
     const event = await transaction.fanScoreEvent.create({
       data: {
         userId: input.userId,
         eventType: input.type,
         sourceType: input.sourceType,
         sourceId: input.sourceId,
-        points: FAN_SCORE_POINTS[input.type],
+        points:
+          postingReward && awards >= 10 ? 0 : FAN_SCORE_POINTS[input.type],
         reason: input.reason,
         idempotencyKey: input.idempotencyKey,
       },
@@ -52,14 +68,14 @@ export async function recordFanScoreEvent(
 }
 
 export async function reverseFanScoreEvent(
-  db: PrismaClient,
+  db: PrismaClient | Prisma.TransactionClient,
   input: { eventId: string; reason: string },
 ) {
   const original = await db.fanScoreEvent.findUnique({
     where: { id: input.eventId },
   });
   if (!original) return null;
-  return db.$transaction(async (transaction) => {
+  return transact(db, async (transaction) => {
     const existing = await transaction.fanScoreEvent.findUnique({
       where: { reversalOfEventId: original.id },
     });
@@ -86,4 +102,11 @@ export async function reverseFanScoreEvent(
 
 export function totalFanScore(events: readonly { points: number }[]) {
   return events.reduce((sum, event) => sum + event.points, 0);
+}
+
+function transact<T>(
+  client: PrismaClient | Prisma.TransactionClient,
+  work: (tx: Prisma.TransactionClient) => Promise<T>,
+) {
+  return "$transaction" in client ? client.$transaction(work) : work(client);
 }

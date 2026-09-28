@@ -63,6 +63,8 @@ npm run test:e2e
 npm run build
 ```
 
+Launch safeguards and current release gates are documented in [`docs/LAUNCH_HARDENING.md`](docs/LAUNCH_HARDENING.md).
+
 Product contracts live in [`docs/`](docs/README.md), and implementation status
 is maintained in [`docs/BUILD_PROGRESS.md`](docs/BUILD_PROGRESS.md).
 Deployment and preview verification are documented in
@@ -91,8 +93,8 @@ npm run db:deploy
 
 The Vercel runtime must be connected to PostgreSQL. Google and SMTP remain
 optional individually, but at least one production sign-in provider must be
-configured. Sports data is currently supplied only by deterministic development
-seed records; no live sports provider is claimed or configured.
+configured. The active sports service uses ESPN adapters with persisted and stale-data fallbacks.
+Tests use deterministic fixtures. Verify provider freshness in the deployed environment.
 
 To seed an approved disposable preview database, set both database URLs to that
 preview instance and run `npm run db:seed:preview`. Never add this command to the

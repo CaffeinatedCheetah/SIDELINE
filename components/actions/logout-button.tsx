@@ -10,16 +10,11 @@ export function LogoutButton({
   children?: React.ReactNode;
 }) {
   async function logOut() {
-    await signOut({ redirect: false });
-    window.location.assign("/");
+    await signOut({ callbackUrl: "/" });
   }
 
   return (
-    <Button
-      variant="secondary"
-      type="button"
-      onClick={logOut}
-    >
+    <Button variant="secondary" type="button" onClick={logOut}>
       {children}
     </Button>
   );
