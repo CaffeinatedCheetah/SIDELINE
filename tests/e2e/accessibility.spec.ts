@@ -13,6 +13,10 @@ type AxeResult = {
 };
 
 async function scanForSeriousViolations(page: Page) {
+  await expect(page.locator("main h1")).toBeVisible();
+  await expect(
+    page.getByRole("status", { name: "Loading", exact: true }),
+  ).toBeHidden();
   await page.addScriptTag({
     path: resolveDependency.resolve("axe-core/axe.min.js"),
   });
