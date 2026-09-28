@@ -36,7 +36,9 @@ test("development login persists and logout protects the authenticated shell", a
   await page
     .getByRole("button", { name: "Log out" })
     .click({ noWaitAfter: true });
-  await expect(page).toHaveURL("/", { timeout: 30_000 });
+  await page.waitForURL("/", { waitUntil: "load", timeout: 30_000 });
+  const session = await page.request.get("/api/auth/session");
+  expect(await session.json()).toBeNull();
 
   await page.goto("/arena");
   await expect(page).toHaveURL(/\/auth\/sign-in/);

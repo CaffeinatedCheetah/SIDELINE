@@ -1,19 +1,17 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/modal";
 
 export function AccountDangerZone() {
-  const router = useRouter();
   const [error, setError] = useState("");
   async function remove() {
     const response = await fetch("/api/v1/account", { method: "DELETE" });
     if (response.ok) {
       await signOut({ redirect: false });
-      router.replace("/");
-      router.refresh();
+      // Discard authenticated router caches after removing the account session.
+      window.location.assign(window.location.origin);
       return;
     } else {
       const body = (await response.json()) as { error?: { message?: string } };
