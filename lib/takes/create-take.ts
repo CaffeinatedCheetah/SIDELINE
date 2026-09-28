@@ -30,6 +30,7 @@ export async function createTake({
   flashThreadId?: string;
 }) {
   return db.$transaction(async (db) => {
+    await db.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${authorId}))`;
     if (communityId) {
       const membership = await db.communityMember.findFirst({
         where: {

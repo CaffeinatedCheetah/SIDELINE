@@ -7,6 +7,7 @@ import {
 } from "@/lib/permissions/visibility";
 import { reserveAiRequest } from "@/lib/ai/budget";
 import { finalizeAccountDeletions } from "@/lib/accounts/deletion";
+import { createTake } from "@/lib/takes/create-take";
 import { withJobLease } from "@/lib/jobs/lease";
 
 const run =
@@ -25,6 +26,8 @@ run("launch safeguards on PostgreSQL", () => {
   });
   afterAll(async () => {
     await db.aiUsage.deleteMany({ where: { model: providerModel } });
+    await db.fanScoreEvent.deleteMany({ where: { userId: { in: [a, b] } } });
+    await db.take.deleteMany({ where: { authorId: { in: [a, b] } } });
     await db.user.deleteMany({ where: { id: { in: [a, b] } } });
     vi.unstubAllEnvs();
   });
@@ -83,6 +86,20 @@ run("launch safeguards on PostgreSQL", () => {
     expect(
       results.filter((result) => result.status === "fulfilled"),
     ).toHaveLength(1);
+  });
+  it("does not reward concurrent duplicate takes more than once", async () => {
+    const body =
+      "A concurrent duplicate should receive only one reward " + randomUUID();
+    const takes = await Promise.all(
+      Array.from({ length: 3 }, () => createTake({ authorId: a, body })),
+    );
+    const rewards = await db.fanScoreEvent.findMany({
+      where: {
+        sourceId: { in: takes.map((take) => take.id) },
+        points: { gt: 0 },
+      },
+    });
+    expect(rewards).toHaveLength(1);
   });
   it("finalizes due deletions but leaves accounts inside the grace period alone", async () => {
     await db.user.update({

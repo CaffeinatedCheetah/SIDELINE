@@ -765,6 +765,7 @@ async function handlePost(request: Request, context: Context) {
         return apiError("FORBIDDEN", "Reply target is unavailable.", 403);
     }
     const comment = await db.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${userId}))`;
       const comment = await transaction.comment.create({
         data: { authorId: userId, ...parsed.data },
       });
@@ -1961,29 +1962,31 @@ async function handleDelete(_request: Request, context: Context) {
   if (actor.response) return actor.response;
   const userId = actor.userId;
   if (segments[0] === "takes" && segments[1]) {
-    const result = await db.take.updateMany({
-      where: {
-        id: segments[1],
-        authorId: userId,
-        status: ContentStatus.ACTIVE,
-      },
-      data: {
-        status: ContentStatus.AUTHOR_REMOVED,
-        body: "",
-        deletedAt: new Date(),
-      },
-    });
-    if (!result.count)
-      return apiError("NOT_FOUND", "Removable take not found.", 404);
-    const reward = await db.fanScoreEvent.findUnique({
-      where: { idempotencyKey: `take:${segments[1]}` },
-    });
-    if (reward)
-      await reverseFanScoreEvent(db, {
-        eventId: reward.id,
-        reason: "Take removed by author",
+    return db.$transaction(async (db) => {
+      const result = await db.take.updateMany({
+        where: {
+          id: segments[1],
+          authorId: userId,
+          status: ContentStatus.ACTIVE,
+        },
+        data: {
+          status: ContentStatus.AUTHOR_REMOVED,
+          body: "",
+          deletedAt: new Date(),
+        },
       });
-    return apiSuccess({ removed: true });
+      if (!result.count)
+        return apiError("NOT_FOUND", "Removable take not found.", 404);
+      const reward = await db.fanScoreEvent.findUnique({
+        where: { idempotencyKey: `take:${segments[1]}` },
+      });
+      if (reward)
+        await reverseFanScoreEvent(db, {
+          eventId: reward.id,
+          reason: "Take removed by author",
+        });
+      return apiSuccess({ removed: true });
+    });
   }
   if (segments[0] !== "account")
     return apiError("NOT_FOUND", "API operation not found.", 404);

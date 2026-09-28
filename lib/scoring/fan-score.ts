@@ -76,6 +76,7 @@ export async function reverseFanScoreEvent(
   });
   if (!original) return null;
   return transact(db, async (transaction) => {
+    await transaction.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtext(${original.userId}))`;
     const existing = await transaction.fanScoreEvent.findUnique({
       where: { reversalOfEventId: original.id },
     });
