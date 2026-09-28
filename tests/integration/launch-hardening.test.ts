@@ -25,6 +25,9 @@ run("launch safeguards on PostgreSQL", () => {
     });
   });
   afterAll(async () => {
+    await db.verificationToken.deleteMany({
+      where: { identifier: a + "@test.local" },
+    });
     await db.aiUsage.deleteMany({ where: { model: providerModel } });
     await db.fanScoreEvent.deleteMany({ where: { userId: { in: [a, b] } } });
     await db.take.deleteMany({ where: { authorId: { in: [a, b] } } });
@@ -116,7 +119,19 @@ run("launch safeguards on PostgreSQL", () => {
         deletedAt: new Date(Date.now() + 86_400_000),
       },
     });
+    await db.verificationToken.create({
+      data: {
+        identifier: a + "@test.local",
+        token: randomUUID(),
+        expires: new Date(Date.now() + 60_000),
+      },
+    });
     await finalizeAccountDeletions();
+    expect(
+      await db.verificationToken.count({
+        where: { identifier: a + "@test.local" },
+      }),
+    ).toBe(0);
     const deleted = await db.user.findUniqueOrThrow({ where: { id: a } });
     expect(deleted.status).toBe("DELETED");
     expect(deleted.email).toBeNull();

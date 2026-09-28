@@ -5,7 +5,7 @@ export async function finalizeAccountDeletions(now = new Date()) {
   return withJobLease("account-deletions", async () => {
     const users = await db.user.findMany({
       where: { status: "PENDING_DELETION", deletedAt: { lte: now } },
-      select: { id: true },
+      select: { id: true, email: true },
       take: 100,
     });
     for (const user of users) {
@@ -30,6 +30,10 @@ export async function finalizeAccountDeletions(now = new Date()) {
           },
         });
         if (!claimed.count) return;
+        if (user.email)
+          await tx.verificationToken.deleteMany({
+            where: { identifier: user.email },
+          });
         await tx.account.deleteMany({ where: { userId: user.id } });
         await tx.session.deleteMany({ where: { userId: user.id } });
         await tx.profile.deleteMany({ where: { userId: user.id } });
