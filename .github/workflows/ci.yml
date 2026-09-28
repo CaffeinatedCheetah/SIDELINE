@@ -55,8 +55,10 @@ jobs:
           POSTGRES_DB: ci
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U ci -d ci" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
+      # Isolated preview permits fixture login while exercising the production build.
+      VERCEL_ENV: "preview"
       ENABLE_DEV_AUTH: "true"
       AUTH_URL: "http://127.0.0.1:3000"
       PLAYWRIGHT_BASE_URL: "http://127.0.0.1:3000"
@@ -89,6 +91,9 @@ jobs:
 
       - name: Database integration and concurrency tests
         run: npm test
+
+      - name: Build browser-test application
+        run: npm run build
 
       - name: Run authenticated desktop and mobile journeys
         run: npm run test:e2e:fantakes -- --workers=1

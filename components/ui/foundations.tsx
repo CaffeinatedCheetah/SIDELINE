@@ -8,7 +8,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "border-border-subtle bg-surface-2 rounded-md border p-4 md:p-5",
+        "border-border-subtle bg-surface-2 min-w-0 rounded-md border p-4 md:p-5",
         className,
       )}
       {...props}
@@ -91,7 +91,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <Card className="grid place-items-center gap-3 py-12 text-center">
+    <Card className="grid grid-cols-1 place-items-center gap-3 py-12 text-center">
       <h3 className="text-xl font-bold">{title}</h3>
       <p className="text-text-secondary max-w-md">{description}</p>
       {action}

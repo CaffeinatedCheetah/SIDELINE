@@ -7,6 +7,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
+  failOnFlakyTests: Boolean(process.env.CI),
   reporter: "html",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
@@ -17,7 +18,9 @@ export default defineConfig({
     { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: `${nodeBin} ./node_modules/.bin/next dev --webpack --hostname 127.0.0.1 --port 3000`,
+    command: process.env.CI
+      ? `${nodeBin} ./node_modules/.bin/next start --hostname 127.0.0.1 --port 3000`
+      : `${nodeBin} ./node_modules/.bin/next dev --webpack --hostname 127.0.0.1 --port 3000`,
     url: "http://127.0.0.1:3000",
     reuseExistingServer: false,
     env: {

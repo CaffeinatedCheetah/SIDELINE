@@ -62,6 +62,11 @@ test("all public routes render without runtime or console errors", async ({
         throw error;
       await page.goto(route, { waitUntil: "domcontentloaded" });
     }
+    if (route === "/auth/sign-up") {
+      await expect(page).toHaveURL(
+        /\/auth\/sign-in\?callbackUrl=\/onboarding$/,
+      );
+    }
     await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
   }
   expect(consoleErrors).toEqual([]);

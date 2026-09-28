@@ -280,7 +280,7 @@ export default async function Home() {
           )}
         </div>
       </section>
-      <div className="page-container grid gap-16 py-14">
+      <div className="page-container grid min-w-0 grid-cols-1 gap-16 py-14">
         <MySidelineSection
           signedIn={Boolean(session?.user?.id)}
           teams={mySideline.teams}

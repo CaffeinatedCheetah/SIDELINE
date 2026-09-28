@@ -12,7 +12,7 @@ This change replaces historical readiness claims with explicit verification gate
 - A daily deletion worker anonymizes due accounts after the 14-day grace period, removes credentials/profile data and authored text, and preserves anonymized integrity/safety records.
 - Content and score writes are transactional for take creation, comment rewards and reaction toggles. Eligible posting rewards are limited to ten per user per UTC day, require at least twenty characters and exclude recent duplicate bodies.
 - Release dashboard marks acceptance as unverified instead of reporting hard-coded passes.
-- PostgreSQL integration and authenticated desktop/mobile browser journeys run in CI against a disposable PostgreSQL 16 service.
+- PostgreSQL integration and authenticated desktop/mobile browser journeys run in CI against a disposable PostgreSQL 16 service. Browser journeys use the production build with isolated preview-only fixture authentication; flaky results fail the gate.
 - Next.js, Vitest, Playwright and dependency security patches are updated. Explicit transitive overrides need revalidation when upgrading Auth.js/Prisma.
 
 ## Deployment

@@ -58,7 +58,7 @@ export default async function DiscoverPage() {
           description="Upcoming games and new fan conversations will appear here as activity starts."
         />
       ) : (
-        <div className="grid gap-10">
+        <div className="grid min-w-0 grid-cols-1 gap-10">
           {feed.trendingGames.length ? (
             <DiscoverSection
               eyebrow="Fans are gathering"
