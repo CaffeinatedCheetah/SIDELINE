@@ -17,6 +17,7 @@ async function scanForSeriousViolations(page: Page) {
   await expect(
     page.getByRole("status", { name: "Loading", exact: true }),
   ).toBeHidden();
+  await expect(page).toHaveTitle(/\S/);
   await page.addScriptTag({
     path: resolveDependency.resolve("axe-core/axe.min.js"),
   });
@@ -63,10 +64,14 @@ test("authenticated pages have no serious accessibility violations", async ({
   await page.getByLabel("Email").fill("demo@fantakes.local");
   await page.getByRole("button", { name: "Continue with email" }).click();
   await expect(page).toHaveURL(/notifications$/);
+  await expect(page).toHaveTitle("Notifications | FanTakes");
   await scanForSeriousViolations(page);
   const user = await db.user.findUniqueOrThrow({
     where: { email: "demo@fantakes.local" },
   });
   await page.goto(`/u/${user.handle}`);
+  await expect(page).toHaveTitle(
+    `${user.displayName} (@${user.handle}) | FanTakes`,
+  );
   await scanForSeriousViolations(page);
 });
