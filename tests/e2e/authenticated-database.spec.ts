@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { db } from "@/lib/db/client";
 import { materializeContest } from "@/lib/sports/materializer";
@@ -48,17 +49,19 @@ test("signed-in fan follows a team, sees My Teams after refresh, and unfollows",
   test.setTimeout(90_000);
   const team = await db.team.findFirstOrThrow({
     orderBy: { name: "asc" },
-    select: { name: true },
+    select: { id: true, name: true },
   });
 
+  const user = await db.user.findUniqueOrThrow({
+    where: { email: "demo@fantakes.local" },
+  });
+  await db.teamFollow.deleteMany({ where: { userId: user.id } });
   await page.goto("/auth/sign-in?callbackUrl=/teams");
   await page.getByLabel("Email").fill("demo@fantakes.local");
   await page.getByRole("button", { name: "Continue with email" }).click();
   await expect(page).toHaveURL(/\/teams$/);
 
-  const teamCard = page.locator("[data-team-card]", {
-    has: page.getByRole("link", { name: team.name }),
-  });
+  const teamCard = page.locator(`[data-team-card="${team.id}"]`);
   await teamCard.getByRole("button", { name: "Follow" }).click();
   await expect(
     teamCard.getByRole("button", { name: "Following" }),
@@ -94,17 +97,14 @@ test("authenticated fan posts an existing Take inside a fixture-backed Flash Thr
   await page.getByLabel("Email").fill("demo@fantakes.local");
   await page.getByRole("button", { name: "Continue with email" }).click();
   await expect(page).toHaveURL(new RegExp(`/games/${game.id}$`));
-  const flashThread = page.locator("section", {
-    has: page.getByRole("heading", { name: /flash threads/i }),
-  });
+  const flashThread = page.locator("[data-featured-flash-thread]");
   await expect(
     flashThread.getByRole("heading", { name: /go-ahead two-run home run/i }),
   ).toBeVisible({ timeout: 20_000 });
-  await flashThread
-    .getByLabel("Add your take")
-    .fill("The go-ahead swing changed the game.");
+  const body = `The go-ahead swing changed the game. ${randomUUID()}`;
+  await flashThread.getByLabel("Add your take").fill(body);
   await flashThread.getByRole("button", { name: "Post take" }).click();
-  await expect(
-    flashThread.getByText("The go-ahead swing changed the game."),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(flashThread.getByText(body, { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
 });

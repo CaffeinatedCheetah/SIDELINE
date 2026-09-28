@@ -12,7 +12,7 @@
   --text-secondary: #b8b8b8;
   --text-muted: #8a8a8a;
   --brand: #7c3aed;
-  --brand-hover: #8b5cf6;
+  --brand-hover: #6d28d9;
   --brand-active: #5b21b6;
   --brand-light: #a78bfa;
   --brand-surface: rgba(124, 58, 237, 0.12);
@@ -48,7 +48,7 @@
   --text-primary: #ffffff;
   --text-secondary: #ffffff;
   --text-muted: #e5e5e5;
-  --brand: #ff2933;
+  --brand: #c21b2a;
   --focus: #ffeb3b;
 }
 
