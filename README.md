@@ -31,11 +31,11 @@ when `NODE_ENV=production`.
 
 ## Environment
 
-- `DATABASE_URL`: pooled PostgreSQL runtime connection. For Supabase, use the
-  transaction pooler on port 6543 with
-  `?pgbouncer=true&connection_limit=1`.
+- `DATABASE_URL`: PostgreSQL runtime connection. It can point to the Docker
+  PostgreSQL service, a local PostgreSQL server, or another managed PostgreSQL host.
 - `DIRECT_URL`: direct PostgreSQL migration connection. It may match
-  `DATABASE_URL` locally; use the provider's non-pooled URL in managed hosting.
+  `DATABASE_URL` for self-hosted PostgreSQL; managed poolers should use their
+  provider's direct/non-pooled migration URL.
 - `AUTH_SECRET`: random secret of at least 16 characters.
 - `AUTH_URL`: deployed Auth.js callback origin.
 - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`: optional Google OAuth pair.
@@ -52,6 +52,35 @@ when `NODE_ENV=production`.
 
 The application validates this environment when the authentication boundary is
 loaded. Never commit a populated `.env` file.
+
+
+## Docker setup
+
+FanTakes can run without a hosted Supabase dependency. The repository includes a
+Docker Compose stack with PostgreSQL 16, an automatic Prisma migration job, and
+the FanTakes application.
+
+Create a local `.env` with at least:
+
+```bash
+POSTGRES_PASSWORD=replace-with-a-long-random-password
+AUTH_SECRET=replace-with-a-long-random-auth-secret
+AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+Then start the stack:
+
+```bash
+docker compose up --build
+```
+
+PostgreSQL data is retained in the `fantakes_postgres_data` named volume. The
+database port is bound to `127.0.0.1` by default so it is not exposed on every
+network interface.
+
+For migration from the existing hosted PostgreSQL database, follow
+[`docs/DOCKER_POSTGRES_MIGRATION.md`](docs/DOCKER_POSTGRES_MIGRATION.md).
 
 ## Quality commands
 
@@ -119,3 +148,7 @@ FANTAKES_TEST_DATABASE_URL="postgresql://..." npm run test:db:fantakes
 It refuses a declared Production URL and requires an explicit override for
 remote Supabase hosts. FanTakes verification does not use another project's
 database, schema, scripts, or test harness.
+
+The application is provider-neutral at the database layer: Prisma connects to
+PostgreSQL directly and Auth.js uses the Prisma adapter. The current codebase
+does not require the Supabase JavaScript SDK.
